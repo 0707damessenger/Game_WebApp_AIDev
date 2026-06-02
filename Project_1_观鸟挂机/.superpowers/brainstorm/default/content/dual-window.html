@@ -1,0 +1,63 @@
+<h2>双窗口模式 — 大窗口 vs 小窗口的布局关系</h2>
+<p class="subtitle">这两种窗口在实际使用中是什么关系？选一个最接近你设想的</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>同页面双面板</h3>
+      <p>同一浏览器页面内，左侧大面板是场景编辑器，右侧小面板是观察窗/取景器。两者始终同时可见，方便一边调整场景一边观察结果。</p>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:3;background:#2d5a27;border-radius:6px;padding:20px;color:#c8e6c9;font-size:11px;text-align:center;min-height:100px;">
+          <div style="font-weight:600;margin-bottom:6px;">场景编辑器</div>
+          拖动摆放植物、改变地形
+        </div>
+        <div style="flex:2;background:#1a1a2e;border-radius:6px;padding:20px;color:#aab;font-size:11px;text-align:center;min-height:100px;">
+          <div style="font-weight:600;margin-bottom:6px;">取景器/观察窗</div>
+          镜头画面、拍照按钮
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>主窗口 + 独立小窗 (Popup)</h3>
+      <p>场景编辑器在主浏览器窗口全屏展示；观察窗是一个独立弹出的小窗口（类似桌面悬浮窗），可随意拖放到屏幕任意位置，模拟"桌面挂机"的体验。</p>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;background:#2d5a27;border-radius:6px;padding:16px;color:#c8e6c9;font-size:11px;text-align:center;min-height:100px;">
+          <div style="font-weight:600;margin-bottom:6px;">主窗口</div>
+          场景编辑器（全屏）
+        </div>
+        <div style="width:1px;background:#555;"></div>
+        <div style="flex:1;text-align:center;">
+          <div style="background:#1a1a2e;border:2px solid #4a6;border-radius:8px;padding:12px;color:#aab;font-size:10px;width:130px;margin:0 auto;box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+            <div style="font-weight:600;margin-bottom:4px;">观察窗</div>
+            悬浮小窗<br>可拖动
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>双标签页 / 两个窗口</h3>
+      <p>大窗口和小窗口是两个独立的浏览器标签页（或两个独立窗口），通过 localStorage 等共享游戏状态。更接近真正的"桌面多窗口"体验。</p>
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <div style="flex:1;background:#2d5a27;border:2px solid #4a6;border-radius:6px;padding:16px;color:#c8e6c9;font-size:11px;text-align:center;min-height:90px;">
+          <div style="font-weight:600;margin-bottom:4px;">标签页 A</div>
+          场景编辑器<br>
+          <span style="font-size:9px;opacity:0.7;">通过 localStorage 同步</span>
+        </div>
+        <div style="flex:1;background:#1a1a2e;border:2px solid #4a6;border-radius:6px;padding:16px;color:#aab;font-size:11px;text-align:center;min-height:90px;">
+          <div style="font-weight:600;margin-bottom:4px;">标签页 B</div>
+          观察窗 / 取景器<br>
+          <span style="font-size:9px;opacity:0.7;">通过 localStorage 同步</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

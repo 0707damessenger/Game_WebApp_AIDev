@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>观鸟挂机 — 场景编辑器</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 顶部工具栏 -->
+    <div id="toolbar">
+      <div id="tab-buttons">
+        <button class="tab-btn active" data-tab="plants">🌿 植物</button>
+        <button class="tab-btn" data-tab="insects">🦋 昆虫</button>
+        <button class="tab-btn" data-tab="facilities">🏠 设施</button>
+      </div>
+      <button id="open-viewer-btn">📷 打开取景器</button>
+      <div id="score-display">★ 积分: <span id="score-value">0</span></div>
+    </div>
+
+    <!-- 主体区域 -->
+    <div id="main-area">
+      <!-- 左侧物件面板 -->
+      <div id="object-panel">
+        <div id="object-list"></div>
+      </div>
+      <!-- 场景画布 -->
+      <div id="scene-container">
+        <canvas id="scene-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 底部状态栏 -->
+    <div id="status-bar">
+      <span id="terrain-name">地形: 溪流/森林</span>
+      <button id="terrain-switch-btn">切换地形</button>
+      <span style="flex:1;"></span>
+      <button id="fieldguide-btn">📖 图鉴</button>
+      <span id="camera-info">📷 镜头: (0, 0) 0°</span>
+    </div>
+  </div>
+
+  <script>
+    // ===== CONFIG =====
+    const CONFIG = {
+      // 场景
+      GRID_COLS: 10,
+      GRID_ROWS: 10,
+      TILE_WIDTH: 80,
+      TILE_HEIGHT: 40,
+
+      // 摄像机
+      CAMERA_PAN_SPEED: 0.5,
+      CAMERA_ROTATE_SPEED: 0.02,
+
+      // 判定周期（毫秒）
+      SPAWN_INTERVAL: 30000,
+
+      // 积分
+      FIRST_PHOTO_REWARD: 100,
+      REPEAT_PHOTO_REWARD: 10,
+    };
+  </script>
+  <script src="js/config.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/isometric.js"></script>
+  <script src="js/terrain.js"></script>
+  <script src="js/objects.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/birds.js"></script>
+  <script src="js/fieldguide.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

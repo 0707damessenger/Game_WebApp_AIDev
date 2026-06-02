@@ -1,0 +1,61 @@
+<h2>场景视角 — 摄像机以什么角度观察场景？</h2>
+<p class="subtitle">这个决定影响场景编辑器的操作方式、生境的呈现效果，以及小窗口取景器的画面风格</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>2D 俯视视角 (Top-Down)</h3>
+      <p>摄像机从正上方俯视场景，类似地图编辑器。简单直观，易于摆放物件和规划生境，但缺乏纵深感和"观察"的沉浸感。</p>
+      <div style="background:#3a5a3a;border-radius:6px;padding:20px;margin-top:12px;text-align:center;">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:200px;margin:0 auto;">
+          <div style="background:#4a7;border-radius:4px;height:40px;"></div>
+          <div style="background:#4a7;border-radius:4px;height:40px;"></div>
+          <div style="background:#7b5;border-radius:50%;height:40px;"></div>
+          <div style="background:#4a7;border-radius:4px;height:40px;"></div>
+          <div style="background:#5a8;border-radius:2px;height:10px;grid-column:span 4;"></div>
+          <div style="background:#5a3;border-radius:4px;height:40px;"></div>
+          <div style="background:#5a3;border-radius:4px;height:40px;"></div>
+          <div style="background:#5a3;border-radius:4px;height:40px;"></div>
+          <div style="background:#5a3;border-radius:4px;height:40px;"></div>
+        </div>
+        <div style="font-size:10px;color:#aac;margin-top:8px;">草地 + 树木 + 小径 → 俯视视角</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>2D 等距/斜45°视角 (Isometric)</h3>
+      <p>摄像机以45度斜角俯瞰，兼具俯视的规划感和立体的层次感。物件有"高度"表现，场景更有深度，是模拟经营类游戏的经典视角。</p>
+      <div style="background:#3a5a3a;border-radius:6px;padding:20px;margin-top:12px;text-align:center;perspective:200px;">
+        <div style="display:flex;gap:12px;justify-content:center;align-items:flex-end;">
+          <div style="background:#5a3;width:40px;height:70px;transform:skewX(-5deg) skewY(5deg);border-radius:3px;"></div>
+          <div style="background:#7b5;width:50px;height:50px;border-radius:50%;transform:skewX(-5deg);"></div>
+          <div style="background:#5a3;width:35px;height:55px;transform:skewX(-5deg) skewY(5deg);border-radius:3px;"></div>
+        </div>
+        <div style="background:#5a8;width:180px;height:6px;margin:4px auto 0;border-radius:2px;"></div>
+        <div style="font-size:10px;color:#aac;margin-top:8px;">树木层次分明 → 等距视角</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>2D 侧视/横版视角 (Side-View)</h3>
+      <p>摄像机从侧面水平观察场景，有前景/背景层次。非常有"观察窗"的感觉，但场景编辑空间受限于横向维度，地形变化主要在高度上。</p>
+      <div style="background:#3a5a3a;border-radius:6px;padding:20px;margin-top:12px;text-align:center;">
+        <div style="display:flex;align-items:flex-end;gap:10px;justify-content:center;height:90px;">
+          <div style="background:#5a3;width:36px;height:70px;border-radius:3px 3px 0 0;"></div>
+          <div style="background:#7b5;width:46px;height:50px;border-radius:50% 50% 0 0;"></div>
+          <div style="background:#5a3;width:30px;height:55px;border-radius:3px 3px 0 0;"></div>
+          <div style="background:#4a7;width:30px;height:30px;border-radius:0;"></div>
+        </div>
+        <div style="background:#5a8;width:200px;height:30px;margin:0 auto;border-radius:0;"></div>
+        <div style="font-size:10px;color:#aac;margin-top:6px;">前景/背景分层 → 横版视角</div>
+      </div>
+    </div>
+  </div>
+</div>

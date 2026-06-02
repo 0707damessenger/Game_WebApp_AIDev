@@ -1,0 +1,56 @@
+<h2>UI 布局 — 大窗口（场景编辑器）</h2>
+<p class="subtitle">等距视角的场景编辑器界面布局</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案 A：顶部工具栏 + 左侧物件面板</div>
+    <div class="mockup-body" style="padding:6px;min-height:280px;display:flex;flex-direction:column;gap:4px;">
+      <div style="background:#333;border-radius:4px;padding:8px;display:flex;gap:4px;align-items:center;color:#ccc;font-size:10px;">
+        <span style="background:#555;padding:2px 8px;border-radius:3px;">▣ 物件</span>
+        <span style="background:#555;padding:2px 8px;border-radius:3px;">🌿 植物</span>
+        <span style="background:#555;padding:2px 8px;border-radius:3px;">🦋 昆虫</span>
+        <span style="background:#555;padding:2px 8px;border-radius:3px;">🏠 设施</span>
+        <span style="margin-left:auto;color:#fa0;">★ 积分: 120</span>
+      </div>
+      <div style="display:flex;gap:4px;flex:1;">
+        <div style="width:100px;background:#2a2a2a;border-radius:4px;padding:6px;color:#aaa;font-size:10px;">
+          <div style="color:#fff;font-weight:600;margin-bottom:4px;">物件列表</div>
+          <div style="background:#3a5;padding:4px;margin:2px 0;border-radius:2px;color:#fff;">🌳 阔叶树</div>
+          <div style="background:#3a5;padding:4px;margin:2px 0;border-radius:2px;color:#fff;">🌲 针叶树</div>
+          <div style="background:#555;padding:4px;margin:2px 0;border-radius:2px;color:#999;">🌾 芦苇 🔒</div>
+          <div style="background:#555;padding:4px;margin:2px 0;border-radius:2px;color:#999;">🪷 睡莲 🔒</div>
+        </div>
+        <div style="flex:1;background:#3a5a3a;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#8a8;font-size:12px;">
+          等距场景视图
+        </div>
+      </div>
+      <div style="background:#333;border-radius:4px;padding:6px;font-size:10px;color:#aaa;">
+        地形：<span style="background:#555;padding:1px 6px;border-radius:2px;color:#fff;">溪流/森林</span>
+        <span style="margin-left:8px;">📷 镜头: (120, 80) 45°</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">方案 B：底部工具栏 + 浮动物件面板</div>
+    <div class="mockup-body" style="padding:6px;min-height:280px;display:flex;flex-direction:column;gap:4px;">
+      <div style="flex:1;background:#3a5a3a;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#8a8;font-size:12px;position:relative;">
+        等距场景视图
+        <div style="position:absolute;right:8px;top:8px;background:#333a;border-radius:4px;padding:4px;color:#aaa;font-size:9px;">
+          物件面板（浮动）
+          <div style="background:#3a5;padding:2px 4px;margin:2px 0;border-radius:2px;">🌳 阔叶树</div>
+          <div style="background:#3a5;padding:2px 4px;margin:2px 0;border-radius:2px;">🌲 针叶树</div>
+        </div>
+      </div>
+      <div style="background:#333;border-radius:4px;padding:8px;display:flex;gap:4px;align-items:center;color:#ccc;font-size:10px;justify-content:space-between;">
+        <div style="display:flex;gap:4px;">
+          <span style="background:#555;padding:2px 8px;border-radius:3px;">🌿 植物</span>
+          <span style="background:#555;padding:2px 8px;border-radius:3px;">🦋 昆虫</span>
+          <span style="background:#555;padding:2px 8px;border-radius:3px;">🏠 设施</span>
+        </div>
+        <span>地形: 溪流/森林</span>
+        <span style="color:#fa0;">★ 120</span>
+      </div>
+    </div>
+  </div>
+</div>

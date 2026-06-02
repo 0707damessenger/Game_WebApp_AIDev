@@ -1,0 +1,18 @@
+# 操作系统生成文件
+desktop.ini
+Thumbs.db
+.DS_Store
+
+# 编辑器
+*.swp
+*.swo
+
+# 依赖与锁定文件
+skills-lock.json
+node_modules/
+
+# 调试日志
+*.log
+
+# 仅阅读参考（非项目产出）
+参考资料_仅供阅读/

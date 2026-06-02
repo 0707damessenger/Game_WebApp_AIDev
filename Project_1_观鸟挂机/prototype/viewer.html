@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>取景器</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #111;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      user-select: none;
+    }
+
+    #viewfinder {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      border: 3px solid #333;
+      margin: 8px;
+      border-radius: 4px;
+    }
+
+    #viewfinder::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(255,255,255,0.15);
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    #crosshair {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 11;
+    }
+
+    #crosshair::before,
+    #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,0.1);
+    }
+
+    #crosshair::before {
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+    }
+
+    #crosshair::after {
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #controls {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    #shutter-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 3px solid #e94560;
+      background: #1a1a2e;
+      color: #fff;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+    }
+
+    #shutter-btn:active {
+      transform: scale(0.9);
+      background: #e94560;
+    }
+
+    #shutter-btn:hover {
+      border-color: #ff6b81;
+    }
+
+    .hint {
+      color: #666;
+      font-size: 11px;
+      padding: 0 8px;
+      text-align: center;
+    }
+
+    #notice {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0,0,0,0.85);
+      color: #f0a500;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      z-index: 20;
+      pointer-events: none;
+      display: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewfinder">
+    <canvas id="view-canvas"></canvas>
+    <div id="crosshair"></div>
+    <div id="notice"></div>
+  </div>
+
+  <div class="hint">左键拖拽平移 · 右键拖拽旋转 · 底部按钮拍照</div>
+
+  <div id="controls">
+    <button id="shutter-btn" title="拍照">📷</button>
+  </div>
+
+  <script>
+    var canvas = document.getElementById('view-canvas');
+    var ctx = canvas.getContext('2d');
+
+    // 摄像机状态
+    var camera = { x: 0, y: 0, angle: 0 };
+    var terrain = 'stream_forest';
+    var placedObjects = [];
+
+    function loadState() {
+      try {
+        var raw = localStorage.getItem('birdwatching_camera');
+        if (raw) {
+          var data = JSON.parse(raw);
+          // 只同步地形和物件，不同步摄像机（取景器独立控制视角）
+          if (data.terrain) terrain = data.terrain;
+          if (data.placedObjects) placedObjects = data.placedObjects;
+        }
+      } catch (e) {}
+    }
+
+    function resize() {
+      var container = document.getElementById('viewfinder');
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      // 首次加载时居中摄像机
+      if (camera.x === 0 && camera.y === 0) {
+        camera.x = canvas.width / 2;
+        camera.y = canvas.height / 2;
+      }
+      render();
+    }
+
+    function gridToScreen(gx, gy) {
+      var tw = 80, th = 40;
+      var sx = (gx - gy) * (tw / 2);
+      var sy = (gx + gy) * (th / 2);
+      var cos = Math.cos(camera.angle);
+      var sin = Math.sin(camera.angle);
+      return {
+        x: sx * cos - sy * sin + camera.x,
+        y: sx * sin + sy * cos + camera.y,
+      };
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      var cols = 10, rows = 10;
+      var tw = 80, th = 40;
+
+      // 渲染物件
+      placedObjects.forEach(function (obj) {
+        var pos = gridToScreen(obj.gridX, obj.gridY);
+        var cx = pos.x;
+        var cy = pos.y - 14;
+
+        ctx.fillStyle = '#3a7d2c';
+        ctx.fillRect(cx - 4, cy - 8, 8, 14);
+        ctx.beginPath();
+        ctx.arc(cx, cy - 8, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#3a7d2c';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // 渲染地块
+      var terrainColors = {
+        stream_forest: { a: '#4a7c3f', b: '#3d6b34' },
+        swamp_wetland: { a: '#5a6b3a', b: '#4a5a2e' },
+        mudflat_coast: { a: '#c4b896', b: '#b0a080' },
+        plateau_mountain: { a: '#8a7a6a', b: '#7a6a5a' },
+      };
+      var tc = terrainColors[terrain] || terrainColors.stream_forest;
+
+      for (var gy = 0; gy < rows; gy++) {
+        for (var gx = 0; gx < cols; gx++) {
+          var pos = gridToScreen(gx, gy);
+
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y - th / 2);
+          ctx.lineTo(pos.x + tw / 2, pos.y);
+          ctx.lineTo(pos.x, pos.y + th / 2);
+          ctx.lineTo(pos.x - tw / 2, pos.y);
+          ctx.closePath();
+
+          var isAlt = (gx + gy) % 2 === 0;
+          ctx.fillStyle = isAlt ? tc.a : tc.b;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      // 渲染鸟类
+      var activeBirds = [];
+      try {
+        var raw = localStorage.getItem('birdwatching_active_birds');
+        if (raw) activeBirds = JSON.parse(raw);
+      } catch (e) {}
+
+      var birdColors = {
+        egret: '#fff', night_heron: '#445', kingfisher: '#0af', wagtail: '#ccc',
+        sparrow: '#963', woodpecker: '#c33', eagle: '#630', seagull: '#ddd',
+        crane: '#f00', swallow: '#009',
+      };
+      var birdNames = {
+        egret: '白鹭', night_heron: '夜鹭', kingfisher: '翠鸟', wagtail: '白鹡鸰',
+        sparrow: '麻雀', woodpecker: '啄木鸟', eagle: '鹰', seagull: '海鸥',
+        crane: '丹顶鹤', swallow: '燕子',
+      };
+
+      activeBirds.forEach(function (bird) {
+        var pos = gridToScreen(bird.gridX, bird.gridY);
+        var color = birdColors[bird.id] || '#fff';
+        var name = birdNames[bird.id] || bird.id;
+
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y - 15, 8, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(pos.x + 6, pos.y - 18, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(pos.x - 3, pos.y - 15);
+        ctx.lineTo(pos.x - 8, pos.y - 22);
+        ctx.lineTo(pos.x + 2, pos.y - 18);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(name, pos.x, pos.y - 26);
+      });
+    }
+
+    // 摄像机控制
+    var isDragging = false, isRotating = false;
+    var lastMouse = { x: 0, y: 0 };
+
+    canvas.addEventListener('mousedown', function (e) {
+      if (e.button === 0) {
+        isDragging = true;
+        lastMouse.x = e.clientX;
+        lastMouse.y = e.clientY;
+      } else if (e.button === 2) {
+        isRotating = true;
+        lastMouse.x = e.clientX;
+        lastMouse.y = e.clientY;
+      }
+    });
+
+    canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+    window.addEventListener('mousemove', function (e) {
+      if (isDragging) {
+        camera.x += e.clientX - lastMouse.x;
+        camera.y += e.clientY - lastMouse.y;
+        lastMouse.x = e.clientX;
+        lastMouse.y = e.clientY;
+        render();
+      }
+      if (isRotating) {
+        camera.angle += (e.clientX - lastMouse.x) * 0.02;
+        lastMouse.x = e.clientX;
+        lastMouse.y = e.clientY;
+        render();
+      }
+    });
+
+    window.addEventListener('mouseup', function () {
+      isDragging = false;
+      isRotating = false;
+    });
+
+    // 定期同步主窗口状态
+    setInterval(loadState, 500);
+
+    window.addEventListener('resize', resize);
+    resize();
+
+    // ===== 拍照功能 =====
+    function showNotice(msg, duration) {
+      var notice = document.getElementById('notice');
+      notice.textContent = msg;
+      notice.style.display = 'block';
+      setTimeout(function () {
+        notice.style.display = 'none';
+      }, duration || 2000);
+    }
+
+    document.getElementById('shutter-btn').addEventListener('click', function () {
+      // 获取当前在场的鸟类
+      var activeBirds = [];
+      try {
+        var raw = localStorage.getItem('birdwatching_active_birds');
+        if (raw) activeBirds = JSON.parse(raw);
+      } catch (e) {}
+
+      // 判定哪些鸟在视口内
+      var captured = [];
+      var margin = 50;
+      activeBirds.forEach(function (bird) {
+        var pos = gridToScreen(bird.gridX, bird.gridY);
+        if (pos.x > -margin && pos.x < canvas.width + margin &&
+            pos.y > -margin && pos.y < canvas.height + margin) {
+          captured.push(bird.id);
+        }
+      });
+
+      // 处理结果
+      var saveData = { score: 0, fieldGuide: {} };
+      try {
+        var raw = localStorage.getItem('birdwatching_game');
+        if (raw) saveData = JSON.parse(raw);
+      } catch (e) {}
+
+      var newDiscoveries = 0;
+      var totalReward = 0;
+
+      captured.forEach(function (birdId) {
+        if (!saveData.fieldGuide[birdId] || !saveData.fieldGuide[birdId].discovered) {
+          saveData.fieldGuide[birdId] = { discovered: true, timestamp: Date.now() };
+          totalReward += 100;
+          newDiscoveries++;
+        } else {
+          totalReward += 10;
+        }
+      });
+
+      saveData.score = (saveData.score || 0) + totalReward;
+      localStorage.setItem('birdwatching_game', JSON.stringify(saveData));
+
+      // 拍照反馈
+      var btn = document.getElementById('shutter-btn');
+      if (newDiscoveries > 0) {
+        btn.style.background = '#f0a500';
+        btn.textContent = '✨';
+        showNotice('🎉 发现新鸟类！(' + newDiscoveries + ' 种)\n获得 ' + totalReward + ' 积分', 2500);
+        setTimeout(function () {
+          btn.style.background = '';
+          btn.textContent = '📷';
+        }, 2000);
+      } else if (captured.length > 0) {
+        btn.style.background = '#4a7';
+        btn.textContent = '✓';
+        showNotice('📸 拍照成功！\n获得 ' + totalReward + ' 积分', 1500);
+        setTimeout(function () {
+          btn.style.background = '';
+          btn.textContent = '📷';
+        }, 1200);
+      } else {
+        btn.style.background = '#c44';
+        btn.textContent = '✗';
+        showNotice('画面中没有鸟类，继续等待吧~', 1500);
+        setTimeout(function () {
+          btn.style.background = '';
+          btn.textContent = '📷';
+        }, 1200);
+      }
+    });
+  </script>
+</body>
+</html>
