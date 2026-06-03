@@ -1,3 +1,24 @@
+// ===== 唯一全局配置源 =====
+// index.html（主窗口）与 viewer.html（取景器）均引入本文件复用同一份 CONFIG。
+const CONFIG = {
+  // 场景
+  GRID_COLS: 10,
+  GRID_ROWS: 10,
+  TILE_WIDTH: 80,
+  TILE_HEIGHT: 40,
+
+  // 摄像机
+  CAMERA_PAN_SPEED: 0.5,
+  CAMERA_ROTATE_SPEED: 0.02,
+
+  // 判定周期（毫秒）
+  SPAWN_INTERVAL: 30000,
+
+  // 积分
+  FIRST_PHOTO_REWARD: 100,
+  REPEAT_PHOTO_REWARD: 10,
+};
+
 // 地形配置
 CONFIG.TERRAINS = {
   stream_forest: {

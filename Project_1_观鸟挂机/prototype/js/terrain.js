@@ -32,19 +32,19 @@ const Terrain = {
 
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // 先渲染物件（在底层地块之上）
-    if (typeof window.drawPlacedObjects === 'function') {
-      window.drawPlacedObjects(ctx, camera);
-    }
-
-    // 从远到近渲染地块
+    // 先从远到近渲染底层地块
     for (let gy = 0; gy < rows; gy++) {
       for (let gx = 0; gx < cols; gx++) {
         this.drawTile(ctx, gx, gy, camera, terrainCfg);
       }
     }
 
-    // 渲染鸟类（在最上层）
+    // 再渲染物件（叠在地块之上，否则会被随后绘制的地块覆盖）
+    if (typeof window.drawPlacedObjects === 'function') {
+      window.drawPlacedObjects(ctx, camera);
+    }
+
+    // 最后渲染鸟类（在最上层）
     if (typeof Birds !== 'undefined') {
       Birds.drawBirds(ctx, camera);
     }

@@ -139,6 +139,9 @@
     <button id="shutter-btn" title="拍照">📷</button>
   </div>
 
+  <!-- 复用主窗口同一份配置源与等距投影，避免双份真相 -->
+  <script src="js/config.js"></script>
+  <script src="js/isometric.js"></script>
   <script>
     var canvas = document.getElementById('view-canvas');
     var ctx = canvas.getContext('2d');
@@ -172,49 +175,19 @@
       render();
     }
 
+    // 复用主窗口等距投影，camera 为本窗口独立视角
     function gridToScreen(gx, gy) {
-      var tw = 80, th = 40;
-      var sx = (gx - gy) * (tw / 2);
-      var sy = (gx + gy) * (th / 2);
-      var cos = Math.cos(camera.angle);
-      var sin = Math.sin(camera.angle);
-      return {
-        x: sx * cos - sy * sin + camera.x,
-        y: sx * sin + sy * cos + camera.y,
-      };
+      return Iso.gridToScreen(gx, gy, camera);
     }
 
     function render() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      var cols = 10, rows = 10;
-      var tw = 80, th = 40;
+      var cols = CONFIG.GRID_COLS, rows = CONFIG.GRID_ROWS;
+      var tw = CONFIG.TILE_WIDTH, th = CONFIG.TILE_HEIGHT;
 
-      // 渲染物件
-      placedObjects.forEach(function (obj) {
-        var pos = gridToScreen(obj.gridX, obj.gridY);
-        var cx = pos.x;
-        var cy = pos.y - 14;
-
-        ctx.fillStyle = '#3a7d2c';
-        ctx.fillRect(cx - 4, cy - 8, 8, 14);
-        ctx.beginPath();
-        ctx.arc(cx, cy - 8, 8, 0, Math.PI * 2);
-        ctx.fillStyle = '#3a7d2c';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-
-      // 渲染地块
-      var terrainColors = {
-        stream_forest: { a: '#4a7c3f', b: '#3d6b34' },
-        swamp_wetland: { a: '#5a6b3a', b: '#4a5a2e' },
-        mudflat_coast: { a: '#c4b896', b: '#b0a080' },
-        plateau_mountain: { a: '#8a7a6a', b: '#7a6a5a' },
-      };
-      var tc = terrainColors[terrain] || terrainColors.stream_forest;
+      // 渲染地块（先铺底层，避免被物件、鸟类遮挡顺序错乱）
+      var terrainCfg = CONFIG.TERRAINS[terrain] || CONFIG.TERRAINS.stream_forest;
 
       for (var gy = 0; gy < rows; gy++) {
         for (var gx = 0; gx < cols; gx++) {
@@ -228,13 +201,37 @@
           ctx.closePath();
 
           var isAlt = (gx + gy) % 2 === 0;
-          ctx.fillStyle = isAlt ? tc.a : tc.b;
+          ctx.fillStyle = isAlt ? terrainCfg.groundColor : terrainCfg.groundColorAlt;
           ctx.fill();
           ctx.strokeStyle = 'rgba(0,0,0,0.3)';
           ctx.lineWidth = 1;
           ctx.stroke();
         }
       }
+
+      // 渲染物件（叠在地块之上，按各物件真实颜色/尺寸）
+      placedObjects.forEach(function (obj) {
+        var objCfg = CONFIG.OBJECTS[obj.type];
+        if (!objCfg) return;
+        var pos = gridToScreen(obj.gridX, obj.gridY);
+        var cx = pos.x;
+        var cy = pos.y - objCfg.height / 2;
+
+        ctx.fillStyle = objCfg.color;
+        ctx.fillRect(
+          cx - objCfg.width / 4,
+          cy - objCfg.height / 3,
+          objCfg.width / 2,
+          objCfg.height * 0.6
+        );
+        ctx.beginPath();
+        ctx.arc(cx, cy - objCfg.height / 3, objCfg.width / 2, 0, Math.PI * 2);
+        ctx.fillStyle = objCfg.color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
 
       // 渲染鸟类
       var activeBirds = [];
@@ -243,21 +240,11 @@
         if (raw) activeBirds = JSON.parse(raw);
       } catch (e) {}
 
-      var birdColors = {
-        egret: '#fff', night_heron: '#445', kingfisher: '#0af', wagtail: '#ccc',
-        sparrow: '#963', woodpecker: '#c33', eagle: '#630', seagull: '#ddd',
-        crane: '#f00', swallow: '#009',
-      };
-      var birdNames = {
-        egret: '白鹭', night_heron: '夜鹭', kingfisher: '翠鸟', wagtail: '白鹡鸰',
-        sparrow: '麻雀', woodpecker: '啄木鸟', eagle: '鹰', seagull: '海鸥',
-        crane: '丹顶鹤', swallow: '燕子',
-      };
-
       activeBirds.forEach(function (bird) {
+        var birdCfg = CONFIG.BIRDS[bird.id] || {};
         var pos = gridToScreen(bird.gridX, bird.gridY);
-        var color = birdColors[bird.id] || '#fff';
-        var name = birdNames[bird.id] || bird.id;
+        var color = birdCfg.color || '#fff';
+        var name = birdCfg.name || bird.id;
 
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -365,10 +352,10 @@
       captured.forEach(function (birdId) {
         if (!saveData.fieldGuide[birdId] || !saveData.fieldGuide[birdId].discovered) {
           saveData.fieldGuide[birdId] = { discovered: true, timestamp: Date.now() };
-          totalReward += 100;
+          totalReward += CONFIG.FIRST_PHOTO_REWARD;
           newDiscoveries++;
         } else {
-          totalReward += 10;
+          totalReward += CONFIG.REPEAT_PHOTO_REWARD;
         }
       });
 
