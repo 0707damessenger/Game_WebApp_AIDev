@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>弹簧亚克力摆件</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #f5f0e8 0%, #e8e0d5 100%);
+      font-family: 'Noto Sans SC', sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .scene {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+    }
+
+    .hint {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #a0a0a0;
+      font-size: 14px;
+      font-weight: 300;
+      letter-spacing: 2px;
+      transition: opacity 0.5s ease;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .hint.hidden {
+      opacity: 0;
+    }
+
+    .bracket {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 140px;
+      height: 24px;
+      background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%);
+      border-radius: 4px 4px 0 0;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.3);
+      z-index: 5;
+    }
+
+    .bracket-hole {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, #6a6a6a 0%, #3a3a3a 100%);
+      border-radius: 50%;
+      top: 5px;
+    }
+
+    .bracket-hole.left {
+      left: 20px;
+    }
+
+    .bracket-hole.right {
+      right: 20px;
+    }
+
+    .bracket-attachment {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: #888;
+      border-radius: 50%;
+      top: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .spring-system {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .spring-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .acrylic-shape {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      cursor: grab;
+      pointer-events: auto;
+      z-index: 3;
+      transform-origin: center center;
+    }
+
+    .acrylic-shape:active {
+      cursor: grabbing;
+    }
+
+    .acrylic-circle {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, rgba(100, 180, 255, 0.5) 0%, rgba(150, 200, 255, 0.3) 100%);
+      border: 2px solid rgba(255,255,255,0.6);
+      border-radius: 50%;
+      box-shadow:
+        0 4px 20px rgba(100, 180, 255, 0.3),
+        inset 0 0 30px rgba(255,255,255,0.2);
+      position: relative;
+      transition: transform 0.1s ease;
+    }
+
+    .acrylic-circle.no-placeholder {
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .acrylic-inner {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #ff6b9d 0%, #ff8fb3 100%);
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px rgba(255, 107, 157, 0.5);
+    }
+
+    .acrylic-highlight {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      top: 15%;
+      left: 20%;
+      filter: blur(3px);
+    }
+
+    .acrylic-shape.dragging .acrylic-circle {
+      transform: scale(1.05, 0.95);
+    }
+
+    .acrylic-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      position: absolute;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+    }
+
+    .upload-btn {
+      position: absolute;
+      bottom: 40px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+      transition: background 0.2s;
+    }
+
+    .upload-btn:hover {
+      background: rgba(0,0,0,0.7);
+    }
+
+    #imageInput {
+      display: none;
+    }
+
+    .control-bar {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .ctrl-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(0,0,0,0.65);
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    .ctrl-btn.active {
+      background: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.6);
+    }
+  </style>
+</head>
+<body>
+  <div class="scene" id="scene">
+    <p class="hint" id="hint">拖动图形</p>
+    <div class="spring-system" id="springSystem">
+      <svg class="spring-svg" id="springSvg"></svg>
+      <div class="acrylic-shape" id="acrylicShape">
+        <div class="acrylic-circle">
+          <div class="acrylic-inner"></div>
+          <div class="acrylic-highlight"></div>
+        </div>
+      </div>
+    </div>
+    <div class="bracket">
+      <div class="bracket-hole left"></div>
+      <div class="bracket-hole right"></div>
+      <div class="bracket-attachment"></div>
+    </div>
+    <button class="upload-btn" id="uploadBtn" title="上传图片替换图案">+</button>
+    <input type="file" id="imageInput" accept="image/*">
+    <div class="control-bar" id="controlBar">
+      <button class="ctrl-btn auto-btn" id="autoBtn" title="自动摆动">~</button>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    //  CONFIG —— 全局配置，修改后刷新浏览器即可生效
+    //  k 和 c 改小 = 弹簧更软更弹；改大 = 弹簧更硬
+    //  amplitude 改大 = 自动摆动更剧烈
+    // ============================================
+    const CONFIG = {
+      // ===== 弹簧物理 =====
+      spring: {
+        k: 0.15,             // 弹性系数，越大弹力越强、回弹越快（建议 0.05~0.3）
+        c: 0.04,             // 阻尼系数，越大振动衰减越快（0.01~0.1，0=永不停止）
+        coils: 10,           // 弹簧圈数，越多越密（建议 5~20）
+        wireWidth: 3,        // 弹簧线宽，越大弹簧越粗（px，建议 1~5）
+        coilWidth: 18,       // 螺旋圈宽度，越大线圈越宽（px，建议 10~30）
+        baseLength: 180,     // 弹簧静止长度，越大图案离底座越远（px，建议 100~300）
+        maxStretch: 2.5      // 最大拉伸倍数，2.5=可拉至 baseLength 的 2.5 倍（建议 1.5~4）
+      },
+      // ===== 弹簧颜色 =====
+      colors: {
+        springStart: '#8a8a8a',  // 弹簧底部颜色（锚点端，较暗）
+        springEnd: '#c0c0c0'     // 弹簧顶部颜色（高光端，较亮）
+      },
+      // ===== 底座 =====
+      bracket: {
+        height: 24           // 底座高度（px，建议 20~40）
+      },
+      // ===== 自动摆动（点击右下角 ~ 按钮开启）=====
+      autoWobble: {
+        amplitude: 0.6,      // 驱动力幅度，越大摆动越剧烈（建议 0.1~1.5）
+        period: 2.2          // 摆动周期，越小摆动越快（秒，建议 1.0~5.0）
+      }
+    };
+
+    const springSvg = document.getElementById('springSvg');
+    const springSystem = document.getElementById('springSystem');
+    const acrylicShape = document.getElementById('acrylicShape');
+    const hint = document.getElementById('hint');
+
+    let isDragging = false;
+    let offsetX = 0;
+    let offsetY = -CONFIG.spring.baseLength;
+    let velocityX = 0;
+    let velocityY = 0;
+    let animationId = null;
+    let hasInteracted = false;
+    let autoWobble = false;
+    let autoWobbleTime = 0;
+
+    const baseLength = CONFIG.spring.baseLength;
+    const maxDist = baseLength * CONFIG.spring.maxStretch;
+
+    function getAnchorPagePos() {
+      const bracket = document.querySelector('.bracket');
+      const rect = bracket.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top
+      };
+    }
+
+    function bezierPoint(x0, y0, x1, y1, x2, y2, t) {
+      const mt = 1 - t;
+      return {
+        x: mt * mt * x0 + 2 * mt * t * x1 + t * t * x2,
+        y: mt * mt * y0 + 2 * mt * t * y1 + t * t * y2
+      };
+    }
+
+    function bezierTangent(x0, y0, x1, y1, x2, y2, t) {
+      const mt = 1 - t;
+      return {
+        x: 2 * mt * (x1 - x0) + 2 * t * (x2 - x1),
+        y: 2 * mt * (y1 - y0) + 2 * t * (y2 - y1)
+      };
+    }
+
+    function vecNormalize(x, y) {
+      const len = Math.sqrt(x * x + y * y);
+      if (len < 0.001) return { x: 0, y: 0 };
+      return { x: x / len, y: y / len };
+    }
+
+    function drawSpring(ox, oy) {
+      const anchor = getAnchorPagePos();
+      const sysRect = springSystem.getBoundingClientRect();
+      const ax = anchor.x - sysRect.left;
+      const ay = anchor.y - sysRect.top;
+      const sx = ax + ox;
+      const sy = ay + oy;
+      const dx = sx - ax;
+      const dy = sy - ay;
+      const L = Math.sqrt(dx * dx + dy * dy);
+
+      if (L < 1) {
+        springSvg.innerHTML = '';
+        return;
+      }
+
+      const sagAmount = Math.abs(dx) * 0.35 + 10;
+      const cpRatio = 0.75;
+      const cpx = ax + dx * cpRatio;
+      const cpy = ay + dy * cpRatio - sagAmount;
+
+      const coils = CONFIG.spring.coils;
+      const cw = CONFIG.spring.coilWidth;
+
+      let path = `M ${ax} ${ay}`;
+
+      for (let i = 0; i < coils; i++) {
+        const t0 = i / coils;
+        const t1 = (i + 0.25) / coils;
+        const t2 = (i + 0.5) / coils;
+        const t3 = (i + 0.75) / coils;
+        const t4 = (i + 1) / coils;
+
+        const p0 = bezierPoint(ax, ay, cpx, cpy, sx, sy, t0);
+        const p1 = bezierPoint(ax, ay, cpx, cpy, sx, sy, t1);
+        const p2 = bezierPoint(ax, ay, cpx, cpy, sx, sy, t2);
+        const p3 = bezierPoint(ax, ay, cpx, cpy, sx, sy, t3);
+        const p4 = bezierPoint(ax, ay, cpx, cpy, sx, sy, t4);
+
+        const tan1 = bezierTangent(ax, ay, cpx, cpy, sx, sy, t1);
+        const tan2 = bezierTangent(ax, ay, cpx, cpy, sx, sy, t2);
+        const tan3 = bezierTangent(ax, ay, cpx, cpy, sx, sy, t3);
+
+        const perp1 = vecNormalize(-tan1.y, tan1.x);
+        const perp2 = vecNormalize(-tan2.y, tan2.x);
+        const perp3 = vecNormalize(-tan3.y, tan3.x);
+
+        const cx1 = p1.x + perp1.x * cw;
+        const cy1 = p1.y + perp1.y * cw;
+        const cx2 = p2.x;
+        const cy2 = p2.y;
+        const cx3 = p3.x - perp3.x * cw;
+        const cy3 = p3.y - perp3.y * cw;
+        const cx4 = p4.x;
+        const cy4 = p4.y;
+
+        path += ` Q ${cx1} ${cy1} ${cx2} ${cy2}`;
+        path += ` Q ${cx3} ${cy3} ${cx4} ${cy4}`;
+      }
+
+      const gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+      gradient.setAttribute('id', 'springGradient');
+      gradient.setAttribute('x1', `${ax}`);
+      gradient.setAttribute('y1', `${ay}`);
+      gradient.setAttribute('x2', `${sx}`);
+      gradient.setAttribute('y2', `${sy}`);
+      gradient.setAttribute('gradientUnits', 'userSpaceOnUse');
+
+      const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop1.setAttribute('offset', '0%');
+      stop1.setAttribute('stop-color', CONFIG.colors.springStart);
+
+      const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop2.setAttribute('offset', '50%');
+      stop2.setAttribute('stop-color', CONFIG.colors.springEnd);
+
+      const stop3 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+      stop3.setAttribute('offset', '100%');
+      stop3.setAttribute('stop-color', CONFIG.colors.springStart);
+
+      gradient.appendChild(stop1);
+      gradient.appendChild(stop2);
+      gradient.appendChild(stop3);
+
+      const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+      defs.appendChild(gradient);
+
+      springSvg.innerHTML = '';
+
+      const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pathEl.setAttribute('d', path);
+      pathEl.setAttribute('fill', 'none');
+      pathEl.setAttribute('stroke', 'url(#springGradient)');
+      pathEl.setAttribute('stroke-width', CONFIG.spring.wireWidth);
+      pathEl.setAttribute('stroke-linecap', 'round');
+
+      springSvg.appendChild(defs);
+      springSvg.appendChild(pathEl);
+    }
+
+    function updateShapePosition(ox, oy) {
+      const anchor = getAnchorPagePos();
+      const sysRect = springSystem.getBoundingClientRect();
+      const ax = anchor.x - sysRect.left;
+      const ay = anchor.y - sysRect.top;
+      const shapeX = ax + ox - 40;
+      const shapeY = ay + oy - 40;
+      const angle = Math.atan2(ox, -oy) * 180 / Math.PI;
+      acrylicShape.style.left = `${shapeX}px`;
+      acrylicShape.style.top = `${shapeY}px`;
+      acrylicShape.style.transform = `rotate(${angle}deg)`;
+    }
+
+    function clampToMaxDist(ox, oy) {
+      const dist = Math.sqrt(ox * ox + oy * oy);
+      if (dist > maxDist) {
+        const ratio = maxDist / dist;
+        return { ox: ox * ratio, oy: oy * ratio };
+      }
+      return { ox, oy };
+    }
+
+    function animate() {
+      if (isDragging) return;
+
+      const springForceX = -CONFIG.spring.k * offsetX;
+      const springForceY = -CONFIG.spring.k * (offsetY + baseLength);
+      const dampingForceX = -CONFIG.spring.c * velocityX;
+      const dampingForceY = -CONFIG.spring.c * velocityY;
+
+      let totalForceX = springForceX + dampingForceX;
+      let totalForceY = springForceY + dampingForceY;
+
+      if (autoWobble) {
+        autoWobbleTime += 1 / 60;
+        const driveForce = CONFIG.autoWobble.amplitude *
+          Math.sin(2 * Math.PI * autoWobbleTime / CONFIG.autoWobble.period);
+        totalForceX += driveForce;
+      }
+
+      velocityX += totalForceX;
+      velocityY += totalForceY;
+      offsetX += velocityX;
+      offsetY += velocityY;
+
+      if (!autoWobble &&
+          Math.abs(velocityX) < 0.01 && Math.abs(velocityY) < 0.01 &&
+          Math.abs(offsetX) < 0.3 && Math.abs(offsetY + baseLength) < 0.3) {
+        offsetX = 0;
+        offsetY = -baseLength;
+        velocityX = 0;
+        velocityY = 0;
+      } else {
+        animationId = requestAnimationFrame(animate);
+      }
+
+      drawSpring(offsetX, offsetY);
+      updateShapePosition(offsetX, offsetY);
+    }
+
+    function onPointerDown(e) {
+      isDragging = true;
+      hasInteracted = true;
+      hint.classList.add('hidden');
+
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+
+      acrylicShape.classList.add('dragging');
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    function onPointerMove(e) {
+      if (!isDragging) return;
+
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const anchor = getAnchorPagePos();
+
+      let ox = clientX - anchor.x;
+      let oy = clientY - anchor.y;
+
+      const clamped = clampToMaxDist(ox, oy);
+      offsetX = clamped.ox;
+      offsetY = clamped.oy;
+      velocityX = 0;
+      velocityY = 0;
+
+      drawSpring(offsetX, offsetY);
+      updateShapePosition(offsetX, offsetY);
+    }
+
+    function onPointerUp() {
+      if (!isDragging) return;
+
+      isDragging = false;
+      acrylicShape.classList.remove('dragging');
+
+      velocityX = 0;
+      velocityY = 0;
+      animate();
+    }
+
+    function setupViewBox() {
+      const w = springSystem.clientWidth;
+      const h = springSystem.clientHeight;
+      springSvg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+
+    acrylicShape.addEventListener('mousedown', onPointerDown);
+    acrylicShape.addEventListener('touchstart', onPointerDown, { passive: false });
+
+    document.addEventListener('mousemove', onPointerMove);
+    document.addEventListener('touchmove', onPointerMove, { passive: false });
+
+    document.addEventListener('mouseup', onPointerUp);
+    document.addEventListener('touchend', onPointerUp);
+
+    window.addEventListener('resize', () => {
+      setupViewBox();
+      drawSpring(offsetX, offsetY);
+      updateShapePosition(offsetX, offsetY);
+    });
+
+    setupViewBox();
+    drawSpring(offsetX, offsetY);
+    updateShapePosition(offsetX, offsetY);
+
+    const uploadBtn = document.getElementById('uploadBtn');
+    const imageInput = document.getElementById('imageInput');
+    const acrylicCircle = document.querySelector('.acrylic-circle');
+
+    uploadBtn.addEventListener('click', () => {
+      imageInput.click();
+    });
+
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const acrylicInner = acrylicCircle.querySelector('.acrylic-inner');
+        const acrylicHighlight = acrylicCircle.querySelector('.acrylic-highlight');
+        const existingImg = acrylicCircle.querySelector('.acrylic-img');
+
+        if (existingImg) {
+          existingImg.src = ev.target.result;
+        } else {
+          if (acrylicInner) acrylicInner.style.display = 'none';
+          acrylicCircle.classList.add('no-placeholder');
+
+          const img = document.createElement('img');
+          img.className = 'acrylic-img';
+          img.src = ev.target.result;
+          img.draggable = false;
+          acrylicCircle.appendChild(img);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    const autoBtn = document.getElementById('autoBtn');
+    autoBtn.addEventListener('click', () => {
+      autoWobble = !autoWobble;
+      autoBtn.classList.toggle('active', autoWobble);
+      if (autoWobble) {
+        autoWobbleTime = 0;
+        if (!animationId) animate();
+      }
+    });
+  </script>
+</body>
+</html>
