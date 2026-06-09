@@ -536,7 +536,9 @@ class PetApp {
     if (isHovering && this.isVisible) {
       var result = this.petManager.getPetAtPoint(mouseX, mouseY);
       if (result) {
-        this.showBubble('喵~ 🐱');
+        var texts = this.config.bubble.hoverTexts;
+        var text = texts[Math.floor(Math.random() * texts.length)];
+        this.showBubble(text);
       }
     } else {
       this.hideBubble();
@@ -552,7 +554,8 @@ class PetApp {
     this.bubble.style.top = (active.y - 80) + 'px';
     this.bubble.style.opacity = '1';
 
-    setTimeout(this.hideBubble.bind(this), 2000);
+    if (this._bubbleTimer) clearTimeout(this._bubbleTimer);
+    this._bubbleTimer = setTimeout(this.hideBubble.bind(this), this.config.bubble.duration);
   }
 
   hideBubble() {
