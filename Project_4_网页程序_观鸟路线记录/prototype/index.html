@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>观鸟路线记录</title>
+    <script src="./js/config.js?v=point-20260610-1"></script>
+    <link rel="stylesheet" href="./vendor/leaflet/leaflet.css?v=local-20260609">
+    <link rel="stylesheet" href="./css/styles.css?v=point-20260610-1">
+  </head>
+  <body>
+    <main class="phone-shell" aria-label="观鸟路线记录原型">
+      <section class="map-stage" id="mapStage">
+        <div id="map" class="map"></div>
+        <div id="mapFallback" class="map-fallback" hidden>
+          <svg id="fallbackRouteLayer" class="fallback-route-layer" aria-hidden="true"></svg>
+          <div class="fallback-copy">
+            <strong>真实地图未加载</strong>
+            <span>当前为流程测试模式，仍可点击背景选择起点和模拟行走。</span>
+          </div>
+        </div>
+        <svg id="testRouteLayer" class="test-route-layer" aria-hidden="true"></svg>
+        <div id="birdPointLayer" class="bird-point-layer" aria-label="鸟种落点"></div>
+
+        <div class="map-tools" aria-label="地图工具">
+          <button id="zoomInButton" class="tool-button" type="button">+</button>
+          <button id="zoomOutButton" class="tool-button" type="button">-</button>
+          <button id="birdNameToggle" class="tool-toggle" type="button" aria-pressed="false">鸟名</button>
+        </div>
+
+        <header class="top-bar">
+          <div class="status-pill" aria-live="polite">
+            <span id="sessionState">未开始</span>
+            <span id="sessionDistance">0 m</span>
+            <span id="sessionBirds">0 种</span>
+          </div>
+          <button id="finishButton" class="corner-button" type="button" disabled>结束</button>
+        </header>
+
+        <section class="start-panel" id="startPanel">
+          <p class="panel-kicker">路线 + 鸟种落点</p>
+          <h1>记录一次真实观鸟路线</h1>
+          <p>先选起点，再用地图点击模拟行走。真实 GPS 会作为后续切换源接入。</p>
+          <button id="startButton" class="primary-button" type="button">开始记录</button>
+        </section>
+
+        <div class="hint-strip" id="hintStrip" hidden></div>
+
+        <button id="addBirdButton" class="bottom-action" type="button" disabled>
+          添加鸟种
+        </button>
+      </section>
+
+      <dialog id="finishDialog" class="finish-dialog">
+        <form method="dialog">
+          <h2>结束本次记录？</h2>
+          <p>保存后会保留当前轨迹。中止会丢弃本次记录。</p>
+          <div class="dialog-actions">
+            <button id="saveFinishButton" class="primary-button compact" value="save" type="submit">保存并结束</button>
+            <button id="abortButton" class="danger-button compact" value="abort" type="submit">中止并丢弃</button>
+            <button class="ghost-button compact" value="continue" type="submit">继续记录</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="birdDialog" class="bird-dialog">
+        <section class="bird-sheet">
+          <header class="sheet-header">
+            <h2 id="birdDialogTitle">添加鸟种</h2>
+            <button id="birdCloseButton" class="ghost-button compact sheet-close" type="button">关闭</button>
+          </header>
+
+          <label class="field-label" for="birdSearchInput">鸟种名称</label>
+          <input id="birdSearchInput" class="text-field" type="search" autocomplete="off" placeholder="搜索中文名或学名">
+          <div id="birdResults" class="bird-results" aria-label="鸟种搜索结果"></div>
+          <p id="birdSelectedInfo" class="selected-info">请选择一个鸟种。</p>
+
+          <div class="count-row">
+            <span>数量</span>
+            <div class="stepper">
+              <button id="birdCountMinus" class="step-button" type="button">-</button>
+              <strong id="birdCountValue">1</strong>
+              <button id="birdCountPlus" class="step-button" type="button">+</button>
+            </div>
+          </div>
+
+          <div class="tag-group" aria-label="备注标签">
+            <button class="tag-toggle" type="button" data-tag="成鸟">成鸟</button>
+            <button class="tag-toggle" type="button" data-tag="亚成">亚成</button>
+            <button class="tag-toggle" type="button" data-tag="雌">雌</button>
+            <button class="tag-toggle" type="button" data-tag="雄">雄</button>
+            <button class="tag-toggle" type="button" data-tag="飞行">飞行</button>
+          </div>
+
+          <label class="field-label" for="birdNoteInput">备注</label>
+          <textarea id="birdNoteInput" class="text-area" rows="3" placeholder="例如：树梢、鸣叫、结群"></textarea>
+
+          <button id="birdSubmitButton" class="primary-button" type="button">添加到当前位置</button>
+          <button id="birdDeleteButton" class="danger-button" type="button" hidden>删除该鸟点</button>
+          <button class="ghost-button" type="button" disabled>模糊匹配（后续模块）</button>
+        </section>
+      </dialog>
+
+      <dialog id="birdPointDialog" class="bird-point-dialog">
+        <section class="bird-sheet">
+          <header class="sheet-header">
+            <h2>鸟点记录</h2>
+            <button id="birdPointCloseButton" class="ghost-button compact sheet-close" type="button">关闭</button>
+          </header>
+          <div id="birdPointList" class="bird-point-list"></div>
+        </section>
+      </dialog>
+    </main>
+
+    <script src="./vendor/leaflet/leaflet.js?v=local-20260609"></script>
+    <script src="./js/birds.js?v=point-20260610-1"></script>
+    <script src="./js/state.js?v=point-20260610-1"></script>
+    <script src="./js/app.js?v=point-20260610-1"></script>
+  </body>
+</html>
