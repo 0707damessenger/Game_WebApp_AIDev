@@ -1,4 +1,4 @@
 {
     "interactiveWindow.executeWithShiftEnter": false,
-    "claudeCode.useCtrlEnterToSend": false
+    "claudeCode.useCtrlEnterToSend": true
 }

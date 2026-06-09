@@ -16,3 +16,6 @@ node_modules/
 
 # 仅阅读参考（非项目产出）
 参考资料_仅供阅读/
+
+# 可视化伴侣（brainstorm mockup 过程稿）
+.superpowers/
