@@ -193,7 +193,13 @@ const CONFIG = {
 
   interaction: {
     dragThreshold: 5,
-    clickDelay: 300
+    clickDelay: 300,
+    hitRadius: 50
+  },
+
+  bubble: {
+    duration: 2000,
+    hoverTexts: ['喵~ 🐱', '你好呀~ 👋', '在看我吗？👀', '摸摸我吧 ✨', '今天也要开心哦 🌟']
   },
 
   ai: {

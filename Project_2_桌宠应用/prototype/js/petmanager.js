@@ -104,7 +104,9 @@ class PetInstance {
   containsPoint(px, py) {
     var dx = px - this.x;
     var dy = py - this.y;
-    return Math.sqrt(dx * dx + dy * dy) < 50;
+    var baseRadius = (CONFIG.interaction && CONFIG.interaction.hitRadius) || 50;
+    var radius = baseRadius * (this.scale || 1);
+    return Math.sqrt(dx * dx + dy * dy) < radius;
   }
 
   sendEvent(event) {
