@@ -1,0 +1,26 @@
+{
+  "name": "game_webapp_aidev",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"Project_4_网页程序_观鸟路线记录/prototype/tests/*.test.js\"",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0707damessenger/Game_WebApp_AIDev.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/0707damessenger/Game_WebApp_AIDev/issues"
+  },
+  "homepage": "https://github.com/0707damessenger/Game_WebApp_AIDev#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}
