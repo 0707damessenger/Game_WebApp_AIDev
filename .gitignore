@@ -8,7 +8,6 @@ Thumbs.db
 *.swo
 
 # 依赖与锁定文件
-skills-lock.json
 node_modules/
 test-results/
 playwright-report/
