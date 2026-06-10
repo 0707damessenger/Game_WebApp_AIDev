@@ -46,6 +46,46 @@
 
         <div class="hint-strip" id="hintStrip" hidden></div>
 
+        <section class="result-panel" id="resultPanel" aria-label="本次记录" hidden>
+          <header class="result-header">
+            <p class="panel-kicker">本次记录</p>
+            <h1 id="resultTitle">路线已保存</h1>
+            <p id="resultMeta">等待记录结果</p>
+          </header>
+
+          <div class="result-summary" id="resultSummary" aria-label="记录概要">
+            <div>
+              <span>时长</span>
+              <strong id="resultDuration">0 分钟</strong>
+            </div>
+            <div>
+              <span>距离</span>
+              <strong id="resultDistance">0 m</strong>
+            </div>
+            <div>
+              <span>鸟种</span>
+              <strong id="resultSpecies">0 种</strong>
+            </div>
+            <div>
+              <span>总数</span>
+              <strong id="resultBirdTotal">0 只</strong>
+            </div>
+          </div>
+
+          <section class="result-list-section" aria-label="鸟种清单">
+            <div class="result-section-heading">
+              <h2>鸟种清单</h2>
+              <span id="resultListCount">0 条</span>
+            </div>
+            <div id="resultBirdList" class="result-bird-list"></div>
+          </section>
+
+          <div class="result-actions">
+            <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
+            <button id="sharePlaceholderButton" class="ghost-button compact" type="button" disabled>分享（后续模块）</button>
+          </div>
+        </section>
+
         <button id="addBirdButton" class="bottom-action" type="button" disabled>
           添加鸟种
         </button>

@@ -1,7 +1,7 @@
 (function attachApp() {
   const config = window.CONFIG;
   const stateTools = window.BirdRouteState;
-  let session = stateTools.createSession();
+  let session = loadPersistedSession() || stateTools.createSession();
   let map = null;
   let routeLayer = null;
   let startMarker = null;
@@ -11,6 +11,7 @@
   let showBirdNames = false;
   let fallbackScale = 1;
   let birdDraft = createBirdDraft();
+  let highlightedBirdRecordId = null;
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -32,6 +33,17 @@
     finishDialog: document.querySelector('#finishDialog'),
     saveFinishButton: document.querySelector('#saveFinishButton'),
     abortButton: document.querySelector('#abortButton'),
+    resultPanel: document.querySelector('#resultPanel'),
+    resultTitle: document.querySelector('#resultTitle'),
+    resultMeta: document.querySelector('#resultMeta'),
+    resultSummary: document.querySelector('#resultSummary'),
+    resultDuration: document.querySelector('#resultDuration'),
+    resultDistance: document.querySelector('#resultDistance'),
+    resultSpecies: document.querySelector('#resultSpecies'),
+    resultBirdTotal: document.querySelector('#resultBirdTotal'),
+    resultListCount: document.querySelector('#resultListCount'),
+    resultBirdList: document.querySelector('#resultBirdList'),
+    returnHomeButton: document.querySelector('#returnHomeButton'),
     birdDialog: document.querySelector('#birdDialog'),
     birdDialogTitle: document.querySelector('#birdDialogTitle'),
     birdCloseButton: document.querySelector('#birdCloseButton'),
@@ -118,14 +130,22 @@
     elements.finishDialog.addEventListener('close', () => {
       if (elements.finishDialog.returnValue === 'save') {
         session = stateTools.finishSession(session);
+        highlightedBirdRecordId = null;
         persistSession(session);
       }
 
       if (elements.finishDialog.returnValue === 'abort') {
         session = stateTools.abortSession(session);
+        highlightedBirdRecordId = null;
         clearPersistedSession();
       }
 
+      render();
+    });
+
+    elements.returnHomeButton.addEventListener('click', () => {
+      session = stateTools.createSession();
+      highlightedBirdRecordId = null;
       render();
     });
 
@@ -227,13 +247,17 @@
 
   function render() {
     const summary = stateTools.summarizeSession(session);
+    const isFinished = session.state === stateTools.STATES.FINISHED;
     elements.sessionState.textContent = stateLabel(session.state);
     elements.sessionDistance.textContent = formatDistance(summary.distanceMeters);
     elements.sessionBirds.textContent = `${summary.speciesCount} 种`;
 
     elements.startPanel.hidden = session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED;
+    elements.finishButton.hidden = isFinished;
     elements.finishButton.disabled = session.state !== stateTools.STATES.RECORDING;
+    elements.resultPanel.hidden = !isFinished;
     elements.mapFallback.dataset.mode = session.state;
+    elements.mapStage.classList.toggle('is-result-mode', isFinished);
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
     if (session.state === stateTools.STATES.PICKING_START && stageFallbackClickEnabled) {
@@ -243,6 +267,7 @@
       elements.addBirdButton.textContent = '添加鸟种';
       elements.addBirdButton.disabled = session.state !== stateTools.STATES.RECORDING;
     }
+    elements.addBirdButton.hidden = isFinished;
 
     if (session.state === stateTools.STATES.PICKING_START) {
       elements.hintStrip.textContent = config.mapInteraction.pickingHint;
@@ -251,8 +276,7 @@
       elements.hintStrip.textContent = config.mapInteraction.recordingHint;
       elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.FINISHED) {
-      elements.hintStrip.textContent = '本次轨迹已保存。结果页将在后续模块接入。';
-      elements.hintStrip.hidden = false;
+      elements.hintStrip.hidden = true;
     } else {
       elements.hintStrip.hidden = true;
     }
@@ -261,6 +285,90 @@
     renderFallbackLayers();
     renderTestRouteLayer();
     renderBirdPointOverlay();
+    renderResultView();
+  }
+
+  function renderResultView() {
+    const result = stateTools.createSessionResult(session);
+    if (!result) {
+      return;
+    }
+
+    elements.resultTitle.textContent = result.title;
+    elements.resultMeta.textContent = formatResultMeta(result);
+    elements.resultDuration.textContent = formatDuration(result.summary.durationMinutes);
+    elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
+    elements.resultSpecies.textContent = `${result.summary.speciesCount} 种`;
+    elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
+    elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
+
+    if (result.birdRecords.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'result-empty';
+      empty.textContent = '本次还没有添加鸟种记录。';
+      elements.resultBirdList.replaceChildren(empty);
+      return;
+    }
+
+    elements.resultBirdList.replaceChildren(...result.birdRecords.map((record) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'result-bird-item';
+      button.classList.toggle('is-highlighted', record.id === highlightedBirdRecordId);
+
+      const title = document.createElement('strong');
+      title.textContent = `${record.speciesName} × ${record.count}`;
+
+      const detail = document.createElement('span');
+      detail.textContent = birdRecordDetail(record);
+
+      button.append(title, detail);
+      button.addEventListener('click', () => {
+        focusBirdRecord(record);
+      });
+
+      return button;
+    }));
+  }
+
+  function formatResultMeta(result) {
+    const date = result.endedAt
+      ? new Date(result.endedAt).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
+      : '今天';
+    const place = result.startPoint && result.startPoint.label
+      ? result.startPoint.label
+      : '起点附近';
+
+    return `${date} · ${place}`;
+  }
+
+  function formatDuration(minutes) {
+    if (minutes < 60) {
+      return `${minutes} 分钟`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    return restMinutes > 0 ? `${hours} 小时 ${restMinutes} 分钟` : `${hours} 小时`;
+  }
+
+  function birdRecordDetail(record) {
+    const tags = record.tags.length ? record.tags.join('、') : '';
+    const note = record.note || '';
+    const parts = [record.scientificName, tags, note].filter(Boolean);
+
+    return parts.length ? parts.join(' · ') : '无备注';
+  }
+
+  function focusBirdRecord(record) {
+    highlightedBirdRecordId = record.id;
+
+    if (map && !stageFallbackClickEnabled) {
+      map.panTo([record.position.lat, record.position.lng]);
+    }
+
+    renderBirdPointOverlay();
+    renderResultView();
   }
 
   function openBirdDialog(record = null) {
@@ -354,6 +462,9 @@
     }
 
     session = stateTools.deleteBirdRecord(session, birdDraft.editingRecordId);
+    if (highlightedBirdRecordId === birdDraft.editingRecordId) {
+      highlightedBirdRecordId = null;
+    }
     persistSession(session);
     elements.birdDialog.close();
     render();
@@ -519,6 +630,9 @@
       button.className = 'bird-point-button';
       if (group.records.length > 1) {
         button.classList.add('is-grouped');
+      }
+      if (group.records.some((record) => record.id === highlightedBirdRecordId)) {
+        button.classList.add('is-highlighted');
       }
 
       button.style.left = `${group.x}px`;
@@ -692,6 +806,20 @@
 
   function persistSession(value) {
     localStorage.setItem(config.storageKey, JSON.stringify(value));
+  }
+
+  function loadPersistedSession() {
+    const rawSession = localStorage.getItem(config.storageKey);
+    if (!rawSession) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(rawSession);
+      return parsed && typeof parsed.state === 'string' ? parsed : null;
+    } catch (error) {
+      return null;
+    }
   }
 
   function clearPersistedSession() {

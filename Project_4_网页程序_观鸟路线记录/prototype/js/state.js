@@ -150,6 +150,37 @@
     };
   }
 
+  function createSessionResult(session) {
+    if (session.state !== STATES.FINISHED) {
+      return null;
+    }
+
+    const summary = summarizeSession(session);
+    const startedAt = session.startedAt ? new Date(session.startedAt) : null;
+    const endedAt = session.endedAt ? new Date(session.endedAt) : null;
+    const durationMinutes = startedAt && endedAt
+      ? Math.max(0, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000))
+      : 0;
+
+    return {
+      title: '本次记录',
+      startedAt: session.startedAt,
+      endedAt: session.endedAt,
+      startPoint: session.startPoint ? clonePoint(session.startPoint) : null,
+      currentPoint: session.currentPoint ? clonePoint(session.currentPoint) : null,
+      track: session.track.map(clonePoint),
+      birdRecords: session.birdRecords.map((record) => ({
+        ...record,
+        tags: [...record.tags],
+        position: clonePoint(record.position),
+      })),
+      summary: {
+        ...summary,
+        durationMinutes,
+      },
+    };
+  }
+
   function distanceBetween(a, b) {
     const earthRadiusMeters = 6371000;
     const toRadians = (value) => (value * Math.PI) / 180;
@@ -176,6 +207,7 @@
     finishSession,
     abortSession,
     summarizeSession,
+    createSessionResult,
     distanceBetween,
   };
 

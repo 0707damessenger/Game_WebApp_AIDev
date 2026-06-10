@@ -14,3 +14,14 @@ test('Leaflet assets are served from local prototype files', () => {
   assert.equal(fs.existsSync(path.join(prototypeRoot, 'vendor/leaflet/leaflet.css')), true);
   assert.equal(fs.existsSync(path.join(prototypeRoot, 'vendor/leaflet/leaflet.js')), true);
 });
+
+test('finished record result view is available in the prototype shell', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
+
+  assert.equal(html.includes('id="resultPanel"'), true);
+  assert.equal(html.includes('id="resultSummary"'), true);
+  assert.equal(html.includes('id="resultBirdList"'), true);
+  assert.equal(html.includes('id="returnHomeButton"'), true);
+  assert.equal(html.includes('id="sharePlaceholderButton"'), true);
+  assert.equal(html.includes('分享（后续模块）'), true);
+});

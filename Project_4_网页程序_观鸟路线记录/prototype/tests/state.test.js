@@ -124,3 +124,31 @@ test('bird records can be deleted and summary counts update', () => {
   assert.equal(state.summarizeSession(deleted).speciesCount, 0);
   assert.equal(state.summarizeSession(deleted).totalBirds, 0);
 });
+
+test('finished sessions can be converted into a stable result snapshot', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession(new Date('2026-06-10T01:00:00.000Z'))),
+    { lat: 31.2304, lng: 121.4737, label: '上海' },
+    new Date('2026-06-10T01:05:00.000Z'),
+  );
+  session = state.addTrackPoint(session, { lat: 31.231, lng: 121.4742 });
+  session = state.addBirdRecord(session, {
+    speciesName: '白头鹎',
+    scientificName: 'Pycnonotus sinensis',
+    count: 2,
+    tags: ['成鸟'],
+    note: '树梢鸣叫',
+  }, new Date('2026-06-10T01:08:00.000Z'));
+  const finished = state.finishSession(session, new Date('2026-06-10T01:30:00.000Z'));
+
+  const result = state.createSessionResult(finished);
+
+  assert.equal(result.title, '本次记录');
+  assert.equal(result.summary.speciesCount, 1);
+  assert.equal(result.summary.totalBirds, 2);
+  assert.equal(result.summary.durationMinutes, 25);
+  assert.equal(result.track.length, 2);
+  assert.equal(result.birdRecords.length, 1);
+  assert.notEqual(result.track, finished.track);
+  assert.notEqual(result.birdRecords, finished.birdRecords);
+});
