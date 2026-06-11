@@ -63,3 +63,80 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
   await expect(page.locator('.result-bird-item.is-highlighted')).toHaveCount(1);
   await expect(page.locator('.bird-point-button.is-highlighted')).toHaveCount(1);
 });
+
+test('Project 4 searches the expanded bird catalog while adding a bird record', async ({ page }) => {
+  const recordingSession = {
+    state: 'recording',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    ],
+    birdRecords: [],
+    distanceMeters: 152,
+    createdAt: '2026-06-10T01:00:00.000Z',
+  };
+
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, recordingSession);
+
+  await page.goto(project4PrototypeUrl());
+  await page.locator('#addBirdButton').click();
+
+  await page.locator('#birdSearchInput').fill('中华秋沙鸭');
+  await expect(page.locator('#birdResults .bird-result-button')).toHaveCount(1);
+  await expect(page.locator('#birdResults')).toContainText('Mergus squamatus');
+
+  await page.locator('#birdSearchInput').fill('Nipponia nippon');
+  await expect(page.locator('#birdResults .bird-result-button')).toHaveCount(1);
+  await expect(page.locator('#birdResults')).toContainText('朱鹮');
+
+  await page.locator('#birdSearchInput').fill('不存在鸟种');
+  await expect(page.locator('#birdResults .bird-result-button')).toHaveCount(0);
+
+  await page.locator('#birdSearchInput').fill('中华秋沙鸭');
+  await page.locator('#birdResults .bird-result-button').click();
+  await expect(page.locator('#birdSelectedInfo')).toContainText('中华秋沙鸭');
+
+  await page.locator('#birdSubmitButton').click();
+
+  await expect(page.locator('#birdDialog')).not.toBeVisible();
+  await expect(page.locator('#sessionBirds')).toHaveText('1 种');
+  await expect(page.locator('.bird-point-button')).toHaveCount(1);
+});
+
+test('Project 4 does not draw a duplicate SVG route when tile errors enable fallback clicks', async ({ page }) => {
+  const recordingSession = {
+    state: 'recording',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: { lat: 31.232, lng: 121.475, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '中途点', timestamp: '2026-06-10T01:12:00.000Z' },
+      { lat: 31.232, lng: 121.475, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    ],
+    birdRecords: [],
+    distanceMeters: 260,
+    createdAt: '2026-06-10T01:00:00.000Z',
+  };
+
+  await page.route('**/*tile.openstreetmap.org/**', (route) => route.abort());
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, recordingSession);
+
+  await page.goto(project4PrototypeUrl());
+
+  await expect(page.locator('#hintStrip')).toContainText('地图瓦片加载较慢或失败');
+  await expect(page.locator('.route-line')).toHaveCount(1);
+  await expect(page.locator('#testRouteLayer > *')).toHaveCount(0);
+
+  await page.mouse.click(180, 320);
+
+  await expect(page.locator('.route-line')).toHaveCount(1);
+  await expect(page.locator('#testRouteLayer > *')).toHaveCount(0);
+});

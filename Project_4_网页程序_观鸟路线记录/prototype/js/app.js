@@ -840,6 +840,10 @@
       svg.removeChild(svg.firstChild);
     }
 
+    if (fallbackMode || (map && routeLayer)) {
+      return;
+    }
+
     const mapSource = getMapSource();
     if (!stageFallbackClickEnabled || mapSource.track.length === 0) {
       return;

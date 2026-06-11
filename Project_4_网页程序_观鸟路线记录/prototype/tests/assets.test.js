@@ -2,8 +2,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 
 const prototypeRoot = path.resolve(__dirname, '..');
+
+function loadBirdCatalog() {
+  const script = fs.readFileSync(path.join(prototypeRoot, 'js/birds.js'), 'utf8');
+  const sandbox = { window: {} };
+  vm.runInNewContext(script, sandbox);
+  return sandbox.window.BIRD_CATALOG;
+}
 
 test('Leaflet assets are served from local prototype files', () => {
   const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
@@ -84,4 +92,33 @@ test('gps start selection does not expose simulated fallback start controls', ()
     app.includes('function canUseSimulatedFallbackStart()'),
     true,
   );
+});
+
+test('bird catalog contains the expanded national formal checklist data', () => {
+  const catalog = loadBirdCatalog();
+  const names = new Set(catalog.map((bird) => bird.name));
+
+  assert.equal(Array.isArray(catalog), true);
+  assert.ok(catalog.length > 1000, `expected expanded catalog, got ${catalog.length} entries`);
+  assert.equal(names.has('白头鹎'), true);
+  assert.equal(names.has('丹顶鹤'), true);
+  assert.equal(names.has('朱鹮'), true);
+  assert.equal(names.has('中华秋沙鸭'), true);
+  assert.equal(names.has('褐马鸡'), true);
+});
+
+test('bird catalog entries keep searchable Chinese and scientific names without duplicates', () => {
+  const catalog = loadBirdCatalog();
+  const keys = new Set();
+
+  for (const bird of catalog) {
+    assert.equal(typeof bird.name, 'string');
+    assert.notEqual(bird.name.trim(), '');
+    assert.equal(typeof bird.scientificName, 'string');
+    assert.notEqual(bird.scientificName.trim(), '');
+
+    const key = `${bird.name}::${bird.scientificName}`;
+    assert.equal(keys.has(key), false, `duplicate bird catalog entry: ${key}`);
+    keys.add(key);
+  }
 });
