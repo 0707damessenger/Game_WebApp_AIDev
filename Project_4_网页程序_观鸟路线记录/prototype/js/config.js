@@ -13,6 +13,7 @@ window.CONFIG = {
     errorHint: '地图瓦片加载较慢或失败，可在配置中切换瓦片源。',
   },
   storageKey: 'bird-route-current-session',
+  historyStorageKey: 'bird-route-history',
   mapInteraction: {
     pickingHint: '点击地图确认起点',
     recordingHint: '开发模式：点击地图模拟行走轨迹',

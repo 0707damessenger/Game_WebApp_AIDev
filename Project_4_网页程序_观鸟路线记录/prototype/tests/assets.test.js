@@ -25,3 +25,30 @@ test('finished record result view is available in the prototype shell', () => {
   assert.equal(html.includes('id="sharePlaceholderButton"'), true);
   assert.equal(html.includes('分享（后续模块）'), true);
 });
+
+test('profile entry and standalone history list page are available in the prototype shell', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
+  const profilePanel = html.slice(
+    html.indexOf('id="profilePanel"'),
+    html.indexOf('id="historyPanel"'),
+  );
+
+  assert.equal(html.includes('id="profileButton"'), true);
+  assert.equal(html.includes('id="profilePanel"'), true);
+  assert.equal(html.includes('id="historyEntryButton"'), true);
+  assert.equal(html.includes('id="historyPanel"'), true);
+  assert.equal(html.includes('id="historyBackButton"'), true);
+  assert.equal(html.includes('id="historyList"'), true);
+  assert.equal(html.includes('id="historyEmpty"'), true);
+  assert.equal(html.includes('id="profileInfoPlaceholderButton"'), true);
+  assert.equal(html.includes('个人信息（后续模块）'), true);
+  assert.equal(html.includes('登录 / 登出（后续模块）'), true);
+  assert.equal(profilePanel.includes('id="historyList"'), false);
+});
+
+test('hidden map fallback does not overlay the interactive map', () => {
+  const css = fs.readFileSync(path.join(prototypeRoot, 'css/styles.css'), 'utf8');
+
+  assert.equal(css.includes('.map-fallback[hidden]'), true);
+  assert.equal(css.includes('display: none'), true);
+});

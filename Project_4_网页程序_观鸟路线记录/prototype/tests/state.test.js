@@ -152,3 +152,82 @@ test('finished sessions can be converted into a stable result snapshot', () => {
   assert.notEqual(result.track, finished.track);
   assert.notEqual(result.birdRecords, finished.birdRecords);
 });
+
+test('finished sessions can be converted into a stable history record snapshot', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession(new Date('2026-06-10T01:00:00.000Z'))),
+    { lat: 31.2304, lng: 121.4737, label: '上海' },
+    new Date('2026-06-10T01:05:00.000Z'),
+  );
+  session = state.addTrackPoint(session, { lat: 31.231, lng: 121.4742 });
+  session = state.addBirdRecord(session, {
+    speciesName: '白头鹎',
+    scientificName: 'Pycnonotus sinensis',
+    count: 2,
+    tags: ['成鸟'],
+    note: '树梢鸣叫',
+  }, new Date('2026-06-10T01:08:00.000Z'));
+  const finished = state.finishSession(session, new Date('2026-06-10T01:30:00.000Z'));
+
+  const historyRecord = state.createHistoryRecord(finished, new Date('2026-06-10T01:31:00.000Z'));
+
+  assert.equal(historyRecord.title, '本次记录');
+  assert.equal(historyRecord.savedAt, '2026-06-10T01:31:00.000Z');
+  assert.equal(historyRecord.summary.speciesCount, 1);
+  assert.equal(historyRecord.summary.totalBirds, 2);
+  assert.equal(historyRecord.summary.durationMinutes, 25);
+  assert.equal(historyRecord.track.length, 2);
+  assert.equal(historyRecord.birdRecords.length, 1);
+  assert.notEqual(historyRecord.track, finished.track);
+  assert.notEqual(historyRecord.birdRecords, finished.birdRecords);
+});
+
+test('unfinished sessions do not create history records', () => {
+  const session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession()),
+    { lat: 31.2304, lng: 121.4737 },
+  );
+
+  assert.equal(state.createHistoryRecord(session), null);
+});
+
+test('history records are deduplicated by id and sorted by newest saved time', () => {
+  const older = {
+    id: 'record-older',
+    savedAt: '2026-06-10T01:00:00.000Z',
+    title: '旧记录',
+    summary: { totalBirds: 1 },
+  };
+  const newer = {
+    id: 'record-newer',
+    savedAt: '2026-06-10T02:00:00.000Z',
+    title: '新记录',
+    summary: { totalBirds: 2 },
+  };
+  const duplicateOlder = {
+    ...older,
+    savedAt: '2026-06-10T03:00:00.000Z',
+    summary: { totalBirds: 3 },
+  };
+
+  const history = state.addHistoryRecord(
+    state.addHistoryRecord(
+      state.addHistoryRecord([], older),
+      newer,
+    ),
+    duplicateOlder,
+  );
+
+  assert.deepEqual(history.map((record) => record.id), ['record-older', 'record-newer']);
+  assert.equal(history[0].summary.totalBirds, 3);
+});
+
+test('history records can be found by id', () => {
+  const history = [
+    { id: 'record-a', title: 'A' },
+    { id: 'record-b', title: 'B' },
+  ];
+
+  assert.deepEqual(state.findHistoryRecord(history, 'record-b'), history[1]);
+  assert.equal(state.findHistoryRecord(history, 'record-missing'), null);
+});

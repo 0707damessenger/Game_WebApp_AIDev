@@ -1,6 +1,7 @@
 (function attachApp() {
   const config = window.CONFIG;
   const stateTools = window.BirdRouteState;
+  let history = loadHistory();
   let session = loadPersistedSession() || stateTools.createSession();
   let map = null;
   let routeLayer = null;
@@ -12,6 +13,8 @@
   let fallbackScale = 1;
   let birdDraft = createBirdDraft();
   let highlightedBirdRecordId = null;
+  let selectedHistoryRecordId = null;
+  let activeView = 'main';
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -30,6 +33,7 @@
     sessionState: document.querySelector('#sessionState'),
     sessionDistance: document.querySelector('#sessionDistance'),
     sessionBirds: document.querySelector('#sessionBirds'),
+    profileButton: document.querySelector('#profileButton'),
     finishDialog: document.querySelector('#finishDialog'),
     saveFinishButton: document.querySelector('#saveFinishButton'),
     abortButton: document.querySelector('#abortButton'),
@@ -44,6 +48,14 @@
     resultListCount: document.querySelector('#resultListCount'),
     resultBirdList: document.querySelector('#resultBirdList'),
     returnHomeButton: document.querySelector('#returnHomeButton'),
+    profilePanel: document.querySelector('#profilePanel'),
+    historyEntryButton: document.querySelector('#historyEntryButton'),
+    historyPanel: document.querySelector('#historyPanel'),
+    historyCount: document.querySelector('#historyCount'),
+    historyEmpty: document.querySelector('#historyEmpty'),
+    historyList: document.querySelector('#historyList'),
+    profileBackButton: document.querySelector('#profileBackButton'),
+    historyBackButton: document.querySelector('#historyBackButton'),
     birdDialog: document.querySelector('#birdDialog'),
     birdDialogTitle: document.querySelector('#birdDialogTitle'),
     birdCloseButton: document.querySelector('#birdCloseButton'),
@@ -65,6 +77,7 @@
   init();
 
   function init() {
+    migrateFinishedSessionIntoHistory();
     initMap();
     bindEvents();
     render();
@@ -113,6 +126,8 @@
 
   function bindEvents() {
     elements.startButton.addEventListener('click', () => {
+      activeView = 'main';
+      selectedHistoryRecordId = null;
       session = stateTools.beginStartSelection(session);
       const point = config.defaultCenter;
       if (map) {
@@ -131,12 +146,15 @@
       if (elements.finishDialog.returnValue === 'save') {
         session = stateTools.finishSession(session);
         highlightedBirdRecordId = null;
+        addFinishedSessionToHistory(session);
         persistSession(session);
       }
 
       if (elements.finishDialog.returnValue === 'abort') {
         session = stateTools.abortSession(session);
         highlightedBirdRecordId = null;
+        selectedHistoryRecordId = null;
+        activeView = 'main';
         clearPersistedSession();
       }
 
@@ -144,7 +162,45 @@
     });
 
     elements.returnHomeButton.addEventListener('click', () => {
+      if (selectedHistoryRecordId) {
+        selectedHistoryRecordId = null;
+        highlightedBirdRecordId = null;
+        activeView = 'historyList';
+        render();
+        return;
+      }
+
       session = stateTools.createSession();
+      highlightedBirdRecordId = null;
+      activeView = 'main';
+      clearPersistedSession();
+      render();
+    });
+
+    elements.profileButton.addEventListener('click', () => {
+      activeView = 'profile';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+    });
+
+    elements.historyEntryButton.addEventListener('click', () => {
+      activeView = 'historyList';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+    });
+
+    elements.profileBackButton.addEventListener('click', () => {
+      activeView = 'main';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+    });
+
+    elements.historyBackButton.addEventListener('click', () => {
+      activeView = 'profile';
+      selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
       render();
     });
@@ -246,30 +302,48 @@
   }
 
   function render() {
-    const summary = stateTools.summarizeSession(session);
-    const isFinished = session.state === stateTools.STATES.FINISHED;
-    elements.sessionState.textContent = stateLabel(session.state);
+    const activeResult = getActiveResult();
+    const isResultView = Boolean(activeResult);
+    const isHistoryResult = Boolean(selectedHistoryRecordId && activeResult);
+    const isProfileView = activeView === 'profile';
+    const isHistoryListView = activeView === 'historyList';
+    const summary = activeResult ? activeResult.summary : stateTools.summarizeSession(session);
+
+    elements.sessionState.textContent = isHistoryResult
+      ? '历史'
+      : isHistoryListView
+        ? '历史'
+      : isProfileView
+        ? '个人'
+        : stateLabel(session.state);
     elements.sessionDistance.textContent = formatDistance(summary.distanceMeters);
     elements.sessionBirds.textContent = `${summary.speciesCount} 种`;
 
-    elements.startPanel.hidden = session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED;
-    elements.finishButton.hidden = isFinished;
+    elements.startPanel.hidden = isProfileView || isHistoryListView || isResultView ||
+      (session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED);
+    elements.profileButton.hidden = isProfileView || isHistoryListView || isResultView ||
+      (session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED);
+    elements.finishButton.hidden = isProfileView || isHistoryListView || isResultView || session.state !== stateTools.STATES.RECORDING;
     elements.finishButton.disabled = session.state !== stateTools.STATES.RECORDING;
-    elements.resultPanel.hidden = !isFinished;
-    elements.mapFallback.dataset.mode = session.state;
-    elements.mapStage.classList.toggle('is-result-mode', isFinished);
+    elements.resultPanel.hidden = !isResultView;
+    elements.profilePanel.hidden = !isProfileView;
+    elements.historyPanel.hidden = !isHistoryListView;
+    elements.mapFallback.dataset.mode = isResultView ? stateTools.STATES.FINISHED : session.state;
+    elements.mapStage.classList.toggle('is-result-mode', isResultView);
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
-    if (session.state === stateTools.STATES.PICKING_START && stageFallbackClickEnabled) {
+    if (!isProfileView && !isHistoryListView && !isResultView && session.state === stateTools.STATES.PICKING_START && stageFallbackClickEnabled) {
       elements.addBirdButton.textContent = '使用测试起点';
       elements.addBirdButton.disabled = false;
     } else {
       elements.addBirdButton.textContent = '添加鸟种';
-      elements.addBirdButton.disabled = session.state !== stateTools.STATES.RECORDING;
+      elements.addBirdButton.disabled = isProfileView || isHistoryListView || isResultView || session.state !== stateTools.STATES.RECORDING;
     }
-    elements.addBirdButton.hidden = isFinished;
+    elements.addBirdButton.hidden = isProfileView || isHistoryListView || isResultView;
 
-    if (session.state === stateTools.STATES.PICKING_START) {
+    if (isProfileView || isHistoryListView || isResultView) {
+      elements.hintStrip.hidden = true;
+    } else if (session.state === stateTools.STATES.PICKING_START) {
       elements.hintStrip.textContent = config.mapInteraction.pickingHint;
       elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.RECORDING) {
@@ -286,21 +360,24 @@
     renderTestRouteLayer();
     renderBirdPointOverlay();
     renderResultView();
+    renderProfileView();
   }
 
   function renderResultView() {
-    const result = stateTools.createSessionResult(session);
+    const result = getActiveResult();
     if (!result) {
+      elements.resultBirdList.replaceChildren();
       return;
     }
 
-    elements.resultTitle.textContent = result.title;
+    elements.resultTitle.textContent = selectedHistoryRecordId ? '历史记录' : result.title;
     elements.resultMeta.textContent = formatResultMeta(result);
     elements.resultDuration.textContent = formatDuration(result.summary.durationMinutes);
     elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
     elements.resultSpecies.textContent = `${result.summary.speciesCount} 种`;
     elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
+    elements.returnHomeButton.textContent = selectedHistoryRecordId ? '返回历史列表' : '返回主界面';
 
     if (result.birdRecords.length === 0) {
       const empty = document.createElement('p');
@@ -329,6 +406,86 @@
 
       return button;
     }));
+  }
+
+  function renderProfileView() {
+    elements.historyCount.textContent = `${history.length} 条`;
+    elements.historyEmpty.hidden = history.length > 0;
+
+    if (history.length === 0) {
+      elements.historyList.replaceChildren();
+      return;
+    }
+
+    elements.historyList.replaceChildren(...history.map((record) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'history-item';
+
+      const title = document.createElement('strong');
+      title.textContent = formatResultMeta(record);
+
+      const detail = document.createElement('span');
+      detail.textContent = historyRecordDetail(record);
+
+      const metrics = document.createElement('div');
+      metrics.className = 'history-metrics';
+      [
+        formatDuration(record.summary.durationMinutes),
+        formatDistance(record.summary.distanceMeters),
+        `${record.summary.speciesCount} 种`,
+        `${record.summary.totalBirds} 只`,
+      ].forEach((text) => {
+        const item = document.createElement('em');
+        item.textContent = text;
+        metrics.appendChild(item);
+      });
+
+      button.append(title, detail, metrics);
+      button.addEventListener('click', () => {
+        openHistoryRecord(record.id);
+      });
+
+      return button;
+    }));
+  }
+
+  function getActiveResult() {
+    if (selectedHistoryRecordId) {
+      return stateTools.findHistoryRecord(history, selectedHistoryRecordId);
+    }
+
+    return stateTools.createSessionResult(session);
+  }
+
+  function getMapSource() {
+    const activeResult = getActiveResult();
+    if (activeResult) {
+      return activeResult;
+    }
+
+    return session;
+  }
+
+  function openHistoryRecord(recordId) {
+    const record = stateTools.findHistoryRecord(history, recordId);
+    if (!record) {
+      return;
+    }
+
+    selectedHistoryRecordId = record.id;
+    highlightedBirdRecordId = null;
+    activeView = 'historyResult';
+    render();
+  }
+
+  function historyRecordDetail(record) {
+    const endedAt = record.endedAt
+      ? new Date(record.endedAt).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : '保存时间未知';
+    const birdCount = record.summary.birdRecordCount || 0;
+
+    return `${endedAt} · ${birdCount} 条鸟点记录`;
   }
 
   function formatResultMeta(result) {
@@ -498,22 +655,25 @@
       return;
     }
 
-    const latLngs = session.track.map((point) => [point.lat, point.lng]);
+    const mapSource = getMapSource();
+    const latLngs = mapSource.track.map((point) => [point.lat, point.lng]);
+    const startPoint = mapSource.startPoint;
+    const currentPoint = mapSource.currentPoint || mapSource.track[mapSource.track.length - 1] || null;
     routeLayer.setLatLngs(latLngs);
     routeLayer.bringToFront();
 
-    if (!session.startPoint && startMarker) {
+    if (!startPoint && startMarker) {
       startMarker.remove();
       startMarker = null;
     }
 
-    if (!session.currentPoint && currentMarker) {
+    if (!currentPoint && currentMarker) {
       currentMarker.remove();
       currentMarker = null;
     }
 
-    if (session.startPoint && !startMarker) {
-      startMarker = L.circleMarker([session.startPoint.lat, session.startPoint.lng], {
+    if (startPoint && !startMarker) {
+      startMarker = L.circleMarker([startPoint.lat, startPoint.lng], {
         radius: 7,
         color: '#123f31',
         fillColor: '#f8f5ee',
@@ -522,12 +682,12 @@
       }).addTo(map);
     }
 
-    if (startMarker && session.startPoint) {
-      startMarker.setLatLng([session.startPoint.lat, session.startPoint.lng]);
+    if (startMarker && startPoint) {
+      startMarker.setLatLng([startPoint.lat, startPoint.lng]);
     }
 
-    if (session.currentPoint && !currentMarker) {
-      currentMarker = L.circleMarker([session.currentPoint.lat, session.currentPoint.lng], {
+    if (currentPoint && !currentMarker) {
+      currentMarker = L.circleMarker([currentPoint.lat, currentPoint.lng], {
         radius: 8,
         color: '#ffffff',
         fillColor: '#c1842b',
@@ -536,8 +696,8 @@
       }).addTo(map);
     }
 
-    if (currentMarker && session.currentPoint) {
-      currentMarker.setLatLng([session.currentPoint.lat, session.currentPoint.lng]);
+    if (currentMarker && currentPoint) {
+      currentMarker.setLatLng([currentPoint.lat, currentPoint.lng]);
     }
 
     if (latLngs.length > 1) {
@@ -561,7 +721,8 @@
       svg.removeChild(svg.firstChild);
     }
 
-    const points = session.track.map(pointToFallbackPosition);
+    const mapSource = getMapSource();
+    const points = mapSource.track.map(pointToFallbackPosition);
     if (points.length > 1) {
       const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
       polyline.setAttribute('class', 'fallback-route-polyline');
@@ -593,11 +754,12 @@
       svg.removeChild(svg.firstChild);
     }
 
-    if (!stageFallbackClickEnabled || session.track.length === 0) {
+    const mapSource = getMapSource();
+    if (!stageFallbackClickEnabled || mapSource.track.length === 0) {
       return;
     }
 
-    const points = session.track.map(pointToFallbackPosition);
+    const points = mapSource.track.map(pointToFallbackPosition);
     if (points.length > 1) {
       const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
       polyline.setAttribute('class', 'test-route-polyline');
@@ -619,11 +781,12 @@
 
   function renderBirdPointOverlay() {
     elements.birdPointLayer.replaceChildren();
-    if (session.birdRecords.length === 0) {
+    const mapSource = getMapSource();
+    if (mapSource.birdRecords.length === 0) {
       return;
     }
 
-    const groups = groupBirdRecordsByScreenPosition(session.birdRecords);
+    const groups = groupBirdRecordsByScreenPosition(mapSource.birdRecords);
     groups.forEach((group) => {
       const button = document.createElement('button');
       button.type = 'button';
@@ -639,7 +802,11 @@
       button.style.top = `${group.y}px`;
       button.textContent = birdPointLabel(group);
       button.addEventListener('click', () => {
-        openBirdPointPreview(group.records);
+        if (selectedHistoryRecordId) {
+          focusBirdRecord(group.records[0]);
+        } else {
+          openBirdPointPreview(group.records);
+        }
       });
       elements.birdPointLayer.appendChild(button);
     });
@@ -804,6 +971,24 @@
     return `${(meters / 1000).toFixed(1)} km`;
   }
 
+  function migrateFinishedSessionIntoHistory() {
+    if (session.state !== stateTools.STATES.FINISHED) {
+      return;
+    }
+
+    addFinishedSessionToHistory(session, dateFromIso(session.endedAt));
+  }
+
+  function addFinishedSessionToHistory(value, savedAt = new Date()) {
+    const record = stateTools.createHistoryRecord(value, savedAt);
+    if (!record) {
+      return;
+    }
+
+    history = stateTools.addHistoryRecord(history, record);
+    persistHistory(history);
+  }
+
   function persistSession(value) {
     localStorage.setItem(config.storageKey, JSON.stringify(value));
   }
@@ -824,5 +1009,28 @@
 
   function clearPersistedSession() {
     localStorage.removeItem(config.storageKey);
+  }
+
+  function persistHistory(value) {
+    localStorage.setItem(config.historyStorageKey, JSON.stringify(value));
+  }
+
+  function loadHistory() {
+    const rawHistory = localStorage.getItem(config.historyStorageKey);
+    if (!rawHistory) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(rawHistory);
+      return Array.isArray(parsed) ? parsed.filter((record) => record && record.id) : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function dateFromIso(value) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? new Date(parsed) : new Date();
   }
 })();

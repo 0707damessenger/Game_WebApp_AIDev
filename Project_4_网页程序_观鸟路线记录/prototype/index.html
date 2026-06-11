@@ -34,6 +34,7 @@
             <span id="sessionDistance">0 m</span>
             <span id="sessionBirds">0 种</span>
           </div>
+          <button id="profileButton" class="corner-button secondary-corner" type="button">个人</button>
           <button id="finishButton" class="corner-button" type="button" disabled>结束</button>
         </header>
 
@@ -84,6 +85,46 @@
             <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
             <button id="sharePlaceholderButton" class="ghost-button compact" type="button" disabled>分享（后续模块）</button>
           </div>
+        </section>
+
+        <section class="profile-panel" id="profilePanel" aria-label="个人" hidden>
+          <header class="profile-header">
+            <p class="panel-kicker">个人</p>
+            <h1>我的观鸟记录</h1>
+            <p>历史记录保存在本机，账号与同步能力后续接入。</p>
+          </header>
+
+          <button id="historyEntryButton" class="profile-entry-button" type="button">
+            <strong>历史记录</strong>
+            <span>查看已保存的观鸟路线</span>
+          </button>
+
+          <section class="profile-placeholder-section" aria-label="后续个人功能">
+            <button id="profileInfoPlaceholderButton" class="ghost-button compact" type="button" disabled>个人信息（后续模块）</button>
+            <button id="settingsPlaceholderButton" class="ghost-button compact" type="button" disabled>设置（后续模块）</button>
+            <button id="authPlaceholderButton" class="ghost-button compact" type="button" disabled>登录 / 登出（后续模块）</button>
+          </section>
+
+          <button id="profileBackButton" class="primary-button compact" type="button">返回主界面</button>
+        </section>
+
+        <section class="history-panel" id="historyPanel" aria-label="历史记录" hidden>
+          <header class="profile-header">
+            <p class="panel-kicker">历史记录</p>
+            <h1>已保存路线</h1>
+            <p>从这里打开过去保存的观鸟路线。</p>
+          </header>
+
+          <section class="history-section" aria-label="历史记录列表">
+            <div class="result-section-heading">
+              <h2>历史列表</h2>
+              <span id="historyCount">0 条</span>
+            </div>
+            <p id="historyEmpty" class="history-empty">还没有历史记录。完成一次路线记录后，会显示在这里。</p>
+            <div id="historyList" class="history-list"></div>
+          </section>
+
+          <button id="historyBackButton" class="primary-button compact" type="button">返回个人页</button>
         </section>
 
         <button id="addBirdButton" class="bottom-action" type="button" disabled>

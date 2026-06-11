@@ -181,6 +181,53 @@
     };
   }
 
+  function createHistoryRecord(session, now = new Date()) {
+    const result = createSessionResult(session);
+    if (!result) {
+      return null;
+    }
+
+    return {
+      ...result,
+      id: historyRecordId(result),
+      savedAt: now.toISOString(),
+    };
+  }
+
+  function addHistoryRecord(history, record) {
+    if (!record || !record.id) {
+      return Array.isArray(history) ? [...history] : [];
+    }
+
+    return [
+      record,
+      ...(Array.isArray(history) ? history.filter((item) => item && item.id !== record.id) : []),
+    ].sort((a, b) => timestampValue(b.savedAt) - timestampValue(a.savedAt));
+  }
+
+  function findHistoryRecord(history, id) {
+    if (!Array.isArray(history)) {
+      return null;
+    }
+
+    return history.find((record) => record && record.id === id) || null;
+  }
+
+  function historyRecordId(result) {
+    const start = result.startedAt || 'unknown-start';
+    const end = result.endedAt || 'unknown-end';
+    const startPoint = result.startPoint
+      ? `${result.startPoint.lat.toFixed(6)},${result.startPoint.lng.toFixed(6)}`
+      : 'unknown-point';
+
+    return `history-${start}-${end}-${startPoint}`;
+  }
+
+  function timestampValue(value) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
   function distanceBetween(a, b) {
     const earthRadiusMeters = 6371000;
     const toRadians = (value) => (value * Math.PI) / 180;
@@ -208,6 +255,9 @@
     abortSession,
     summarizeSession,
     createSessionResult,
+    createHistoryRecord,
+    addHistoryRecord,
+    findHistoryRecord,
     distanceBetween,
   };
 
