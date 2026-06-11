@@ -218,7 +218,7 @@
     });
 
     elements.addBirdButton.addEventListener('click', () => {
-      if (session.state === stateTools.STATES.PICKING_START && stageFallbackClickEnabled) {
+      if (canUseSimulatedFallbackStart()) {
         handleMapClick(config.defaultCenter);
         return;
       }
@@ -416,7 +416,7 @@
     elements.mapStage.classList.toggle('is-result-mode', isResultView);
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
-    if (!isProfileView && !isHistoryListView && !isResultView && session.state === stateTools.STATES.PICKING_START && stageFallbackClickEnabled) {
+    if (!isProfileView && !isHistoryListView && !isResultView && canUseSimulatedFallbackStart()) {
       elements.addBirdButton.textContent = '使用测试起点';
       elements.addBirdButton.disabled = false;
     } else {
@@ -1033,8 +1033,14 @@
   }
 
   function shouldUseStageFallbackClick() {
-    return session.state === stateTools.STATES.PICKING_START ||
+    return canUseSimulatedFallbackStart() ||
       (session.state === stateTools.STATES.RECORDING && config.locationSource === 'simulated');
+  }
+
+  function canUseSimulatedFallbackStart() {
+    return session.state === stateTools.STATES.PICKING_START &&
+      stageFallbackClickEnabled &&
+      config.locationSource !== 'gps';
   }
 
   function stateLabel(value) {

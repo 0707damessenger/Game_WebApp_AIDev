@@ -53,6 +53,13 @@ test('hidden map fallback does not overlay the interactive map', () => {
   assert.equal(css.includes('display: none'), true);
 });
 
+test('status hint strip does not intercept map or panel controls', () => {
+  const css = fs.readFileSync(path.join(prototypeRoot, 'css/styles.css'), 'utf8');
+  const hintRule = css.slice(css.indexOf('.hint-strip {'), css.indexOf('.bottom-action {'));
+
+  assert.equal(hintRule.includes('pointer-events: none'), true);
+});
+
 test('gps location source is wired through browser geolocation APIs', () => {
   const config = fs.readFileSync(path.join(prototypeRoot, 'js/config.js'), 'utf8');
   const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
@@ -63,4 +70,18 @@ test('gps location source is wired through browser geolocation APIs', () => {
   assert.equal(app.includes('watchPosition'), true);
   assert.equal(app.includes('clearWatch'), true);
   assert.equal(app.includes('无法获取定位'), true);
+});
+
+test('gps start selection does not expose simulated fallback start controls', () => {
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+  const gpsGuard = "config.locationSource !== 'gps'";
+
+  assert.equal(
+    app.includes(gpsGuard),
+    true,
+  );
+  assert.equal(
+    app.includes('function canUseSimulatedFallbackStart()'),
+    true,
+  );
 });
