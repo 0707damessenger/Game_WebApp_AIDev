@@ -13,6 +13,13 @@ function loadBirdCatalog() {
   return sandbox.window.BIRD_CATALOG;
 }
 
+function loadConfig() {
+  const script = fs.readFileSync(path.join(prototypeRoot, 'js/config.js'), 'utf8');
+  const sandbox = { window: {} };
+  vm.runInNewContext(script, sandbox);
+  return sandbox.window.CONFIG;
+}
+
 test('Leaflet assets are served from local prototype files', () => {
   const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
 
@@ -92,6 +99,31 @@ test('gps start selection does not expose simulated fallback start controls', ()
     app.includes('function canUseSimulatedFallbackStart()'),
     true,
   );
+});
+
+test('map tile source configuration defaults to Tianditu with OpenStreetMap fallback', () => {
+  const configScript = fs.readFileSync(path.join(prototypeRoot, 'js/config.js'), 'utf8');
+  const config = loadConfig();
+
+  assert.equal((configScript.match(/window\.CONFIG\s*=/g) || []).length, 1);
+  assert.equal(config.activeProvider, 'tianditu');
+  assert.equal(typeof config.providers, 'object');
+  assert.equal(Array.isArray(config.providers.tianditu.layers), true);
+  assert.equal(config.providers.tianditu.layers.length, 2);
+  assert.equal(config.providers.tianditu.layers[0].key, 'tianditu-vector');
+  assert.equal(config.providers.tianditu.layers[1].key, 'tianditu-label');
+  assert.equal(typeof config.providers.tianditu.token, 'string');
+  assert.notEqual(config.providers.tianditu.token.trim(), '');
+  assert.equal(Array.isArray(config.providers.osm.layers), true);
+  assert.equal(config.providers.osm.layers.length, 1);
+});
+
+test('map initialization reads tile layers from the active provider', () => {
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+
+  assert.equal(app.includes('config.tileLayer.url'), false);
+  assert.equal(app.includes('getActiveTileProvider'), true);
+  assert.equal(app.includes('createTileLayerUrl'), true);
 });
 
 test('bird catalog contains the expanded national formal checklist data', () => {

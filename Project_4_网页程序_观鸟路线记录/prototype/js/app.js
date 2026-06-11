@@ -101,19 +101,24 @@
       attributionControl: true,
     }).setView(defaultPoint, config.defaultZoom);
 
-    const tileLayer = L.tileLayer(config.tileLayer.url, {
-      attribution: config.tileLayer.attribution,
-      maxZoom: 19,
-    });
+    const tileProvider = getActiveTileProvider();
 
-    tileLayer.on('tileerror', () => {
-      enableStageFallbackClick();
-      render();
-      elements.hintStrip.textContent = `${config.tileLayer.errorHint} 仍可点击地图区域继续测试流程。`;
-      elements.hintStrip.hidden = false;
-    });
+    tileProvider.layers.forEach((layerConfig) => {
+      const tileLayer = L.tileLayer(createTileLayerUrl(layerConfig, tileProvider), {
+        attribution: layerConfig.attribution || tileProvider.attribution,
+        maxZoom: layerConfig.maxZoom || tileProvider.maxZoom || 19,
+        subdomains: layerConfig.subdomains || tileProvider.subdomains,
+      });
 
-    tileLayer.addTo(map);
+      tileLayer.on('tileerror', () => {
+        enableStageFallbackClick();
+        render();
+        elements.hintStrip.textContent = `${tileProvider.errorHint} 仍可点击地图区域继续测试流程。`;
+        elements.hintStrip.hidden = false;
+      });
+
+      tileLayer.addTo(map);
+    });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     routeLayer = L.polyline([], {
@@ -124,6 +129,25 @@
       lineCap: 'round',
       lineJoin: 'round',
     }).addTo(map);
+  }
+
+  function getActiveTileProvider() {
+    const providers = config.providers || {};
+    const provider = providers[config.activeProvider] || providers.osm;
+
+    if (!provider || !Array.isArray(provider.layers) || provider.layers.length === 0) {
+      return {
+        attribution: '',
+        errorHint: '地图瓦片配置不可用。',
+        layers: [],
+      };
+    }
+
+    return provider;
+  }
+
+  function createTileLayerUrl(layerConfig, provider) {
+    return layerConfig.url.replace(/\{token\}/g, encodeURIComponent(provider.token || ''));
   }
 
   function bindEvents() {

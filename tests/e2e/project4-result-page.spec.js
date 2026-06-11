@@ -3,6 +3,11 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { expect, test } = require('@playwright/test');
 
+const TRANSPARENT_TILE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=',
+  'base64',
+);
+
 function project4PrototypeUrl() {
   const workspaceRoot = path.resolve(__dirname, '../..');
   const projectDir = fs
@@ -14,6 +19,16 @@ function project4PrototypeUrl() {
   }
 
   return pathToFileURL(path.join(workspaceRoot, projectDir.name, 'prototype', 'index.html')).href;
+}
+
+async function mockTiandituTiles(page) {
+  await page.route('**/*.tianditu.gov.cn/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: TRANSPARENT_TILE,
+    });
+  });
 }
 
 test('Project 4 shows the saved current record result page', async ({ page }) => {
@@ -47,6 +62,7 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
     localStorage.setItem('bird-route-current-session', JSON.stringify(session));
   }, sampleSession);
 
+  await mockTiandituTiles(page);
   await page.goto(project4PrototypeUrl());
 
   await expect(page.locator('#resultPanel')).toBeVisible();
@@ -83,6 +99,7 @@ test('Project 4 searches the expanded bird catalog while adding a bird record', 
     localStorage.setItem('bird-route-current-session', JSON.stringify(session));
   }, recordingSession);
 
+  await mockTiandituTiles(page);
   await page.goto(project4PrototypeUrl());
   await page.locator('#addBirdButton').click();
 
@@ -108,7 +125,28 @@ test('Project 4 searches the expanded bird catalog while adding a bird record', 
   await expect(page.locator('.bird-point-button')).toHaveCount(1);
 });
 
-test('Project 4 does not draw a duplicate SVG route when tile errors enable fallback clicks', async ({ page }) => {
+test('Project 4 loads Tianditu tile layers by default', async ({ page }) => {
+  const tileRequests = [];
+
+  await page.route('**/*.tianditu.gov.cn/**', async (route) => {
+    tileRequests.push(route.request().url());
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: TRANSPARENT_TILE,
+    });
+  });
+
+  await page.goto(project4PrototypeUrl());
+
+  await expect.poll(() => tileRequests.length, {
+    message: 'expected the default map provider to request Tianditu tiles',
+    timeout: 5000,
+  }).toBeGreaterThan(0);
+  await expect(page.locator('#hintStrip')).toBeHidden();
+});
+
+test('Project 4 does not draw a duplicate SVG route when Tianditu tile errors enable fallback clicks', async ({ page }) => {
   const recordingSession = {
     state: 'recording',
     startedAt: '2026-06-10T01:05:00.000Z',
@@ -129,9 +167,10 @@ test('Project 4 does not draw a duplicate SVG route when tile errors enable fall
     localStorage.setItem('bird-route-current-session', JSON.stringify(session));
   }, recordingSession);
 
+  await page.route('**/*.tianditu.gov.cn/**', (route) => route.abort());
   await page.goto(project4PrototypeUrl());
 
-  await expect(page.locator('#hintStrip')).toContainText('地图瓦片加载较慢或失败');
+  await expect(page.locator('#hintStrip')).toContainText('地图瓦片加载失败');
   await expect(page.locator('.route-line')).toHaveCount(1);
   await expect(page.locator('#testRouteLayer > *')).toHaveCount(0);
 
