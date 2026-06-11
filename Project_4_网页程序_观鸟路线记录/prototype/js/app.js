@@ -15,6 +15,8 @@
   let highlightedBirdRecordId = null;
   let selectedHistoryRecordId = null;
   let activeView = 'main';
+  let gpsWatchId = null;
+  let locationHintOverride = '';
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -128,10 +130,14 @@
     elements.startButton.addEventListener('click', () => {
       activeView = 'main';
       selectedHistoryRecordId = null;
+      locationHintOverride = '';
       session = stateTools.beginStartSelection(session);
       const point = config.defaultCenter;
       if (map) {
         map.setView([point.lat, point.lng], config.defaultZoom);
+      }
+      if (config.locationSource === 'gps') {
+        startGpsTracking();
       }
       render();
     });
@@ -144,17 +150,21 @@
 
     elements.finishDialog.addEventListener('close', () => {
       if (elements.finishDialog.returnValue === 'save') {
+        stopGpsTracking();
         session = stateTools.finishSession(session);
         highlightedBirdRecordId = null;
+        locationHintOverride = '';
         addFinishedSessionToHistory(session);
         persistSession(session);
       }
 
       if (elements.finishDialog.returnValue === 'abort') {
+        stopGpsTracking();
         session = stateTools.abortSession(session);
         highlightedBirdRecordId = null;
         selectedHistoryRecordId = null;
         activeView = 'main';
+        locationHintOverride = '';
         clearPersistedSession();
       }
 
@@ -173,6 +183,8 @@
       session = stateTools.createSession();
       highlightedBirdRecordId = null;
       activeView = 'main';
+      locationHintOverride = '';
+      stopGpsTracking();
       clearPersistedSession();
       render();
     });
@@ -288,6 +300,12 @@
 
   function handleMapClick(point) {
     if (session.state === stateTools.STATES.PICKING_START) {
+      if (config.locationSource === 'gps') {
+        locationHintOverride = config.mapInteraction.gpsPendingHint;
+        render();
+        return;
+      }
+
       session = stateTools.confirmStartPoint(session, point);
       persistSession(session);
       render();
@@ -299,6 +317,72 @@
       persistSession(session);
       render();
     }
+  }
+
+  function startGpsTracking() {
+    stopGpsTracking();
+    locationHintOverride = config.mapInteraction.gpsPendingHint;
+
+    if (!navigator.geolocation) {
+      showGpsError('无法获取定位：当前浏览器不支持 GPS。');
+      return;
+    }
+
+    gpsWatchId = navigator.geolocation.watchPosition(handleGpsPosition, handleGpsError, {
+      enableHighAccuracy: config.gps.enableHighAccuracy,
+      maximumAge: config.gps.maximumAgeMs,
+      timeout: config.gps.timeoutMs,
+    });
+  }
+
+  function stopGpsTracking() {
+    if (gpsWatchId === null || !navigator.geolocation) {
+      gpsWatchId = null;
+      return;
+    }
+
+    navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId = null;
+  }
+
+  function handleGpsPosition(position) {
+    const point = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      label: '当前位置',
+      timestamp: new Date(position.timestamp || Date.now()).toISOString(),
+    };
+
+    locationHintOverride = '';
+
+    if (session.state === stateTools.STATES.PICKING_START) {
+      session = stateTools.confirmStartPoint(session, point);
+      if (map) {
+        map.setView([point.lat, point.lng], config.defaultZoom);
+      }
+      persistSession(session);
+      render();
+      return;
+    }
+
+    if (session.state === stateTools.STATES.RECORDING && config.locationSource === 'gps') {
+      session = stateTools.addTrackPoint(session, point);
+      persistSession(session);
+      render();
+    }
+  }
+
+  function handleGpsError(error) {
+    const message = error && error.code === 1
+      ? '无法获取定位：定位权限被拒绝，请允许浏览器定位权限后重试。'
+      : '无法获取定位：请检查定位服务或稍后重试。';
+    showGpsError(message);
+  }
+
+  function showGpsError(message) {
+    stopGpsTracking();
+    locationHintOverride = message;
+    render();
   }
 
   function render() {
@@ -344,10 +428,12 @@
     if (isProfileView || isHistoryListView || isResultView) {
       elements.hintStrip.hidden = true;
     } else if (session.state === stateTools.STATES.PICKING_START) {
-      elements.hintStrip.textContent = config.mapInteraction.pickingHint;
+      elements.hintStrip.textContent = locationHintOverride ||
+        (config.locationSource === 'gps' ? config.mapInteraction.gpsPendingHint : config.mapInteraction.pickingHint);
       elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.RECORDING) {
-      elements.hintStrip.textContent = config.mapInteraction.recordingHint;
+      elements.hintStrip.textContent = locationHintOverride ||
+        (config.locationSource === 'gps' ? config.mapInteraction.gpsRecordingHint : config.mapInteraction.recordingHint);
       elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.FINISHED) {
       elements.hintStrip.hidden = true;

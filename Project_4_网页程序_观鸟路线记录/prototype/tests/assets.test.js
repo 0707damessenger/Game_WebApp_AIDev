@@ -52,3 +52,15 @@ test('hidden map fallback does not overlay the interactive map', () => {
   assert.equal(css.includes('.map-fallback[hidden]'), true);
   assert.equal(css.includes('display: none'), true);
 });
+
+test('gps location source is wired through browser geolocation APIs', () => {
+  const config = fs.readFileSync(path.join(prototypeRoot, 'js/config.js'), 'utf8');
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+
+  assert.equal(config.includes("locationSource: 'simulated'"), true);
+  assert.equal(app.includes("config.locationSource === 'gps'"), true);
+  assert.equal(app.includes('navigator.geolocation'), true);
+  assert.equal(app.includes('watchPosition'), true);
+  assert.equal(app.includes('clearWatch'), true);
+  assert.equal(app.includes('无法获取定位'), true);
+});
