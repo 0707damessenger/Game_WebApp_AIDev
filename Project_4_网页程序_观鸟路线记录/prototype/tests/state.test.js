@@ -231,3 +231,75 @@ test('history records can be found by id', () => {
   assert.deepEqual(state.findHistoryRecord(history, 'record-b'), history[1]);
   assert.equal(state.findHistoryRecord(history, 'record-missing'), null);
 });
+
+test('replaceHistoryRecord swaps a record by id while preserving list order', () => {
+  const a = { id: 'a', savedAt: '2026-06-10T03:00:00.000Z', summary: { totalBirds: 1 } };
+  const b = { id: 'b', savedAt: '2026-06-10T02:00:00.000Z', summary: { totalBirds: 2 } };
+  const history = [a, b];
+  const updatedB = { ...b, summary: { totalBirds: 9 } };
+
+  const next = state.replaceHistoryRecord(history, updatedB);
+
+  assert.deepEqual(next.map((record) => record.id), ['a', 'b']);
+  assert.equal(next[1].summary.totalBirds, 9);
+  assert.notEqual(next, history);
+});
+
+test('deleteHistoryRecord removes a record by id', () => {
+  const history = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+
+  const next = state.deleteHistoryRecord(history, 'b');
+
+  assert.deepEqual(next.map((record) => record.id), ['a', 'c']);
+});
+
+test('updateBirdRecordPosition moves only the targeted record position', () => {
+  const container = {
+    birdRecords: [
+      { id: 'a', speciesName: '白头鹎', count: 2, position: { lat: 31.2, lng: 121.4, label: '点A', timestamp: 't1' } },
+      { id: 'b', speciesName: '麻雀', count: 1, position: { lat: 31.3, lng: 121.5, label: '点B', timestamp: 't2' } },
+    ],
+  };
+
+  const next = state.updateBirdRecordPosition(container, 'a', { lat: 31.25, lng: 121.45 });
+
+  assert.equal(next.birdRecords[0].position.lat, 31.25);
+  assert.equal(next.birdRecords[0].position.lng, 121.45);
+  // 其余字段保留。
+  assert.equal(next.birdRecords[0].position.label, '点A');
+  assert.equal(next.birdRecords[0].speciesName, '白头鹎');
+  // 另一条不受影响。
+  assert.deepEqual(next.birdRecords[1].position, container.birdRecords[1].position);
+});
+
+test('recomputeResultSummary refreshes bird counts but preserves route metrics', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession(new Date('2026-06-10T01:00:00.000Z'))),
+    { lat: 31.2304, lng: 121.4737, label: '上海' },
+    new Date('2026-06-10T01:05:00.000Z'),
+  );
+  session = state.addTrackPoint(session, { lat: 31.231, lng: 121.4742 });
+  session = state.addBirdRecord(session, {
+    speciesName: '白头鹎', scientificName: 'Pycnonotus sinensis', count: 2,
+  }, new Date('2026-06-10T01:08:00.000Z'));
+  session = state.addBirdRecord(session, {
+    speciesName: '麻雀', scientificName: 'Passer montanus', count: 1,
+  }, new Date('2026-06-10T01:09:00.000Z'));
+  const finished = state.finishSession(session, new Date('2026-06-10T01:30:00.000Z'));
+  const result = state.createSessionResult(finished);
+
+  // 删除一条落点后重算概要。
+  const edited = {
+    ...result,
+    birdRecords: result.birdRecords.filter((record) => record.speciesName !== '麻雀'),
+  };
+  const recomputed = state.recomputeResultSummary(edited);
+
+  assert.equal(recomputed.summary.speciesCount, 1);
+  assert.equal(recomputed.summary.totalBirds, 2);
+  assert.equal(recomputed.summary.birdRecordCount, 1);
+  // 轨迹相关数值保持不变。
+  assert.equal(recomputed.summary.durationMinutes, 25);
+  assert.equal(recomputed.summary.distanceMeters, result.summary.distanceMeters);
+  assert.equal(recomputed.summary.trackPointCount, result.summary.trackPointCount);
+});
