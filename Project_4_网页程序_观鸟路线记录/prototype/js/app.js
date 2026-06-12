@@ -50,8 +50,21 @@
     resultListCount: document.querySelector('#resultListCount'),
     resultBirdList: document.querySelector('#resultBirdList'),
     returnHomeButton: document.querySelector('#returnHomeButton'),
+    shareButton: document.querySelector('#shareButton'),
+    shareDialog: document.querySelector('#shareDialog'),
+    shareCloseButton: document.querySelector('#shareCloseButton'),
+    shareRecordSummary: document.querySelector('#shareRecordSummary'),
+    shareServiceStatus: document.querySelector('#shareServiceStatus'),
+    copyShareLinkButton: document.querySelector('#copyShareLinkButton'),
     profilePanel: document.querySelector('#profilePanel'),
     historyEntryButton: document.querySelector('#historyEntryButton'),
+    importEntryButton: document.querySelector('#importEntryButton'),
+    importDialog: document.querySelector('#importDialog'),
+    importCloseButton: document.querySelector('#importCloseButton'),
+    importUrlInput: document.querySelector('#importUrlInput'),
+    importPreviewButton: document.querySelector('#importPreviewButton'),
+    importPreview: document.querySelector('#importPreview'),
+    importServiceStatus: document.querySelector('#importServiceStatus'),
     historyPanel: document.querySelector('#historyPanel'),
     historyCount: document.querySelector('#historyCount'),
     historyEmpty: document.querySelector('#historyEmpty'),
@@ -213,6 +226,14 @@
       render();
     });
 
+    elements.shareButton.addEventListener('click', () => {
+      openShareDialog();
+    });
+
+    elements.shareCloseButton.addEventListener('click', () => {
+      elements.shareDialog.close();
+    });
+
     elements.profileButton.addEventListener('click', () => {
       activeView = 'profile';
       selectedHistoryRecordId = null;
@@ -225,6 +246,18 @@
       selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
       render();
+    });
+
+    elements.importEntryButton.addEventListener('click', () => {
+      openImportDialog();
+    });
+
+    elements.importCloseButton.addEventListener('click', () => {
+      elements.importDialog.close();
+    });
+
+    elements.importPreviewButton.addEventListener('click', () => {
+      previewImportLink();
     });
 
     elements.profileBackButton.addEventListener('click', () => {
@@ -488,6 +521,7 @@
     elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
     elements.returnHomeButton.textContent = selectedHistoryRecordId ? '返回历史列表' : '返回主界面';
+    elements.shareButton.disabled = !result;
 
     if (result.birdRecords.length === 0) {
       const empty = document.createElement('p');
@@ -636,6 +670,69 @@
 
     renderBirdPointOverlay();
     renderResultView();
+  }
+
+  function openShareDialog() {
+    const result = getActiveResult();
+    if (!result) {
+      return;
+    }
+
+    renderShareDialog(result);
+
+    if (elements.shareDialog.showModal) {
+      elements.shareDialog.showModal();
+    }
+  }
+
+  function renderShareDialog(result) {
+    const title = document.createElement('strong');
+    title.textContent = selectedHistoryRecordId ? '历史记录分享' : '本次记录分享';
+
+    const meta = document.createElement('span');
+    meta.textContent = `${formatResultMeta(result)} · ${formatDuration(result.summary.durationMinutes)} · ${formatDistance(result.summary.distanceMeters)}`;
+
+    const metrics = document.createElement('span');
+    metrics.textContent = `${result.summary.speciesCount} 种 · ${result.summary.totalBirds} 只 · ${result.summary.birdRecordCount} 条鸟点`;
+
+    const birds = document.createElement('span');
+    birds.textContent = result.birdRecords.length
+      ? result.birdRecords.map((record) => `${record.speciesName} × ${record.count}`).join('、')
+      : '尚无鸟种记录';
+
+    elements.shareRecordSummary.replaceChildren(title, meta, metrics, birds);
+    elements.shareServiceStatus.textContent = config.shareImport.pendingServiceLabel;
+    elements.copyShareLinkButton.disabled = !config.shareImport.serviceEnabled;
+  }
+
+  function openImportDialog() {
+    elements.importUrlInput.value = '';
+    elements.importServiceStatus.textContent = config.shareImport.pendingServiceLabel;
+    elements.importPreview.textContent = '当前仅展示导入流程入口，真实链接解析与保存将在服务器服务接入后开放。';
+
+    if (elements.importDialog.showModal) {
+      elements.importDialog.showModal();
+      elements.importUrlInput.focus();
+    }
+  }
+
+  function previewImportLink() {
+    const preview = stateTools.previewSharedRecordImport(history, null, config.shareImport);
+    const url = elements.importUrlInput.value.trim();
+
+    elements.importServiceStatus.textContent = config.shareImport.pendingServiceLabel;
+
+    if (!url) {
+      elements.importPreview.textContent = '请先粘贴分享链接。真实链接解析服务接入后，可在这里预览路线摘要。';
+      return;
+    }
+
+    if (preview.status === 'serviceUnavailable') {
+      elements.importPreview.textContent = '服务器链接服务待接入，当前仅能预览导入入口，暂不能保存到历史记录。';
+      return;
+    }
+
+    elements.importPreview.textContent = '分享链接已读取，等待后续保存流程接入。';
   }
 
   function openBirdDialog(record = null) {

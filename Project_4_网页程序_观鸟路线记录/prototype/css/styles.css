@@ -646,6 +646,17 @@ button:disabled {
   box-shadow: var(--shadow);
 }
 
+.share-dialog,
+.import-dialog {
+  width: min(390px, calc(100vw - 28px));
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
 .bird-dialog {
   width: min(430px, 100vw);
   max-height: 88dvh;
@@ -673,11 +684,18 @@ button:disabled {
   backdrop-filter: blur(2px);
 }
 
+.share-dialog::backdrop,
+.import-dialog::backdrop {
+  background: rgba(20, 32, 28, 0.32);
+  backdrop-filter: blur(2px);
+}
+
 .bird-dialog::backdrop {
   background: rgba(20, 32, 28, 0.28);
   backdrop-filter: blur(2px);
 }
 
+.share-sheet,
 .bird-sheet {
   display: grid;
   gap: 12px;
@@ -774,6 +792,64 @@ button:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.share-summary,
+.import-preview,
+.privacy-note,
+.service-status {
+  margin: 0;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.share-summary {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  padding: 12px;
+  background: white;
+}
+
+.share-summary strong {
+  color: var(--leaf-deep);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.share-summary span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.privacy-note {
+  border: 1px solid rgba(173, 61, 49, 0.28);
+  padding: 11px 12px;
+  background: rgba(173, 61, 49, 0.08);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.service-status,
+.import-preview {
+  border: 1px solid var(--line);
+  padding: 11px 12px;
+  background: rgba(36, 107, 75, 0.08);
+  color: var(--leaf-deep);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.import-preview {
+  background: white;
+  color: var(--muted);
+  font-weight: 700;
 }
 
 .count-row {

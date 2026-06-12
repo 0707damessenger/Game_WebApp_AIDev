@@ -21,18 +21,8 @@ function project4PrototypeUrl() {
   return pathToFileURL(path.join(workspaceRoot, projectDir.name, 'prototype', 'index.html')).href;
 }
 
-async function mockTiandituTiles(page) {
-  await page.route('**/*.tianditu.gov.cn/**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'image/png',
-      body: TRANSPARENT_TILE,
-    });
-  });
-}
-
-test('Project 4 shows the saved current record result page', async ({ page }) => {
-  const sampleSession = {
+function sampleFinishedSession() {
+  return {
     state: 'finished',
     startedAt: '2026-06-10T01:05:00.000Z',
     endedAt: '2026-06-10T01:30:00.000Z',
@@ -57,6 +47,38 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
     distanceMeters: 152,
     createdAt: '2026-06-10T01:00:00.000Z',
   };
+}
+
+function sampleHistoryRecord() {
+  return {
+    ...sampleFinishedSession(),
+    id: 'history-2026-06-10-sample',
+    title: '本次记录',
+    savedAt: '2026-06-10T01:31:00.000Z',
+    summary: {
+      state: 'finished',
+      trackPointCount: 2,
+      birdRecordCount: 1,
+      speciesCount: 1,
+      totalBirds: 2,
+      distanceMeters: 152,
+      durationMinutes: 25,
+    },
+  };
+}
+
+async function mockTiandituTiles(page) {
+  await page.route('**/*.tianditu.gov.cn/**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/png',
+      body: TRANSPARENT_TILE,
+    });
+  });
+}
+
+test('Project 4 shows the saved current record result page', async ({ page }) => {
+  const sampleSession = sampleFinishedSession();
 
   await page.addInitScript((session) => {
     localStorage.setItem('bird-route-current-session', JSON.stringify(session));
@@ -72,12 +94,62 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
   await expect(page.locator('#resultSpecies')).toHaveText('1 种');
   await expect(page.locator('#resultBirdTotal')).toHaveText('2 只');
   await expect(page.locator('#resultBirdList')).toContainText('白头鹎 × 2');
-  await expect(page.locator('#sharePlaceholderButton')).toBeDisabled();
+  await expect(page.locator('#shareButton')).toBeEnabled();
+  await page.locator('#shareButton').click();
+  await expect(page.locator('#shareDialog')).toBeVisible();
+  await expect(page.locator('#shareDialog')).toContainText('完整路线和鸟点位置');
+  await expect(page.locator('#shareServiceStatus')).toContainText('服务器链接服务待接入');
+  await page.locator('#shareCloseButton').click();
 
   await page.locator('.result-bird-item').click();
 
   await expect(page.locator('.result-bird-item.is-highlighted')).toHaveCount(1);
   await expect(page.locator('.bird-point-button.is-highlighted')).toHaveCount(1);
+});
+
+test('Project 4 can open the share skeleton from a history record result page', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#historyEntryButton').click();
+  await expect(page.locator('#historyCount')).toHaveText('1 条');
+  await page.locator('.history-item').click();
+
+  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+  await expect(page.locator('#shareButton')).toBeEnabled();
+  await page.locator('#shareButton').click();
+  await expect(page.locator('#shareDialog')).toBeVisible();
+  await expect(page.locator('#shareRecordSummary')).toContainText('白头鹎');
+  await expect(page.locator('#shareServiceStatus')).toContainText('服务器链接服务待接入');
+});
+
+test('Project 4 import entry shows pending service state without adding history', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#importEntryButton').click();
+  await expect(page.locator('#importDialog')).toBeVisible();
+  await page.locator('#importUrlInput').fill('https://bird-route.example/share/demo');
+  await page.locator('#importPreviewButton').click();
+
+  await expect(page.locator('#importServiceStatus')).toContainText('服务器链接服务待接入');
+  await expect(page.locator('#importPreview')).toContainText('暂不能保存');
+
+  const historyCount = await page.evaluate(() => {
+    const history = JSON.parse(localStorage.getItem('bird-route-history') || '[]');
+    return history.length;
+  });
+  expect(historyCount).toBe(1);
 });
 
 test('Project 4 searches the expanded bird catalog while adding a bird record', async ({ page }) => {

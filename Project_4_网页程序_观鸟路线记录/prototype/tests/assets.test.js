@@ -37,11 +37,12 @@ test('finished record result view is available in the prototype shell', () => {
   assert.equal(html.includes('id="resultSummary"'), true);
   assert.equal(html.includes('id="resultBirdList"'), true);
   assert.equal(html.includes('id="returnHomeButton"'), true);
-  assert.equal(html.includes('id="sharePlaceholderButton"'), true);
-  assert.equal(html.includes('分享（后续模块）'), true);
+  assert.equal(html.includes('id="shareButton"'), true);
+  assert.equal(html.includes('id="shareDialog"'), true);
+  assert.equal(html.includes('id="shareServiceStatus"'), true);
 });
 
-test('profile entry and standalone history list page are available in the prototype shell', () => {
+test('profile entry, import entry, and standalone history list page are available in the prototype shell', () => {
   const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
   const profilePanel = html.slice(
     html.indexOf('id="profilePanel"'),
@@ -51,6 +52,10 @@ test('profile entry and standalone history list page are available in the protot
   assert.equal(html.includes('id="profileButton"'), true);
   assert.equal(html.includes('id="profilePanel"'), true);
   assert.equal(html.includes('id="historyEntryButton"'), true);
+  assert.equal(html.includes('id="importEntryButton"'), true);
+  assert.equal(html.includes('id="importDialog"'), true);
+  assert.equal(html.includes('id="importPreviewButton"'), true);
+  assert.equal(html.includes('id="importServiceStatus"'), true);
   assert.equal(html.includes('id="historyPanel"'), true);
   assert.equal(html.includes('id="historyBackButton"'), true);
   assert.equal(html.includes('id="historyList"'), true);
@@ -118,12 +123,32 @@ test('map tile source configuration defaults to Tianditu with OpenStreetMap fall
   assert.equal(config.providers.osm.layers.length, 1);
 });
 
+test('share and import configuration reserves server-link service while disabled', () => {
+  const config = loadConfig();
+
+  assert.equal(typeof config.shareImport, 'object');
+  assert.equal(config.shareImport.serviceEnabled, false);
+  assert.equal(config.shareImport.duplicateStrategy, 'openExisting');
+  assert.equal(config.shareImport.sharedLocationScope, 'fullRoute');
+  assert.equal(typeof config.shareImport.pendingServiceLabel, 'string');
+  assert.notEqual(config.shareImport.pendingServiceLabel.trim(), '');
+});
+
 test('map initialization reads tile layers from the active provider', () => {
   const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
 
   assert.equal(app.includes('config.tileLayer.url'), false);
   assert.equal(app.includes('getActiveTileProvider'), true);
   assert.equal(app.includes('createTileLayerUrl'), true);
+});
+
+test('design documents lock duplicate import as open existing without duplicate saves', () => {
+  const design = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/design.md'), 'utf8');
+  const exploration = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/exploration.md'), 'utf8');
+
+  assert.equal(design.includes('重复导入时不新增副本'), true);
+  assert.equal(design.includes('打开已有记录'), true);
+  assert.equal(exploration.includes('服务器短链接'), true);
 });
 
 test('bird catalog contains the expanded national formal checklist data', () => {

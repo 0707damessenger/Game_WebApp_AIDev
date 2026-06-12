@@ -83,7 +83,7 @@
 
           <div class="result-actions">
             <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
-            <button id="sharePlaceholderButton" class="ghost-button compact" type="button" disabled>分享（后续模块）</button>
+            <button id="shareButton" class="ghost-button compact" type="button">分享</button>
           </div>
         </section>
 
@@ -97,6 +97,11 @@
           <button id="historyEntryButton" class="profile-entry-button" type="button">
             <strong>历史记录</strong>
             <span>查看已保存的观鸟路线</span>
+          </button>
+
+          <button id="importEntryButton" class="profile-entry-button" type="button">
+            <strong>导入分享链接</strong>
+            <span>预览他人分享的观鸟路线</span>
           </button>
 
           <section class="profile-placeholder-section" aria-label="后续个人功能">
@@ -142,6 +147,35 @@
             <button class="ghost-button compact" value="continue" type="submit">继续记录</button>
           </div>
         </form>
+      </dialog>
+
+      <dialog id="shareDialog" class="share-dialog">
+        <section class="share-sheet">
+          <header class="sheet-header">
+            <h2>分享记录</h2>
+            <button id="shareCloseButton" class="ghost-button compact sheet-close" type="button">关闭</button>
+          </header>
+
+          <div id="shareRecordSummary" class="share-summary" aria-label="分享记录摘要"></div>
+          <p class="privacy-note">分享将包含完整路线和鸟点位置。若路线涉及敏感地点，请等待后续隐私选项接入后再分享。</p>
+          <p id="shareServiceStatus" class="service-status">服务器链接服务待接入</p>
+          <button id="copyShareLinkButton" class="ghost-button" type="button" disabled>复制分享链接（待接入）</button>
+        </section>
+      </dialog>
+
+      <dialog id="importDialog" class="import-dialog">
+        <section class="share-sheet">
+          <header class="sheet-header">
+            <h2>导入分享链接</h2>
+            <button id="importCloseButton" class="ghost-button compact sheet-close" type="button">关闭</button>
+          </header>
+
+          <label class="field-label" for="importUrlInput">分享链接</label>
+          <input id="importUrlInput" class="text-field" type="url" inputmode="url" autocomplete="off" placeholder="粘贴观鸟路线分享链接">
+          <button id="importPreviewButton" class="primary-button" type="button">预览导入内容</button>
+          <p id="importServiceStatus" class="service-status">服务器链接服务待接入</p>
+          <div id="importPreview" class="import-preview">当前仅展示导入流程入口，真实链接解析与保存将在服务器服务接入后开放。</div>
+        </section>
       </dialog>
 
       <dialog id="birdDialog" class="bird-dialog">

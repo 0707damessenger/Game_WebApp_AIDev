@@ -231,3 +231,34 @@ test('history records can be found by id', () => {
   assert.deepEqual(state.findHistoryRecord(history, 'record-b'), history[1]);
   assert.equal(state.findHistoryRecord(history, 'record-missing'), null);
 });
+
+test('disabled share import service does not append imported records', () => {
+  const history = [{ id: 'record-existing', title: '已有记录' }];
+  const incoming = { id: 'record-shared', title: '分享记录' };
+
+  const preview = state.previewSharedRecordImport(history, incoming, {
+    serviceEnabled: false,
+    duplicateStrategy: 'openExisting',
+  });
+
+  assert.equal(preview.status, 'serviceUnavailable');
+  assert.equal(preview.record, null);
+  assert.equal(preview.duplicateRecord, null);
+  assert.deepEqual(preview.history, history);
+  assert.equal(history.length, 1);
+});
+
+test('duplicate shared record resolves to existing history record without adding a copy', () => {
+  const existing = { id: 'record-shared', title: '已有分享记录' };
+  const incoming = { id: 'record-shared', title: '再次导入的分享记录' };
+
+  const preview = state.previewSharedRecordImport([existing], incoming, {
+    serviceEnabled: true,
+    duplicateStrategy: 'openExisting',
+  });
+
+  assert.equal(preview.status, 'duplicate');
+  assert.deepEqual(preview.duplicateRecord, existing);
+  assert.equal(preview.record, null);
+  assert.deepEqual(preview.history, [existing]);
+});

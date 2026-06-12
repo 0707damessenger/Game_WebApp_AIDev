@@ -44,6 +44,12 @@ window.CONFIG = {
   },
   storageKey: 'bird-route-current-session',
   historyStorageKey: 'bird-route-history',
+  shareImport: {
+    serviceEnabled: false,
+    duplicateStrategy: 'openExisting',
+    sharedLocationScope: 'fullRoute',
+    pendingServiceLabel: '服务器链接服务待接入',
+  },
   mapInteraction: {
     pickingHint: '点击地图确认起点',
     recordingHint: '开发模式：点击地图模拟行走轨迹',

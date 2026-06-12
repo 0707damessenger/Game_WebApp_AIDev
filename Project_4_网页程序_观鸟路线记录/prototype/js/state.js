@@ -213,6 +213,49 @@
     return history.find((record) => record && record.id === id) || null;
   }
 
+  function previewSharedRecordImport(history, sharedRecord, options = {}) {
+    const currentHistory = Array.isArray(history) ? [...history] : [];
+    const serviceEnabled = Boolean(options.serviceEnabled);
+
+    if (!serviceEnabled) {
+      return {
+        status: 'serviceUnavailable',
+        history: currentHistory,
+        record: null,
+        duplicateRecord: null,
+      };
+    }
+
+    if (!sharedRecord || !sharedRecord.id) {
+      return {
+        status: 'invalid',
+        history: currentHistory,
+        record: null,
+        duplicateRecord: null,
+      };
+    }
+
+    const duplicateRecord = options.duplicateStrategy === 'openExisting'
+      ? findHistoryRecord(currentHistory, sharedRecord.id)
+      : null;
+
+    if (duplicateRecord) {
+      return {
+        status: 'duplicate',
+        history: currentHistory,
+        record: null,
+        duplicateRecord,
+      };
+    }
+
+    return {
+      status: 'ready',
+      history: currentHistory,
+      record: sharedRecord,
+      duplicateRecord: null,
+    };
+  }
+
   function historyRecordId(result) {
     const start = result.startedAt || 'unknown-start';
     const end = result.endedAt || 'unknown-end';
@@ -258,6 +301,7 @@
     createHistoryRecord,
     addHistoryRecord,
     findHistoryRecord,
+    previewSharedRecordImport,
     distanceBetween,
   };
 
