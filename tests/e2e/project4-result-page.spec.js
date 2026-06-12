@@ -168,6 +168,255 @@ test('Project 4 renders a user bird note as literal text, never as HTML', async 
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
 });
 
+function sampleHistoryRecord() {
+  return {
+    id: 'history-edit-1',
+    title: '本次记录',
+    startedAt: '2026-06-09T01:05:00.000Z',
+    endedAt: '2026-06-09T01:30:00.000Z',
+    savedAt: '2026-06-09T01:31:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-09T01:05:00.000Z' },
+    currentPoint: { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-09T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
+    ],
+    birdRecords: [
+      {
+        id: 'bird-h-1', speciesName: '白头鹎', scientificName: 'Pycnonotus sinensis',
+        count: 2, tags: ['成鸟'], note: '树梢',
+        position: { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
+        createdAt: '2026-06-09T01:08:00.000Z',
+      },
+    ],
+    summary: {
+      state: 'finished', trackPointCount: 2, birdRecordCount: 1,
+      speciesCount: 1, totalBirds: 2, distanceMeters: 152, durationMinutes: 25,
+    },
+  };
+}
+
+async function openHistoryRecordForEditing(page) {
+  await page.locator('#profileButton').click();
+  await page.locator('#historyEntryButton').click();
+  await page.locator('.history-item').click();
+  await expect(page.locator('#resultPanel')).toBeVisible();
+  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+}
+
+async function enterEditMode(page) {
+  await openHistoryRecordForEditing(page);
+  await page.locator('#historyEditButton').click();
+  await expect(page.locator('#historyEditBar')).toBeVisible();
+  await expect(page.locator('#resultPanel')).toBeHidden();
+}
+
+test('Project 4 edits a bird record inside a saved history entry and persists it', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await enterEditMode(page);
+
+  // 编辑态为地图为主：点选地图上的落点打开编辑弹层。
+  await page.locator('.bird-point-button').click();
+  await expect(page.locator('#birdDialog')).toBeVisible();
+  await page.locator('#birdCountPlus').click(); // 2 -> 3
+  await page.locator('#birdSubmitButton').click();
+
+  await page.locator('#historySaveButton').click();
+  await expect(page.locator('#resultPanel')).toBeVisible();
+  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+  await expect(page.locator('#resultBirdTotal')).toHaveText('3 只');
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted[0].birdRecords[0].count).toBe(3);
+  expect(persisted[0].summary.totalBirds).toBe(3);
+});
+
+test('Project 4 discards history edits when the user cancels', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await enterEditMode(page);
+
+  await page.locator('.bird-point-button').click();
+  await page.locator('#birdDeleteButton').click();
+  await expect(page.locator('.bird-point-button')).toHaveCount(0);
+
+  await page.locator('#historyCancelButton').click();
+
+  // 取消后还原为编辑前内容，且本地存储未被改动。
+  await expect(page.locator('#resultPanel')).toBeVisible();
+  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+  await expect(page.locator('#resultBirdTotal')).toHaveText('2 只');
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted[0].birdRecords).toHaveLength(1);
+  expect(persisted[0].summary.totalBirds).toBe(2);
+});
+
+test('Project 4 snaps a dragged bird point onto the route while editing', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await enterEditMode(page);
+
+  const point = page.locator('.bird-point-button.is-draggable');
+  await expect(point).toHaveCount(1);
+  const box = await point.boundingBox();
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+
+  // 拖到明显偏离当前落点的位置。
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX - 90, startY - 70, { steps: 10 });
+  await page.mouse.up();
+
+  await page.locator('#historySaveButton').click();
+  await expect(page.locator('#resultPanel')).toBeVisible();
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  const moved = persisted[0].birdRecords[0].position;
+  const a = { lat: 31.2304, lng: 121.4737 };
+  const b = { lat: 31.231, lng: 121.4742 };
+
+  // 位置已改变。
+  expect(moved.lat !== b.lat || moved.lng !== b.lng).toBe(true);
+  // 仍落在路线（A-B 线段）上：位于线段 bbox 内（容差远小于线段长度，仅吸收端点像素取整），
+  // 且与 A-B 近似共线。
+  const tol = 1e-4;
+  expect(moved.lat).toBeGreaterThanOrEqual(Math.min(a.lat, b.lat) - tol);
+  expect(moved.lat).toBeLessThanOrEqual(Math.max(a.lat, b.lat) + tol);
+  expect(moved.lng).toBeGreaterThanOrEqual(Math.min(a.lng, b.lng) - tol);
+  expect(moved.lng).toBeLessThanOrEqual(Math.max(a.lng, b.lng) + tol);
+  const cross = (b.lat - a.lat) * (moved.lng - a.lng) - (b.lng - a.lng) * (moved.lat - a.lat);
+  expect(Math.abs(cross)).toBeLessThan(1e-6);
+});
+
+async function abortAllTiles(page) {
+  await page.route('**/*.tianditu.gov.cn/**', (route) => route.abort());
+  await page.route('**/*tile.openstreetmap.org/**', (route) => route.abort());
+}
+
+test('Project 4 keeps history bird points draggable even when map tiles fail', async ({ page }) => {
+  await page.addInitScript((record) => {
+    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+  }, sampleHistoryRecord());
+
+  // 瓦片全部失败（占位 Key 的真实桌面情形）——地图仍可交互，落点仍走真实坐标。
+  await abortAllTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await enterEditMode(page);
+
+  const point = page.locator('.bird-point-button.is-draggable');
+  await expect(point).toHaveCount(1);
+  const box = await point.boundingBox();
+  const startX = box.x + box.width / 2;
+  const startY = box.y + box.height / 2;
+
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  await page.mouse.move(startX - 90, startY - 70, { steps: 10 });
+  await page.mouse.up();
+
+  await page.locator('#historySaveButton').click();
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  const moved = persisted[0].birdRecords[0].position;
+  const b = { lat: 31.231, lng: 121.4742 };
+  expect(moved.lat !== b.lat || moved.lng !== b.lng).toBe(true);
+});
+
+test('Project 4 keeps recording bird points following the map when tiles fail', async ({ page }) => {
+  const recordingSession = {
+    state: 'recording',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    ],
+    birdRecords: [
+      {
+        id: 'bird-r-1', speciesName: '白头鹎', scientificName: 'Pycnonotus sinensis',
+        count: 1, tags: [], note: '',
+        position: { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+        createdAt: '2026-06-10T01:08:00.000Z',
+      },
+    ],
+    distanceMeters: 152,
+    createdAt: '2026-06-10T01:00:00.000Z',
+  };
+
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, recordingSession);
+  await abortAllTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  const point = page.locator('.bird-point-button');
+  await expect(point).toHaveCount(1);
+  const before = await point.boundingBox();
+
+  // 在地图空白处平移：落点应在拖动过程中（鼠标仍按下）就实时跟随，而非松手才瞬移。
+  await page.mouse.move(200, 250);
+  await page.mouse.down();
+  await page.mouse.move(110, 250, { steps: 10 });
+
+  await expect.poll(async () => {
+    const box = await point.boundingBox();
+    return box ? Math.abs(box.x - before.x) : 0;
+  }).toBeGreaterThan(20);
+
+  await page.mouse.up();
+});
+
+test('Project 4 deletes a whole history record only after confirmation', async ({ page }) => {
+  const recordA = { ...sampleHistoryRecord(), id: 'history-a', savedAt: '2026-06-09T02:00:00.000Z' };
+  const recordB = { ...sampleHistoryRecord(), id: 'history-b', savedAt: '2026-06-09T01:00:00.000Z' };
+
+  await page.addInitScript((records) => {
+    localStorage.setItem('bird-route-history', JSON.stringify(records));
+  }, [recordA, recordB]);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#historyEntryButton').click();
+  await expect(page.locator('.history-item')).toHaveCount(2);
+
+  // 取消时不删除。
+  await page.locator('.history-item').first().locator('.history-delete').click();
+  await expect(page.locator('#deleteHistoryDialog')).toBeVisible();
+  await page.locator('#deleteHistoryDialog button[value="cancel"]').click();
+  await expect(page.locator('.history-item')).toHaveCount(2);
+
+  // 确认后删除该条。
+  await page.locator('.history-item').first().locator('.history-delete').click();
+  await page.locator('#deleteHistoryDialog button[value="delete"]').click();
+  await expect(page.locator('.history-item')).toHaveCount(1);
+  await expect(page.locator('#historyCount')).toHaveText('1 条');
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted).toHaveLength(1);
+  expect(persisted[0].id).toBe('history-b');
+});
+
 test('Project 4 loads Tianditu tile layers by default', async ({ page }) => {
   const tileRequests = [];
 
