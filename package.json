@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "node --test \"Project_4_网页程序_观鸟路线记录/prototype/tests/*.test.js\"",
+    "test:unit": "node --test \"Project_4_网页程序_观鸟路线记录/prototype/tests\"",
     "test:e2e": "playwright test"
   },
   "repository": {
