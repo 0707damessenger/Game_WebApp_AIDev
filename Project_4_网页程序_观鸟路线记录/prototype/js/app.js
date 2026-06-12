@@ -674,7 +674,13 @@
       if (birdDraft.selectedBird && birdDraft.selectedBird.name === bird.name) {
         button.classList.add('is-selected');
       }
-      button.innerHTML = `<strong>${bird.name}</strong><span>${bird.scientificName}</span>`;
+
+      const name = document.createElement('strong');
+      name.textContent = bird.name;
+      const scientific = document.createElement('span');
+      scientific.textContent = bird.scientificName;
+      button.append(name, scientific);
+
       button.addEventListener('click', () => {
         birdDraft.selectedBird = bird;
         renderBirdResults(elements.birdSearchInput.value);
@@ -766,6 +772,7 @@
     }
 
     const mapSource = getMapSource();
+    const isResultView = Boolean(getActiveResult());
     const latLngs = mapSource.track.map((point) => [point.lat, point.lng]);
     const startPoint = mapSource.startPoint;
     const currentPoint = mapSource.currentPoint || mapSource.track[mapSource.track.length - 1] || null;
@@ -810,12 +817,20 @@
       currentMarker.setLatLng([currentPoint.lat, currentPoint.lng]);
     }
 
-    if (latLngs.length > 1) {
-      map.fitBounds(routeLayer.getBounds(), {
-        paddingTopLeft: [28, 96],
-        paddingBottomRight: [28, 128],
-        maxZoom: config.defaultZoom,
-      });
+    if (isResultView) {
+      // 结果页 / 历史查看：一次性框选完整轨迹，方便概览全程。
+      if (latLngs.length > 1) {
+        map.fitBounds(routeLayer.getBounds(), {
+          paddingTopLeft: [28, 96],
+          paddingBottomRight: [28, 128],
+          maxZoom: config.defaultZoom,
+        });
+      } else if (latLngs.length === 1) {
+        map.setView(latLngs[0], config.defaultZoom);
+      }
+    } else if (session.state === stateTools.STATES.RECORDING && currentPoint) {
+      // 记录中：跟随当前位置但保持用户当前缩放级别，避免每加一个轨迹点就自动缩放。
+      map.panTo([currentPoint.lat, currentPoint.lng], { animate: false });
     }
   }
 
@@ -985,7 +1000,13 @@
       button.className = 'bird-point-list-button';
       const tags = record.tags.length ? ` · ${record.tags.join('、')}` : '';
       const note = record.note ? ` · ${record.note}` : '';
-      button.innerHTML = `<strong>${record.speciesName} × ${record.count}</strong><span>${record.scientificName}${tags}${note}</span>`;
+
+      const title = document.createElement('strong');
+      title.textContent = `${record.speciesName} × ${record.count}`;
+      const detail = document.createElement('span');
+      detail.textContent = `${record.scientificName}${tags}${note}`;
+      button.append(title, detail);
+
       button.addEventListener('click', () => {
         elements.birdPointDialog.close();
         openBirdDialog(record);

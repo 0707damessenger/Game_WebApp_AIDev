@@ -125,6 +125,49 @@ test('Project 4 searches the expanded bird catalog while adding a bird record', 
   await expect(page.locator('.bird-point-button')).toHaveCount(1);
 });
 
+test('Project 4 renders a user bird note as literal text, never as HTML', async ({ page }) => {
+  const sharedPosition = { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' };
+  const maliciousNote = '<img src=x onerror="window.__xss=1">树梢';
+  const recordingSession = {
+    state: 'recording',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: sharedPosition,
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      sharedPosition,
+    ],
+    // 两条落点位置完全相同，会聚合成一个组合点，点选后进入预览列表。
+    birdRecords: [
+      {
+        id: 'bird-test-1', speciesName: '白头鹎', scientificName: 'Pycnonotus sinensis',
+        count: 2, tags: ['成鸟'], note: maliciousNote, position: sharedPosition, createdAt: '2026-06-10T01:08:00.000Z',
+      },
+      {
+        id: 'bird-test-2', speciesName: '麻雀', scientificName: 'Passer montanus',
+        count: 1, tags: [], note: '', position: sharedPosition, createdAt: '2026-06-10T01:09:00.000Z',
+      },
+    ],
+    distanceMeters: 152,
+    createdAt: '2026-06-10T01:00:00.000Z',
+  };
+
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, recordingSession);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('.bird-point-button.is-grouped').click();
+  await expect(page.locator('#birdPointDialog')).toBeVisible();
+
+  // 备注按字面文本展示，且不会被解析为 HTML 元素或触发脚本。
+  await expect(page.locator('#birdPointList')).toContainText(maliciousNote);
+  await expect(page.locator('#birdPointList img')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__xss)).toBeUndefined();
+});
+
 test('Project 4 loads Tianditu tile layers by default', async ({ page }) => {
   const tileRequests = [];
 
