@@ -14,9 +14,13 @@
   let birdDraft = createBirdDraft();
   let highlightedBirdRecordId = null;
   let selectedHistoryRecordId = null;
+  let historyEditMode = false;
+  let historyDraft = null;
   let activeView = 'main';
   let gpsWatchId = null;
   let locationHintOverride = '';
+  let pendingDeleteHistoryId = null;
+  let birdPointGroups = [];
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -49,6 +53,11 @@
     resultBirdTotal: document.querySelector('#resultBirdTotal'),
     resultListCount: document.querySelector('#resultListCount'),
     resultBirdList: document.querySelector('#resultBirdList'),
+    historyEditBar: document.querySelector('#historyEditBar'),
+    historyEditButton: document.querySelector('#historyEditButton'),
+    historySaveButton: document.querySelector('#historySaveButton'),
+    historyCancelButton: document.querySelector('#historyCancelButton'),
+    sharePlaceholderButton: document.querySelector('#sharePlaceholderButton'),
     returnHomeButton: document.querySelector('#returnHomeButton'),
     shareButton: document.querySelector('#shareButton'),
     shareDialog: document.querySelector('#shareDialog'),
@@ -83,6 +92,7 @@
     birdNoteInput: document.querySelector('#birdNoteInput'),
     birdSubmitButton: document.querySelector('#birdSubmitButton'),
     birdDeleteButton: document.querySelector('#birdDeleteButton'),
+    deleteHistoryDialog: document.querySelector('#deleteHistoryDialog'),
     birdPointDialog: document.querySelector('#birdPointDialog'),
     birdPointCloseButton: document.querySelector('#birdPointCloseButton'),
     birdPointList: document.querySelector('#birdPointList'),
@@ -124,9 +134,9 @@
       });
 
       tileLayer.on('tileerror', () => {
-        enableStageFallbackClick();
-        render();
-        elements.hintStrip.textContent = `${tileProvider.errorHint} 仍可点击地图区域继续测试流程。`;
+        // 瓦片加载失败时地图仍可交互（灰底），点选、缩放、落点投影都走真实地图坐标，
+        // 不再切到伪坐标兜底，只提示底图缺失。
+        elements.hintStrip.textContent = tileProvider.errorHint;
         elements.hintStrip.hidden = false;
       });
 
@@ -208,10 +218,37 @@
       render();
     });
 
+    elements.historyEditButton.addEventListener('click', () => {
+      enterHistoryEditMode();
+    });
+
+    elements.historySaveButton.addEventListener('click', () => {
+      saveHistoryEdits();
+    });
+
+    elements.historyCancelButton.addEventListener('click', () => {
+      cancelHistoryEdits();
+    });
+
+    elements.deleteHistoryDialog.addEventListener('close', () => {
+      const recordId = pendingDeleteHistoryId;
+      pendingDeleteHistoryId = null;
+
+      if (elements.deleteHistoryDialog.returnValue !== 'delete' || !recordId) {
+        return;
+      }
+
+      history = stateTools.deleteHistoryRecord(history, recordId);
+      persistHistory(history);
+      render();
+    });
+
     elements.returnHomeButton.addEventListener('click', () => {
       if (selectedHistoryRecordId) {
         selectedHistoryRecordId = null;
         highlightedBirdRecordId = null;
+        historyEditMode = false;
+        historyDraft = null;
         activeView = 'historyList';
         render();
         return;
@@ -348,7 +385,13 @@
         });
       });
 
-      map.on('zoomend moveend', () => {
+      // 平移/缩放过程中只移动已有落点（不重建 DOM），让落点实时跟随地图。
+      map.on('move zoom', () => {
+        repositionBirdPointOverlay();
+      });
+
+      // 平移/缩放结束后重建一次：缩放可能改变近点聚合，需要重新分组。
+      map.on('moveend zoomend', () => {
         renderBirdPointOverlay();
       });
     }
@@ -473,6 +516,14 @@
     elements.mapStage.classList.toggle('is-result-mode', isResultView);
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
+    const inHistoryEdit = isHistoryResult && historyEditMode;
+    // 编辑态采用「地图为主」布局：隐藏底部结果面板，改用顶部窄条承载保存/取消，
+    // 让整张地图都可用于点选与拖动落点。
+    elements.resultPanel.hidden = !isResultView || inHistoryEdit;
+    elements.historyEditBar.hidden = !inHistoryEdit;
+    elements.historyEditButton.hidden = !(isHistoryResult && !historyEditMode);
+    elements.mapStage.classList.toggle('is-history-edit', inHistoryEdit);
+
     if (!isProfileView && !isHistoryListView && !isResultView && canUseSimulatedFallbackStart()) {
       elements.addBirdButton.textContent = '使用测试起点';
       elements.addBirdButton.disabled = false;
@@ -513,7 +564,9 @@
       return;
     }
 
-    elements.resultTitle.textContent = selectedHistoryRecordId ? '历史记录' : result.title;
+    elements.resultTitle.textContent = isEditingHistory()
+      ? '编辑历史记录'
+      : selectedHistoryRecordId ? '历史记录' : result.title;
     elements.resultMeta.textContent = formatResultMeta(result);
     elements.resultDuration.textContent = formatDuration(result.summary.durationMinutes);
     elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
@@ -545,7 +598,11 @@
 
       button.append(title, detail);
       button.addEventListener('click', () => {
-        focusBirdRecord(record);
+        if (isEditingHistory()) {
+          openBirdDialog(record);
+        } else {
+          focusBirdRecord(record);
+        }
       });
 
       return button;
@@ -562,9 +619,12 @@
     }
 
     elements.historyList.replaceChildren(...history.map((record) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'history-item';
+      const item = document.createElement('div');
+      item.className = 'history-item';
+
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'history-open';
 
       const title = document.createElement('strong');
       title.textContent = formatResultMeta(record);
@@ -580,26 +640,84 @@
         `${record.summary.speciesCount} 种`,
         `${record.summary.totalBirds} 只`,
       ].forEach((text) => {
-        const item = document.createElement('em');
-        item.textContent = text;
-        metrics.appendChild(item);
+        const metric = document.createElement('em');
+        metric.textContent = text;
+        metrics.appendChild(metric);
       });
 
-      button.append(title, detail, metrics);
-      button.addEventListener('click', () => {
+      open.append(title, detail, metrics);
+      open.addEventListener('click', () => {
         openHistoryRecord(record.id);
       });
 
-      return button;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'history-delete';
+      remove.textContent = '删除';
+      remove.addEventListener('click', () => {
+        requestDeleteHistoryRecord(record.id);
+      });
+
+      item.append(open, remove);
+      return item;
     }));
+  }
+
+  function requestDeleteHistoryRecord(recordId) {
+    pendingDeleteHistoryId = recordId;
+    if (elements.deleteHistoryDialog.showModal) {
+      elements.deleteHistoryDialog.showModal();
+    }
   }
 
   function getActiveResult() {
     if (selectedHistoryRecordId) {
+      if (isEditingHistory()) {
+        return historyDraft;
+      }
+
       return stateTools.findHistoryRecord(history, selectedHistoryRecordId);
     }
 
     return stateTools.createSessionResult(session);
+  }
+
+  function isEditingHistory() {
+    return Boolean(historyEditMode && historyDraft);
+  }
+
+  function enterHistoryEditMode() {
+    const record = stateTools.findHistoryRecord(history, selectedHistoryRecordId);
+    if (!record) {
+      return;
+    }
+
+    // 克隆一份草稿，所有改动只作用于草稿，保存前不影响已存历史。
+    historyDraft = JSON.parse(JSON.stringify(record));
+    historyEditMode = true;
+    highlightedBirdRecordId = null;
+    render();
+  }
+
+  function saveHistoryEdits() {
+    if (!isEditingHistory()) {
+      return;
+    }
+
+    const updated = stateTools.recomputeResultSummary(historyDraft);
+    history = stateTools.replaceHistoryRecord(history, updated);
+    persistHistory(history);
+    historyEditMode = false;
+    historyDraft = null;
+    highlightedBirdRecordId = null;
+    render();
+  }
+
+  function cancelHistoryEdits() {
+    historyEditMode = false;
+    historyDraft = null;
+    highlightedBirdRecordId = null;
+    render();
   }
 
   function getMapSource() {
@@ -619,6 +737,8 @@
 
     selectedHistoryRecordId = record.id;
     highlightedBirdRecordId = null;
+    historyEditMode = false;
+    historyDraft = null;
     activeView = 'historyResult';
     render();
   }
@@ -771,7 +891,13 @@
       if (birdDraft.selectedBird && birdDraft.selectedBird.name === bird.name) {
         button.classList.add('is-selected');
       }
-      button.innerHTML = `<strong>${bird.name}</strong><span>${bird.scientificName}</span>`;
+
+      const name = document.createElement('strong');
+      name.textContent = bird.name;
+      const scientific = document.createElement('span');
+      scientific.textContent = bird.scientificName;
+      button.append(name, scientific);
+
       button.addEventListener('click', () => {
         birdDraft.selectedBird = bird;
         renderBirdResults(elements.birdSearchInput.value);
@@ -808,6 +934,17 @@
       note: elements.birdNoteInput.value.trim(),
     };
 
+    if (isEditingHistory()) {
+      // 历史编辑：只改草稿中已有的落点，并即时重算概要以便界面同步更新。
+      if (birdDraft.editingRecordId) {
+        historyDraft = stateTools.updateBirdRecord(historyDraft, birdDraft.editingRecordId, payload);
+        historyDraft = stateTools.recomputeResultSummary(historyDraft);
+      }
+      elements.birdDialog.close();
+      render();
+      return;
+    }
+
     session = birdDraft.editingRecordId
       ? stateTools.updateBirdRecord(session, birdDraft.editingRecordId, payload)
       : stateTools.addBirdRecord(session, payload);
@@ -825,10 +962,19 @@
       return;
     }
 
-    session = stateTools.deleteBirdRecord(session, birdDraft.editingRecordId);
     if (highlightedBirdRecordId === birdDraft.editingRecordId) {
       highlightedBirdRecordId = null;
     }
+
+    if (isEditingHistory()) {
+      historyDraft = stateTools.deleteBirdRecord(historyDraft, birdDraft.editingRecordId);
+      historyDraft = stateTools.recomputeResultSummary(historyDraft);
+      elements.birdDialog.close();
+      render();
+      return;
+    }
+
+    session = stateTools.deleteBirdRecord(session, birdDraft.editingRecordId);
     persistSession(session);
     elements.birdDialog.close();
     render();
@@ -863,6 +1009,7 @@
     }
 
     const mapSource = getMapSource();
+    const isResultView = Boolean(getActiveResult());
     const latLngs = mapSource.track.map((point) => [point.lat, point.lng]);
     const startPoint = mapSource.startPoint;
     const currentPoint = mapSource.currentPoint || mapSource.track[mapSource.track.length - 1] || null;
@@ -907,12 +1054,21 @@
       currentMarker.setLatLng([currentPoint.lat, currentPoint.lng]);
     }
 
-    if (latLngs.length > 1) {
-      map.fitBounds(routeLayer.getBounds(), {
-        paddingTopLeft: [28, 96],
-        paddingBottomRight: [28, 128],
-        maxZoom: config.defaultZoom,
-      });
+    if (isResultView) {
+      // 结果页 / 历史查看：一次性框选完整轨迹，方便概览全程。
+      if (latLngs.length > 1) {
+        map.fitBounds(routeLayer.getBounds(), {
+          paddingTopLeft: [28, 96],
+          paddingBottomRight: [28, 128],
+          maxZoom: config.defaultZoom,
+          animate: false,
+        });
+      } else if (latLngs.length === 1) {
+        map.setView(latLngs[0], config.defaultZoom, { animate: false });
+      }
+    } else if (session.state === stateTools.STATES.RECORDING && currentPoint) {
+      // 记录中：跟随当前位置但保持用户当前缩放级别，避免每加一个轨迹点就自动缩放。
+      map.panTo([currentPoint.lat, currentPoint.lng], { animate: false });
     }
   }
 
@@ -992,6 +1148,7 @@
 
   function renderBirdPointOverlay() {
     elements.birdPointLayer.replaceChildren();
+    birdPointGroups = [];
     const mapSource = getMapSource();
     if (mapSource.birdRecords.length === 0) {
       return;
@@ -1012,15 +1169,63 @@
       button.style.left = `${group.x}px`;
       button.style.top = `${group.y}px`;
       button.textContent = birdPointLabel(group);
+
+      // 仅在历史编辑态、单条落点、且有真实地图时允许拖动。
+      const canDrag = isEditingHistory() && group.records.length === 1 && map && !stageFallbackClickEnabled;
+      let dragged = false;
+      if (canDrag) {
+        button.classList.add('is-draggable');
+        button.addEventListener('pointerdown', (event) => {
+          startBirdPointDrag(event, button, group.records[0], () => {
+            dragged = true;
+          });
+        });
+      }
+
       button.addEventListener('click', () => {
-        if (selectedHistoryRecordId) {
+        if (dragged) {
+          // 本次是拖动而非点选，不打开编辑弹层。
+          dragged = false;
+          return;
+        }
+
+        if (isEditingHistory()) {
+          openBirdPointPreview(group.records);
+        } else if (selectedHistoryRecordId) {
           focusBirdRecord(group.records[0]);
         } else {
           openBirdPointPreview(group.records);
         }
       });
       elements.birdPointLayer.appendChild(button);
+      // 记下「按钮 ↔ 其包含的记录」，供平移/缩放过程中实时重排位置。
+      birdPointGroups.push({ button, records: group.records });
     });
+  }
+
+  // 平移/缩放过程中：只更新已有落点按钮的位置，不重建 DOM（避免元素反复销毁重建）。
+  function repositionBirdPointOverlay() {
+    if (!map) {
+      return;
+    }
+
+    birdPointGroups.forEach(({ button, records }) => {
+      const center = averageScreenPosition(records);
+      button.style.left = `${center.x}px`;
+      button.style.top = `${center.y}px`;
+    });
+  }
+
+  function averageScreenPosition(records) {
+    let sumX = 0;
+    let sumY = 0;
+    records.forEach((record) => {
+      const position = screenPositionForBirdRecord(record);
+      sumX += position.x;
+      sumY += position.y;
+    });
+
+    return { x: sumX / records.length, y: sumY / records.length };
   }
 
   function groupBirdRecordsByScreenPosition(records) {
@@ -1082,7 +1287,13 @@
       button.className = 'bird-point-list-button';
       const tags = record.tags.length ? ` · ${record.tags.join('、')}` : '';
       const note = record.note ? ` · ${record.note}` : '';
-      button.innerHTML = `<strong>${record.speciesName} × ${record.count}</strong><span>${record.scientificName}${tags}${note}</span>`;
+
+      const title = document.createElement('strong');
+      title.textContent = `${record.speciesName} × ${record.count}`;
+      const detail = document.createElement('span');
+      detail.textContent = `${record.scientificName}${tags}${note}`;
+      button.append(title, detail);
+
       button.addEventListener('click', () => {
         elements.birdPointDialog.close();
         openBirdDialog(record);
@@ -1134,6 +1345,102 @@
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
+  }
+
+  function startBirdPointDrag(event, button, record, onDragStart) {
+    if (!isEditingHistory() || !map || stageFallbackClickEnabled) {
+      return;
+    }
+
+    // 不在 pointerdown 上 preventDefault，以免抑制纯点选时的 click（点选用于打开编辑弹层）。
+    // 监听挂在 window 上，确保指针移出落点后仍能持续接收移动与抬起事件。
+    event.stopPropagation();
+
+    let moved = false;
+
+    const onMove = (moveEvent) => {
+      if (!moved) {
+        moved = true;
+        onDragStart();
+      }
+      moveEvent.preventDefault();
+      const position = pixelInStage(moveEvent);
+      button.style.left = `${position.x}px`;
+      button.style.top = `${position.y}px`;
+    };
+
+    const finish = (upEvent) => {
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+
+      if (!moved) {
+        return;
+      }
+
+      const snapped = snapPixelToRoute(pixelInStage(upEvent));
+      if (snapped) {
+        historyDraft = stateTools.updateBirdRecordPosition(historyDraft, record.id, snapped);
+      }
+      render();
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  }
+
+  function pixelInStage(event) {
+    const rect = elements.mapStage.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  // 将屏幕像素点吸附到行进轨迹上：取与各轨迹线段最近的投影点，再换回经纬度。
+  function snapPixelToRoute(pixel) {
+    const mapSource = getMapSource();
+    const track = (mapSource && mapSource.track) || [];
+    if (!map || stageFallbackClickEnabled || track.length === 0) {
+      return null;
+    }
+
+    const points = track.map((point) => {
+      const containerPoint = map.latLngToContainerPoint([point.lat, point.lng]);
+      return { x: containerPoint.x, y: containerPoint.y };
+    });
+
+    let nearest = points[0];
+    if (points.length > 1) {
+      let best = null;
+      for (let index = 0; index < points.length - 1; index += 1) {
+        const projection = projectPointOnSegment(pixel, points[index], points[index + 1]);
+        if (!best || projection.dist < best.dist) {
+          best = projection;
+        }
+      }
+      nearest = best;
+    }
+
+    const latLng = map.containerPointToLatLng([nearest.x, nearest.y]);
+    return { lat: latLng.lat, lng: latLng.lng };
+  }
+
+  function projectPointOnSegment(point, a, b) {
+    const abx = b.x - a.x;
+    const aby = b.y - a.y;
+    const lengthSquared = abx * abx + aby * aby;
+    let t = 0;
+    if (lengthSquared > 0) {
+      t = clamp(((point.x - a.x) * abx + (point.y - a.y) * aby) / lengthSquared, 0, 1);
+    }
+
+    const x = a.x + t * abx;
+    const y = a.y + t * aby;
+    const dx = point.x - x;
+    const dy = point.y - y;
+    return { x, y, dist: Math.sqrt(dx * dx + dy * dy) };
   }
 
   function enableStageFallbackClick() {

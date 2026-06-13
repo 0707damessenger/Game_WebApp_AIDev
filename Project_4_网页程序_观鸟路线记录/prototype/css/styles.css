@@ -167,6 +167,48 @@ button:disabled {
     0 8px 20px rgba(20, 32, 28, 0.32);
 }
 
+.map-stage.is-history-edit .bird-point-button.is-draggable {
+  cursor: grab;
+  touch-action: none;
+  box-shadow:
+    0 0 0 4px rgba(193, 132, 43, 0.28),
+    0 6px 16px rgba(20, 32, 28, 0.3);
+}
+
+.map-stage.is-history-edit .bird-point-button.is-draggable:active {
+  cursor: grabbing;
+}
+
+.history-edit-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  background: rgba(248, 245, 238, 0.96);
+  box-shadow: 0 6px 18px rgba(20, 32, 28, 0.18);
+  backdrop-filter: blur(12px);
+}
+
+.history-edit-bar[hidden] {
+  display: none;
+}
+
+.history-edit-bar strong {
+  font-size: 14px;
+}
+
+.history-edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .map-tools {
   position: absolute;
   top: calc(max(14px, env(safe-area-inset-top)) + 54px);
@@ -444,6 +486,14 @@ button:disabled {
 }
 
 .history-item {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.history-open {
+  flex: 1;
+  min-width: 0;
   display: grid;
   gap: 6px;
   min-height: 74px;
@@ -455,22 +505,34 @@ button:disabled {
   text-align: left;
 }
 
-.history-item strong,
-.history-item span {
+.history-open strong,
+.history-open span {
   display: block;
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
-.history-item strong {
+.history-open strong {
   color: var(--leaf-deep);
   font-size: 16px;
 }
 
-.history-item span {
+.history-open span {
   color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
+}
+
+.history-delete {
+  flex-shrink: 0;
+  align-self: stretch;
+  border: 1px solid rgba(173, 61, 49, 0.4);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: rgba(173, 61, 49, 0.08);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .history-metrics {

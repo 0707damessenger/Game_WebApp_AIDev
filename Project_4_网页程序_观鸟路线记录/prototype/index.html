@@ -6,7 +6,7 @@
     <title>观鸟路线记录</title>
     <script src="./js/config.js?v=map-20260612-1"></script>
     <link rel="stylesheet" href="./vendor/leaflet/leaflet.css?v=local-20260609">
-    <link rel="stylesheet" href="./css/styles.css?v=point-20260610-1">
+    <link rel="stylesheet" href="./css/styles.css?v=history-edit-20260612-2">
   </head>
   <body>
     <main class="phone-shell" aria-label="观鸟路线记录原型">
@@ -47,6 +47,14 @@
 
         <div class="hint-strip" id="hintStrip" hidden></div>
 
+        <div class="history-edit-bar" id="historyEditBar" hidden>
+          <strong>编辑历史记录 · 拖动落点贴合路线</strong>
+          <div class="history-edit-actions">
+            <button id="historyCancelButton" class="ghost-button compact" type="button">取消</button>
+            <button id="historySaveButton" class="primary-button compact" type="button">保存</button>
+          </div>
+        </div>
+
         <section class="result-panel" id="resultPanel" aria-label="本次记录" hidden>
           <header class="result-header">
             <p class="panel-kicker">本次记录</p>
@@ -82,6 +90,7 @@
           </section>
 
           <div class="result-actions">
+            <button id="historyEditButton" class="primary-button compact" type="button" hidden>编辑</button>
             <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
             <button id="shareButton" class="ghost-button compact" type="button">分享</button>
           </div>
@@ -216,6 +225,17 @@
         </section>
       </dialog>
 
+      <dialog id="deleteHistoryDialog" class="finish-dialog">
+        <form method="dialog">
+          <h2>删除这条历史记录？</h2>
+          <p>删除后无法恢复。</p>
+          <div class="dialog-actions">
+            <button class="danger-button compact" value="delete" type="submit">删除</button>
+            <button class="ghost-button compact" value="cancel" type="submit">取消</button>
+          </div>
+        </form>
+      </dialog>
+
       <dialog id="birdPointDialog" class="bird-point-dialog">
         <section class="bird-sheet">
           <header class="sheet-header">
@@ -229,7 +249,7 @@
 
     <script src="./vendor/leaflet/leaflet.js?v=local-20260609"></script>
     <script src="./js/birds.js?v=catalog-20260612-1"></script>
-    <script src="./js/state.js?v=point-20260610-1"></script>
-    <script src="./js/app.js?v=map-20260612-1"></script>
+    <script src="./js/state.js?v=history-edit-20260612-2"></script>
+    <script src="./js/app.js?v=history-edit-20260612-4"></script>
   </body>
 </html>
