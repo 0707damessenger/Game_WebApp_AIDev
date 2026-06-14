@@ -6,7 +6,7 @@
     <title>观鸟路线记录</title>
     <script src="./js/config.js?v=map-20260612-1"></script>
     <link rel="stylesheet" href="./vendor/leaflet/leaflet.css?v=local-20260609">
-    <link rel="stylesheet" href="./css/styles.css?v=history-edit-20260612-2">
+    <link rel="stylesheet" href="./css/styles.css?v=favorites-20260614-1">
   </head>
   <body>
     <main class="phone-shell" aria-label="观鸟路线记录原型">
@@ -92,6 +92,7 @@
           <div class="result-actions">
             <button id="historyEditButton" class="primary-button compact" type="button" hidden>编辑</button>
             <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
+            <button id="favoriteResultButton" class="ghost-button compact" type="button" hidden>收藏</button>
             <button id="shareButton" class="ghost-button compact" type="button">分享</button>
           </div>
         </section>
@@ -106,6 +107,11 @@
           <button id="historyEntryButton" class="profile-entry-button" type="button">
             <strong>历史记录</strong>
             <span>查看已保存的观鸟路线</span>
+          </button>
+
+          <button id="favoritesEntryButton" class="profile-entry-button" type="button">
+            <strong>收藏线路</strong>
+            <span>查看本机收藏的观鸟路线</span>
           </button>
 
           <button id="importEntryButton" class="profile-entry-button" type="button">
@@ -124,9 +130,9 @@
 
         <section class="history-panel" id="historyPanel" aria-label="历史记录" hidden>
           <header class="profile-header">
-            <p class="panel-kicker">历史记录</p>
-            <h1>已保存路线</h1>
-            <p>从这里打开过去保存的观鸟路线。</p>
+            <p class="panel-kicker" id="historyPanelKicker">历史记录</p>
+            <h1 id="historyListTitle">已保存路线</h1>
+            <p id="historyListDescription">从这里打开过去保存的观鸟路线。</p>
           </header>
 
           <section class="history-section" aria-label="历史记录列表">
@@ -249,7 +255,7 @@
 
     <script src="./vendor/leaflet/leaflet.js?v=local-20260609"></script>
     <script src="./js/birds.js?v=catalog-20260612-1"></script>
-    <script src="./js/state.js?v=history-edit-20260612-2"></script>
-    <script src="./js/app.js?v=history-edit-20260612-4"></script>
+    <script src="./js/state.js?v=favorites-20260614-1"></script>
+    <script src="./js/app.js?v=favorites-20260614-1"></script>
   </body>
 </html>

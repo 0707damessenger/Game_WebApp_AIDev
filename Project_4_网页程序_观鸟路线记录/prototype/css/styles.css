@@ -486,13 +486,13 @@ button:disabled {
 }
 
 .history-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   align-items: stretch;
 }
 
 .history-open {
-  flex: 1;
   min-width: 0;
   display: grid;
   gap: 6px;
@@ -523,16 +523,24 @@ button:disabled {
   line-height: 1.35;
 }
 
+.history-favorite,
 .history-delete {
-  flex-shrink: 0;
   align-self: stretch;
+  min-width: 58px;
   border: 1px solid rgba(173, 61, 49, 0.4);
   border-radius: 8px;
-  padding: 0 14px;
+  padding: 0 10px;
   background: rgba(173, 61, 49, 0.08);
   color: var(--danger);
   font-size: 13px;
   font-weight: 800;
+}
+
+.history-favorite {
+  min-width: 74px;
+  border-color: rgba(193, 132, 43, 0.42);
+  background: rgba(193, 132, 43, 0.12);
+  color: #765116;
 }
 
 .history-metrics {

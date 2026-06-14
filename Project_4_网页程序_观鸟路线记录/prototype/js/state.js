@@ -250,6 +250,35 @@
     return history.filter((record) => record && record.id !== id);
   }
 
+  function isHistoryRecordFavorite(record) {
+    return Boolean(record && record.isFavorite === true);
+  }
+
+  function toggleHistoryFavorite(history, id) {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history.map((record) => {
+      if (!record || record.id !== id) {
+        return record;
+      }
+
+      return {
+        ...record,
+        isFavorite: !isHistoryRecordFavorite(record),
+      };
+    });
+  }
+
+  function favoriteHistoryRecords(history) {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history.filter(isHistoryRecordFavorite);
+  }
+
   // 编辑历史记录后，按当前鸟种落点重算概要中的鸟种相关数值；
   // 时长、距离、轨迹点数等与轨迹相关的数值保持不变（本阶段轨迹不可编辑）。
   function recomputeResultSummary(result) {
@@ -358,6 +387,9 @@
     findHistoryRecord,
     replaceHistoryRecord,
     deleteHistoryRecord,
+    isHistoryRecordFavorite,
+    toggleHistoryFavorite,
+    favoriteHistoryRecords,
     recomputeResultSummary,
     previewSharedRecordImport,
     distanceBetween,

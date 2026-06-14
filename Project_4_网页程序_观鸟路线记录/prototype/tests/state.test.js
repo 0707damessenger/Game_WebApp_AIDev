@@ -232,6 +232,48 @@ test('history records can be found by id', () => {
   assert.equal(state.findHistoryRecord(history, 'record-missing'), null);
 });
 
+test('old history records default to not favorite', () => {
+  assert.equal(state.isHistoryRecordFavorite({ id: 'record-old' }), false);
+  assert.equal(state.isHistoryRecordFavorite({ id: 'record-favorite', isFavorite: true }), true);
+  assert.equal(state.isHistoryRecordFavorite({ id: 'record-explicit-false', isFavorite: false }), false);
+});
+
+test('history favorite toggles update a single record without changing list order', () => {
+  const a = { id: 'a', savedAt: '2026-06-10T03:00:00.000Z' };
+  const b = { id: 'b', savedAt: '2026-06-10T02:00:00.000Z' };
+  const history = [a, b];
+
+  const favorited = state.toggleHistoryFavorite(history, 'b');
+  assert.deepEqual(favorited.map((record) => record.id), ['a', 'b']);
+  assert.equal(state.findHistoryRecord(favorited, 'b').isFavorite, true);
+  assert.equal(state.findHistoryRecord(favorited, 'a').isFavorite, undefined);
+
+  const unfavorited = state.toggleHistoryFavorite(favorited, 'b');
+  assert.equal(state.findHistoryRecord(unfavorited, 'b').isFavorite, false);
+});
+
+test('favoriteHistoryRecords returns only favorited records in existing order', () => {
+  const history = [
+    { id: 'a', isFavorite: true },
+    { id: 'b' },
+    { id: 'c', isFavorite: true },
+  ];
+
+  assert.deepEqual(state.favoriteHistoryRecords(history).map((record) => record.id), ['a', 'c']);
+  assert.deepEqual(state.favoriteHistoryRecords(null), []);
+});
+
+test('deleting a favorited history record removes it from favorite results', () => {
+  const history = [
+    { id: 'a', isFavorite: true },
+    { id: 'b', isFavorite: true },
+  ];
+
+  const next = state.deleteHistoryRecord(history, 'a');
+
+  assert.deepEqual(state.favoriteHistoryRecords(next).map((record) => record.id), ['b']);
+});
+
 test('replaceHistoryRecord swaps a record by id while preserving list order', () => {
   const a = { id: 'a', savedAt: '2026-06-10T03:00:00.000Z', summary: { totalBirds: 1 } };
   const b = { id: 'b', savedAt: '2026-06-10T02:00:00.000Z', summary: { totalBirds: 2 } };

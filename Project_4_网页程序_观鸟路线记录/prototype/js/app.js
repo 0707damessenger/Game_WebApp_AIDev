@@ -17,6 +17,7 @@
   let historyEditMode = false;
   let historyDraft = null;
   let activeView = 'main';
+  let historyListMode = 'all';
   let gpsWatchId = null;
   let locationHintOverride = '';
   let pendingDeleteHistoryId = null;
@@ -67,6 +68,7 @@
     copyShareLinkButton: document.querySelector('#copyShareLinkButton'),
     profilePanel: document.querySelector('#profilePanel'),
     historyEntryButton: document.querySelector('#historyEntryButton'),
+    favoritesEntryButton: document.querySelector('#favoritesEntryButton'),
     importEntryButton: document.querySelector('#importEntryButton'),
     importDialog: document.querySelector('#importDialog'),
     importCloseButton: document.querySelector('#importCloseButton'),
@@ -75,11 +77,15 @@
     importPreview: document.querySelector('#importPreview'),
     importServiceStatus: document.querySelector('#importServiceStatus'),
     historyPanel: document.querySelector('#historyPanel'),
+    historyPanelKicker: document.querySelector('#historyPanelKicker'),
+    historyListTitle: document.querySelector('#historyListTitle'),
+    historyListDescription: document.querySelector('#historyListDescription'),
     historyCount: document.querySelector('#historyCount'),
     historyEmpty: document.querySelector('#historyEmpty'),
     historyList: document.querySelector('#historyList'),
     profileBackButton: document.querySelector('#profileBackButton'),
     historyBackButton: document.querySelector('#historyBackButton'),
+    favoriteResultButton: document.querySelector('#favoriteResultButton'),
     birdDialog: document.querySelector('#birdDialog'),
     birdDialogTitle: document.querySelector('#birdDialogTitle'),
     birdCloseButton: document.querySelector('#birdCloseButton'),
@@ -263,6 +269,10 @@
       render();
     });
 
+    elements.favoriteResultButton.addEventListener('click', () => {
+      toggleFavoriteForRecord(selectedHistoryRecordId);
+    });
+
     elements.shareButton.addEventListener('click', () => {
       openShareDialog();
     });
@@ -280,6 +290,15 @@
 
     elements.historyEntryButton.addEventListener('click', () => {
       activeView = 'historyList';
+      historyListMode = 'all';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+    });
+
+    elements.favoritesEntryButton.addEventListener('click', () => {
+      activeView = 'historyList';
+      historyListMode = 'favorites';
       selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
       render();
@@ -575,6 +594,8 @@
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
     elements.returnHomeButton.textContent = selectedHistoryRecordId ? '返回历史列表' : '返回主界面';
     elements.shareButton.disabled = !result;
+    elements.favoriteResultButton.hidden = !selectedHistoryRecordId || historyEditMode;
+    elements.favoriteResultButton.textContent = stateTools.isHistoryRecordFavorite(result) ? '取消收藏' : '收藏';
 
     if (result.birdRecords.length === 0) {
       const empty = document.createElement('p');
@@ -610,15 +631,26 @@
   }
 
   function renderProfileView() {
-    elements.historyCount.textContent = `${history.length} 条`;
-    elements.historyEmpty.hidden = history.length > 0;
+    const visibleHistory = getVisibleHistoryRecords();
+    const isFavoritesMode = historyListMode === 'favorites';
+    elements.historyPanel.setAttribute('aria-label', isFavoritesMode ? '收藏线路' : '历史记录');
+    elements.historyPanelKicker.textContent = isFavoritesMode ? '收藏线路' : '历史记录';
+    elements.historyListTitle.textContent = isFavoritesMode ? '收藏线路' : '历史列表';
+    elements.historyListDescription.textContent = isFavoritesMode
+      ? '从这里打开本机收藏的观鸟路线。'
+      : '从这里打开过去保存的观鸟路线。';
+    elements.historyCount.textContent = `${visibleHistory.length} 条`;
+    elements.historyEmpty.textContent = isFavoritesMode
+      ? '还没有收藏线路。可以在历史列表或历史详情中收藏路线。'
+      : '还没有历史记录。完成一次路线记录后，会显示在这里。';
+    elements.historyEmpty.hidden = visibleHistory.length > 0;
 
-    if (history.length === 0) {
+    if (visibleHistory.length === 0) {
       elements.historyList.replaceChildren();
       return;
     }
 
-    elements.historyList.replaceChildren(...history.map((record) => {
+    elements.historyList.replaceChildren(...visibleHistory.map((record) => {
       const item = document.createElement('div');
       item.className = 'history-item';
 
@@ -658,7 +690,15 @@
         requestDeleteHistoryRecord(record.id);
       });
 
-      item.append(open, remove);
+      const favorite = document.createElement('button');
+      favorite.type = 'button';
+      favorite.className = 'history-favorite';
+      favorite.textContent = stateTools.isHistoryRecordFavorite(record) ? '取消收藏' : '收藏';
+      favorite.addEventListener('click', () => {
+        toggleFavoriteForRecord(record.id);
+      });
+
+      item.append(open, favorite, remove);
       return item;
     }));
   }
@@ -668,6 +708,25 @@
     if (elements.deleteHistoryDialog.showModal) {
       elements.deleteHistoryDialog.showModal();
     }
+  }
+
+  function getVisibleHistoryRecords() {
+    return historyListMode === 'favorites'
+      ? stateTools.favoriteHistoryRecords(history)
+      : history;
+  }
+
+  function toggleFavoriteForRecord(recordId) {
+    if (!recordId) {
+      return;
+    }
+
+    history = stateTools.toggleHistoryFavorite(history, recordId);
+    if (historyDraft && historyDraft.id === recordId) {
+      historyDraft = stateTools.findHistoryRecord(history, recordId);
+    }
+    persistHistory(history);
+    render();
   }
 
   function getActiveResult() {

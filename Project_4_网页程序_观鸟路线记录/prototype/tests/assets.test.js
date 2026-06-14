@@ -52,14 +52,18 @@ test('profile entry, import entry, and standalone history list page are availabl
   assert.equal(html.includes('id="profileButton"'), true);
   assert.equal(html.includes('id="profilePanel"'), true);
   assert.equal(html.includes('id="historyEntryButton"'), true);
+  assert.equal(html.includes('id="favoritesEntryButton"'), true);
   assert.equal(html.includes('id="importEntryButton"'), true);
   assert.equal(html.includes('id="importDialog"'), true);
   assert.equal(html.includes('id="importPreviewButton"'), true);
   assert.equal(html.includes('id="importServiceStatus"'), true);
   assert.equal(html.includes('id="historyPanel"'), true);
   assert.equal(html.includes('id="historyBackButton"'), true);
+  assert.equal(html.includes('id="historyListTitle"'), true);
+  assert.equal(html.includes('id="historyListDescription"'), true);
   assert.equal(html.includes('id="historyList"'), true);
   assert.equal(html.includes('id="historyEmpty"'), true);
+  assert.equal(html.includes('id="favoriteResultButton"'), true);
   assert.equal(html.includes('id="profileInfoPlaceholderButton"'), true);
   assert.equal(html.includes('个人信息（后续模块）'), true);
   assert.equal(html.includes('登录 / 登出（后续模块）'), true);
@@ -149,6 +153,14 @@ test('design documents lock duplicate import as open existing without duplicate 
   assert.equal(design.includes('重复导入时不新增副本'), true);
   assert.equal(design.includes('打开已有记录'), true);
   assert.equal(exploration.includes('服务器短链接'), true);
+});
+
+test('design documents lock local favorites as current-stage personal data', () => {
+  const design = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/design.md'), 'utf8');
+
+  assert.equal(design.includes('本地收藏线路'), true);
+  assert.equal(design.includes('旧记录没有收藏状态时按未收藏处理'), true);
+  assert.equal(design.includes('删除一条历史记录时，其收藏状态随该记录一并删除'), true);
 });
 
 test('bird catalog contains the expanded national formal checklist data', () => {

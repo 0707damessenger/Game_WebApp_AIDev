@@ -461,6 +461,65 @@ test('Project 4 deletes a whole history record only after confirmation', async (
   expect(persisted[0].id).toBe('history-b');
 });
 
+test('Project 4 can favorite routes from the history list and open them from favorites', async ({ page }) => {
+  const recordA = { ...sampleHistoryRecord(), id: 'history-a', savedAt: '2026-06-09T02:00:00.000Z' };
+  const recordB = { ...sampleHistoryRecord(), id: 'history-b', savedAt: '2026-06-09T01:00:00.000Z' };
+
+  await page.addInitScript((records) => {
+    localStorage.setItem('bird-route-history', JSON.stringify(records));
+  }, [recordA, recordB]);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#historyEntryButton').click();
+  await expect(page.locator('.history-item')).toHaveCount(2);
+  await page.locator('.history-item').first().locator('.history-favorite').click();
+  await expect(page.locator('.history-item').first().locator('.history-favorite')).toHaveText('取消收藏');
+
+  await page.locator('#historyBackButton').click();
+  await page.locator('#favoritesEntryButton').click();
+  await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
+  await expect(page.locator('.history-item')).toHaveCount(1);
+  await page.locator('.history-item').click();
+
+  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+  await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted.find((record) => record.id === 'history-a').isFavorite).toBe(true);
+  expect(persisted.find((record) => record.id === 'history-b').isFavorite).toBeUndefined();
+});
+
+test('Project 4 can unfavorite from detail and shows an empty favorites list', async ({ page }) => {
+  const favorite = { ...sampleHistoryRecord(), id: 'history-favorite', isFavorite: true };
+
+  await page.addInitScript((records) => {
+    localStorage.setItem('bird-route-history', JSON.stringify(records));
+  }, [favorite]);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#favoritesEntryButton').click();
+  await expect(page.locator('.history-item')).toHaveCount(1);
+  await page.locator('.history-item').click();
+  await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
+
+  await page.locator('#favoriteResultButton').click();
+  await expect(page.locator('#favoriteResultButton')).toHaveText('收藏');
+  await page.locator('#returnHomeButton').click();
+
+  await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
+  await expect(page.locator('.history-item')).toHaveCount(0);
+  await expect(page.locator('#historyEmpty')).toContainText('还没有收藏线路');
+
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted[0].isFavorite).toBe(false);
+});
+
 test('Project 4 loads Tianditu tile layers by default', async ({ page }) => {
   const tileRequests = [];
 
