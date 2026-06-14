@@ -240,34 +240,6 @@ test('Project 4 renders a user bird note as literal text, never as HTML', async 
   expect(await page.evaluate(() => window.__xss)).toBeUndefined();
 });
 
-function sampleHistoryRecord() {
-  return {
-    id: 'history-edit-1',
-    title: '本次记录',
-    startedAt: '2026-06-09T01:05:00.000Z',
-    endedAt: '2026-06-09T01:30:00.000Z',
-    savedAt: '2026-06-09T01:31:00.000Z',
-    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-09T01:05:00.000Z' },
-    currentPoint: { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
-    track: [
-      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-09T01:05:00.000Z' },
-      { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
-    ],
-    birdRecords: [
-      {
-        id: 'bird-h-1', speciesName: '白头鹎', scientificName: 'Pycnonotus sinensis',
-        count: 2, tags: ['成鸟'], note: '树梢',
-        position: { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-09T01:20:00.000Z' },
-        createdAt: '2026-06-09T01:08:00.000Z',
-      },
-    ],
-    summary: {
-      state: 'finished', trackPointCount: 2, birdRecordCount: 1,
-      speciesCount: 1, totalBirds: 2, distanceMeters: 152, durationMinutes: 25,
-    },
-  };
-}
-
 async function openHistoryRecordForEditing(page) {
   await page.locator('#profileButton').click();
   await page.locator('#historyEntryButton').click();

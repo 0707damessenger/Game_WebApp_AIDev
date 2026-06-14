@@ -128,6 +128,27 @@
     };
   }
 
+  // 仅调整落点的经纬度，保留其余字段（鸟种、备注、时间戳等）。
+  function updateBirdRecordPosition(container, recordId, position) {
+    return {
+      ...container,
+      birdRecords: container.birdRecords.map((record) => {
+        if (record.id !== recordId) {
+          return record;
+        }
+
+        return {
+          ...record,
+          position: {
+            ...record.position,
+            lat: Number(position.lat),
+            lng: Number(position.lng),
+          },
+        };
+      }),
+    };
+  }
+
   function abortSession(session, now = new Date()) {
     return {
       ...createSession(now),
@@ -213,6 +234,39 @@
     return history.find((record) => record && record.id === id) || null;
   }
 
+  function replaceHistoryRecord(history, record) {
+    if (!Array.isArray(history) || !record || !record.id) {
+      return Array.isArray(history) ? [...history] : [];
+    }
+
+    return history.map((item) => (item && item.id === record.id ? record : item));
+  }
+
+  function deleteHistoryRecord(history, id) {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history.filter((record) => record && record.id !== id);
+  }
+
+  // 编辑历史记录后，按当前鸟种落点重算概要中的鸟种相关数值；
+  // 时长、距离、轨迹点数等与轨迹相关的数值保持不变（本阶段轨迹不可编辑）。
+  function recomputeResultSummary(result) {
+    const species = new Set(result.birdRecords.map((record) => record.speciesName));
+    const totalBirds = result.birdRecords.reduce((total, record) => total + record.count, 0);
+
+    return {
+      ...result,
+      summary: {
+        ...result.summary,
+        birdRecordCount: result.birdRecords.length,
+        speciesCount: species.size,
+        totalBirds,
+      },
+    };
+  }
+
   function previewSharedRecordImport(history, sharedRecord, options = {}) {
     const currentHistory = Array.isArray(history) ? [...history] : [];
     const serviceEnabled = Boolean(options.serviceEnabled);
@@ -294,6 +348,7 @@
     addBirdRecord,
     updateBirdRecord,
     deleteBirdRecord,
+    updateBirdRecordPosition,
     finishSession,
     abortSession,
     summarizeSession,
@@ -301,6 +356,9 @@
     createHistoryRecord,
     addHistoryRecord,
     findHistoryRecord,
+    replaceHistoryRecord,
+    deleteHistoryRecord,
+    recomputeResultSummary,
     previewSharedRecordImport,
     distanceBetween,
   };
