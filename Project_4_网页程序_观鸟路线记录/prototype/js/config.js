@@ -11,7 +11,7 @@ window.CONFIG = {
   providers: {
     tianditu: {
       name: '天地图',
-      token: 'TIANDITU_WEB_KEY_PLACEHOLDER',
+      token: 'b426c98dce2a97cf4419eb8fc81c249b',
       attribution: '&copy; 天地图',
       errorHint: '地图瓦片加载失败，请检查网络、服务 Key 或切换公共地图源。',
       layers: [
