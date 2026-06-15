@@ -20,6 +20,7 @@
   let historyListMode = 'all';
   let gpsWatchId = null;
   let locationHintOverride = '';
+  let tileErrorHint = '';
   let pendingDeleteHistoryId = null;
   let birdPointGroups = [];
 
@@ -29,8 +30,8 @@
     fallbackRouteLayer: document.querySelector('#fallbackRouteLayer'),
     testRouteLayer: document.querySelector('#testRouteLayer'),
     birdPointLayer: document.querySelector('#birdPointLayer'),
-    zoomInButton: document.querySelector('#zoomInButton'),
-    zoomOutButton: document.querySelector('#zoomOutButton'),
+    mapTools: document.querySelector('.map-tools'),
+    currentLocationButton: document.querySelector('#currentLocationButton'),
     birdNameToggle: document.querySelector('#birdNameToggle'),
     startPanel: document.querySelector('#startPanel'),
     startButton: document.querySelector('#startButton'),
@@ -45,6 +46,7 @@
     saveFinishButton: document.querySelector('#saveFinishButton'),
     abortButton: document.querySelector('#abortButton'),
     resultPanel: document.querySelector('#resultPanel'),
+    resultKicker: document.querySelector('#resultKicker'),
     resultTitle: document.querySelector('#resultTitle'),
     resultMeta: document.querySelector('#resultMeta'),
     resultSummary: document.querySelector('#resultSummary'),
@@ -142,14 +144,13 @@
       tileLayer.on('tileerror', () => {
         // 瓦片加载失败时地图仍可交互（灰底），点选、缩放、落点投影都走真实地图坐标，
         // 不再切到伪坐标兜底，只提示底图缺失。
-        elements.hintStrip.textContent = tileProvider.errorHint;
-        elements.hintStrip.hidden = false;
+        tileErrorHint = tileProvider.errorHint;
+        render();
       });
 
       tileLayer.addTo(map);
     });
 
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
     routeLayer = L.polyline([], {
       className: 'route-line',
       color: '#246b4b',
@@ -207,7 +208,11 @@
         session = stateTools.finishSession(session);
         highlightedBirdRecordId = null;
         locationHintOverride = '';
-        addFinishedSessionToHistory(session);
+        const savedRecord = addFinishedSessionToHistory(session);
+        if (savedRecord) {
+          selectedHistoryRecordId = savedRecord.id;
+          activeView = 'currentResult';
+        }
         persistSession(session);
       }
 
@@ -250,7 +255,7 @@
     });
 
     elements.returnHomeButton.addEventListener('click', () => {
-      if (selectedHistoryRecordId) {
+      if (selectedHistoryRecordId && activeView !== 'currentResult') {
         selectedHistoryRecordId = null;
         highlightedBirdRecordId = null;
         historyEditMode = false;
@@ -262,6 +267,9 @@
 
       session = stateTools.createSession();
       highlightedBirdRecordId = null;
+      selectedHistoryRecordId = null;
+      historyEditMode = false;
+      historyDraft = null;
       activeView = 'main';
       locationHintOverride = '';
       stopGpsTracking();
@@ -388,12 +396,8 @@
       render();
     });
 
-    elements.zoomInButton.addEventListener('click', () => {
-      zoomMap(1);
-    });
-
-    elements.zoomOutButton.addEventListener('click', () => {
-      zoomMap(-1);
+    elements.currentLocationButton.addEventListener('click', () => {
+      centerMapOnCurrentLocation();
     });
 
     if (map) {
@@ -441,6 +445,11 @@
   function startGpsTracking() {
     stopGpsTracking();
     locationHintOverride = config.mapInteraction.gpsPendingHint;
+
+    if (window.isSecureContext === false) {
+      showGpsError('无法获取定位：手机浏览器只允许 HTTPS 或 localhost 页面申请定位。请改用 HTTPS 预览地址后重试。');
+      return;
+    }
 
     if (!navigator.geolocation) {
       showGpsError('无法获取定位：当前浏览器不支持 GPS。');
@@ -500,60 +509,121 @@
 
   function showGpsError(message) {
     stopGpsTracking();
+    showLocationHint(message);
+  }
+
+  function showLocationHint(message) {
     locationHintOverride = message;
     render();
+  }
+
+  function centerMapOnCurrentLocation() {
+    const mapSource = getMapSource();
+    const currentPoint = mapSource.currentPoint || session.currentPoint;
+    if (currentPoint) {
+      centerMapAt(currentPoint);
+      showLocationHint('已定位到当前位置。');
+      return;
+    }
+
+    if (window.isSecureContext === false) {
+      showLocationHint('无法获取定位：手机浏览器只允许 HTTPS 或 localhost 页面申请定位。');
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      showLocationHint('无法获取定位：当前浏览器不支持 GPS。');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      const point = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        label: '当前位置',
+      };
+      centerMapAt(point);
+      showLocationHint('已定位到当前位置。');
+    }, (error) => {
+      const message = error && error.code === 1
+        ? '无法获取定位：定位权限被拒绝，请允许浏览器定位权限后重试。'
+        : '无法获取定位：请检查定位服务或稍后重试。';
+      showLocationHint(message);
+    }, {
+      enableHighAccuracy: config.gps.enableHighAccuracy,
+      maximumAge: config.gps.maximumAgeMs,
+      timeout: config.gps.timeoutMs,
+    });
+  }
+
+  function centerMapAt(point) {
+    if (map && !stageFallbackClickEnabled) {
+      map.setView([point.lat, point.lng], config.defaultZoom);
+    }
   }
 
   function render() {
     const activeResult = getActiveResult();
     const isResultView = Boolean(activeResult);
-    const isHistoryResult = Boolean(selectedHistoryRecordId && activeResult);
+    const isSavedResult = Boolean(selectedHistoryRecordId && activeResult);
     const isProfileView = activeView === 'profile';
     const isHistoryListView = activeView === 'historyList';
+    const isFullPageView = isProfileView || isHistoryListView;
     const summary = activeResult ? activeResult.summary : stateTools.summarizeSession(session);
 
-    elements.sessionState.textContent = isHistoryResult
-      ? '历史'
+    elements.sessionState.textContent = isSavedResult
+      ? resultViewLabel()
       : isHistoryListView
-        ? '历史'
+        ? (historyListMode === 'favorites' ? '收藏' : '历史')
       : isProfileView
         ? '个人'
         : stateLabel(session.state);
     elements.sessionDistance.textContent = formatDistance(summary.distanceMeters);
     elements.sessionBirds.textContent = `${summary.speciesCount} 种`;
 
-    elements.startPanel.hidden = isProfileView || isHistoryListView || isResultView ||
+    const isStartPanelVisible = !isFullPageView && !isResultView &&
+      (session.state === stateTools.STATES.IDLE || session.state === stateTools.STATES.ABORTED);
+    elements.startPanel.hidden = !isStartPanelVisible;
+    elements.profileButton.hidden = isFullPageView || isResultView ||
       (session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED);
-    elements.profileButton.hidden = isProfileView || isHistoryListView || isResultView ||
-      (session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED);
-    elements.finishButton.hidden = isProfileView || isHistoryListView || isResultView || session.state !== stateTools.STATES.RECORDING;
+    elements.finishButton.hidden = isFullPageView || isResultView || session.state !== stateTools.STATES.RECORDING;
     elements.finishButton.disabled = session.state !== stateTools.STATES.RECORDING;
     elements.resultPanel.hidden = !isResultView;
     elements.profilePanel.hidden = !isProfileView;
     elements.historyPanel.hidden = !isHistoryListView;
     elements.mapFallback.dataset.mode = isResultView ? stateTools.STATES.FINISHED : session.state;
     elements.mapStage.classList.toggle('is-result-mode', isResultView);
+    elements.mapStage.classList.toggle('is-full-page', isFullPageView);
+    elements.mapTools.hidden = isFullPageView;
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
-    const inHistoryEdit = isHistoryResult && historyEditMode;
+    const inHistoryEdit = isSavedResult && historyEditMode;
     // 编辑态采用「地图为主」布局：隐藏底部结果面板，改用顶部窄条承载保存/取消，
     // 让整张地图都可用于点选与拖动落点。
     elements.resultPanel.hidden = !isResultView || inHistoryEdit;
     elements.historyEditBar.hidden = !inHistoryEdit;
-    elements.historyEditButton.hidden = !(isHistoryResult && !historyEditMode);
+    elements.historyEditButton.hidden = !(isSavedResult && !historyEditMode);
     elements.mapStage.classList.toggle('is-history-edit', inHistoryEdit);
 
-    if (!isProfileView && !isHistoryListView && !isResultView && canUseSimulatedFallbackStart()) {
+    if (!isFullPageView && !isResultView && canUseSimulatedFallbackStart()) {
       elements.addBirdButton.textContent = '使用测试起点';
       elements.addBirdButton.disabled = false;
     } else {
       elements.addBirdButton.textContent = '添加鸟种';
-      elements.addBirdButton.disabled = isProfileView || isHistoryListView || isResultView || session.state !== stateTools.STATES.RECORDING;
+      elements.addBirdButton.disabled = isFullPageView || isResultView || session.state !== stateTools.STATES.RECORDING;
     }
-    elements.addBirdButton.hidden = isProfileView || isHistoryListView || isResultView;
+    elements.addBirdButton.hidden = isFullPageView || isResultView ||
+      (session.state !== stateTools.STATES.RECORDING && !canUseSimulatedFallbackStart());
 
-    if (isProfileView || isHistoryListView || isResultView) {
+    const activeStatusHint = locationHintOverride || tileErrorHint;
+    const shouldPinHintTop = Boolean(tileErrorHint && !locationHintOverride);
+    elements.hintStrip.classList.toggle('is-top', false);
+    if (isFullPageView || isResultView) {
       elements.hintStrip.hidden = true;
+    } else if (activeStatusHint) {
+      elements.hintStrip.textContent = activeStatusHint;
+      elements.hintStrip.classList.toggle('is-top', shouldPinHintTop);
+      elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.PICKING_START) {
       elements.hintStrip.textContent = locationHintOverride ||
         (config.locationSource === 'gps' ? config.mapInteraction.gpsPendingHint : config.mapInteraction.pickingHint);
@@ -583,16 +653,19 @@
       return;
     }
 
+    const label = resultViewLabel();
+    elements.resultKicker.textContent = label;
+    elements.resultPanel.setAttribute('aria-label', label);
     elements.resultTitle.textContent = isEditingHistory()
-      ? '编辑历史记录'
-      : selectedHistoryRecordId ? '历史记录' : result.title;
+      ? `编辑${label}`
+      : label;
     elements.resultMeta.textContent = formatResultMeta(result);
     elements.resultDuration.textContent = formatDuration(result.summary.durationMinutes);
     elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
     elements.resultSpecies.textContent = `${result.summary.speciesCount} 种`;
     elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
-    elements.returnHomeButton.textContent = selectedHistoryRecordId ? '返回历史列表' : '返回主界面';
+    elements.returnHomeButton.textContent = resultBackLabel();
     elements.shareButton.disabled = !result;
     elements.favoriteResultButton.hidden = !selectedHistoryRecordId || historyEditMode;
     elements.favoriteResultButton.textContent = stateTools.isHistoryRecordFavorite(result) ? '取消收藏' : '收藏';
@@ -686,6 +759,7 @@
       remove.type = 'button';
       remove.className = 'history-delete';
       remove.textContent = '删除';
+      remove.setAttribute('aria-label', `删除 ${formatResultMeta(record)}`);
       remove.addEventListener('click', () => {
         requestDeleteHistoryRecord(record.id);
       });
@@ -693,7 +767,10 @@
       const favorite = document.createElement('button');
       favorite.type = 'button';
       favorite.className = 'history-favorite';
-      favorite.textContent = stateTools.isHistoryRecordFavorite(record) ? '取消收藏' : '收藏';
+      const isFavorite = stateTools.isHistoryRecordFavorite(record);
+      favorite.textContent = isFavorite ? '★' : '☆';
+      favorite.setAttribute('aria-label', isFavorite ? '取消收藏' : '收藏');
+      favorite.setAttribute('aria-pressed', isFavorite ? 'true' : 'false');
       favorite.addEventListener('click', () => {
         toggleFavoriteForRecord(record.id);
       });
@@ -739,6 +816,30 @@
     }
 
     return stateTools.createSessionResult(session);
+  }
+
+  function resultViewLabel() {
+    if (activeView === 'currentResult') {
+      return '本次记录';
+    }
+
+    if (selectedHistoryRecordId && historyListMode === 'favorites') {
+      return '收藏线路';
+    }
+
+    if (selectedHistoryRecordId) {
+      return '历史记录';
+    }
+
+    return '本次记录';
+  }
+
+  function resultBackLabel() {
+    if (activeView === 'currentResult' || !selectedHistoryRecordId) {
+      return '返回主界面';
+    }
+
+    return historyListMode === 'favorites' ? '返回收藏列表' : '返回历史列表';
   }
 
   function isEditingHistory() {
@@ -932,16 +1033,28 @@
 
   function renderBirdResults(query) {
     const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+      const empty = document.createElement('p');
+      empty.className = 'bird-results-empty';
+      empty.textContent = '输入中文名或学名后显示匹配鸟种。';
+      elements.birdResults.replaceChildren(empty);
+      return;
+    }
+
     const birds = window.BIRD_CATALOG
       .filter((bird) => {
-        if (!normalizedQuery) {
-          return true;
-        }
-
         return bird.name.toLowerCase().includes(normalizedQuery) ||
           bird.scientificName.toLowerCase().includes(normalizedQuery);
       })
       .slice(0, 6);
+
+    if (birds.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'bird-results-empty';
+      empty.textContent = '没有匹配的鸟种。请检查中文名或学名。';
+      elements.birdResults.replaceChildren(empty);
+      return;
+    }
 
     elements.birdResults.replaceChildren(...birds.map((bird) => {
       const button = document.createElement('button');
@@ -1365,20 +1478,6 @@
     }
   }
 
-  function zoomMap(direction) {
-    if (map && !stageFallbackClickEnabled) {
-      if (direction > 0) {
-        map.zoomIn();
-      } else {
-        map.zoomOut();
-      }
-      return;
-    }
-
-    fallbackScale = clamp(fallbackScale + direction * 0.25, 0.75, 2.5);
-    render();
-  }
-
   function fallbackPointFromEvent(event) {
     const rect = elements.mapStage.getBoundingClientRect();
     const xRatio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
@@ -1559,17 +1658,27 @@
       return;
     }
 
-    addFinishedSessionToHistory(session, dateFromIso(session.endedAt));
+    const savedRecord = addFinishedSessionToHistory(session, dateFromIso(session.endedAt));
+    if (savedRecord && !selectedHistoryRecordId) {
+      selectedHistoryRecordId = savedRecord.id;
+      activeView = 'currentResult';
+    }
   }
 
   function addFinishedSessionToHistory(value, savedAt = new Date()) {
     const record = stateTools.createHistoryRecord(value, savedAt);
     if (!record) {
-      return;
+      return null;
+    }
+
+    const existingRecord = stateTools.findHistoryRecord(history, record.id);
+    if (existingRecord) {
+      return existingRecord;
     }
 
     history = stateTools.addHistoryRecord(history, record);
     persistHistory(history);
+    return record;
   }
 
   function persistSession(value) {

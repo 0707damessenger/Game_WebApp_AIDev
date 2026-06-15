@@ -1,6 +1,6 @@
 window.CONFIG = {
   appName: '观鸟路线记录',
-  locationSource: 'simulated',
+  locationSource: 'gps',
   defaultCenter: {
     lat: 31.2304,
     lng: 121.4737,

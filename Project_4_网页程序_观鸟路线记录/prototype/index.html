@@ -23,8 +23,7 @@
         <div id="birdPointLayer" class="bird-point-layer" aria-label="鸟种落点"></div>
 
         <div class="map-tools" aria-label="地图工具">
-          <button id="zoomInButton" class="tool-button" type="button">+</button>
-          <button id="zoomOutButton" class="tool-button" type="button">-</button>
+          <button id="currentLocationButton" class="tool-button" type="button">定位</button>
           <button id="birdNameToggle" class="tool-toggle" type="button" aria-pressed="false">鸟名</button>
         </div>
 
@@ -41,14 +40,14 @@
         <section class="start-panel" id="startPanel">
           <p class="panel-kicker">路线 + 鸟种落点</p>
           <h1>记录一次真实观鸟路线</h1>
-          <p>先选起点，再用地图点击模拟行走。真实 GPS 会作为后续切换源接入。</p>
+          <p>开始后允许定位权限，应用会按当前位置记录行进路线和鸟点。</p>
           <button id="startButton" class="primary-button" type="button">开始记录</button>
         </section>
 
         <div class="hint-strip" id="hintStrip" hidden></div>
 
         <div class="history-edit-bar" id="historyEditBar" hidden>
-          <strong>编辑历史记录 · 拖动落点贴合路线</strong>
+          <strong>点鸟点编辑 / 删除，拖动可调整位置</strong>
           <div class="history-edit-actions">
             <button id="historyCancelButton" class="ghost-button compact" type="button">取消</button>
             <button id="historySaveButton" class="primary-button compact" type="button">保存</button>
@@ -57,7 +56,7 @@
 
         <section class="result-panel" id="resultPanel" aria-label="本次记录" hidden>
           <header class="result-header">
-            <p class="panel-kicker">本次记录</p>
+            <p class="panel-kicker" id="resultKicker">本次记录</p>
             <h1 id="resultTitle">路线已保存</h1>
             <p id="resultMeta">等待记录结果</p>
           </header>

@@ -105,6 +105,11 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
 
   await expect(page.locator('.result-bird-item.is-highlighted')).toHaveCount(1);
   await expect(page.locator('.bird-point-button.is-highlighted')).toHaveCount(1);
+
+  await page.locator('#returnHomeButton').click();
+  await expect(page.locator('#resultPanel')).toBeHidden();
+  await expect(page.locator('#startPanel')).toBeVisible();
+  await expect(page.locator('#profileButton')).toBeVisible();
 });
 
 test('Project 4 can open the share skeleton from a history record result page', async ({ page }) => {
@@ -475,8 +480,11 @@ test('Project 4 can favorite routes from the history list and open them from fav
   await page.locator('#profileButton').click();
   await page.locator('#historyEntryButton').click();
   await expect(page.locator('.history-item')).toHaveCount(2);
-  await page.locator('.history-item').first().locator('.history-favorite').click();
-  await expect(page.locator('.history-item').first().locator('.history-favorite')).toHaveText('取消收藏');
+  const favoriteButton = page.locator('.history-item').first().locator('.history-favorite');
+  await favoriteButton.click();
+  await expect(favoriteButton).toHaveText('★');
+  await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(favoriteButton).toHaveAttribute('aria-label', '取消收藏');
 
   await page.locator('#historyBackButton').click();
   await page.locator('#favoritesEntryButton').click();
@@ -484,7 +492,8 @@ test('Project 4 can favorite routes from the history list and open them from fav
   await expect(page.locator('.history-item')).toHaveCount(1);
   await page.locator('.history-item').click();
 
-  await expect(page.locator('#resultTitle')).toHaveText('历史记录');
+  await expect(page.locator('#resultTitle')).toHaveText('收藏线路');
+  await expect(page.locator('#resultKicker')).toHaveText('收藏线路');
   await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
 
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
@@ -506,6 +515,8 @@ test('Project 4 can unfavorite from detail and shows an empty favorites list', a
   await page.locator('#favoritesEntryButton').click();
   await expect(page.locator('.history-item')).toHaveCount(1);
   await page.locator('.history-item').click();
+  await expect(page.locator('#resultTitle')).toHaveText('收藏线路');
+  await expect(page.locator('#resultKicker')).toHaveText('收藏线路');
   await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
 
   await page.locator('#favoriteResultButton').click();

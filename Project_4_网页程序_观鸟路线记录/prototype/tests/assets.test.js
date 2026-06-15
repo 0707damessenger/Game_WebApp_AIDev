@@ -82,15 +82,22 @@ test('status hint strip does not intercept map or panel controls', () => {
   const hintRule = css.slice(css.indexOf('.hint-strip {'), css.indexOf('.bottom-action {'));
 
   assert.equal(hintRule.includes('pointer-events: none'), true);
+  assert.equal(hintRule.includes('.hint-strip.is-top'), true);
+  assert.equal(hintRule.includes('right: 112px'), true);
 });
 
 test('gps location source is wired through browser geolocation APIs', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
   const config = fs.readFileSync(path.join(prototypeRoot, 'js/config.js'), 'utf8');
   const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
 
-  assert.equal(config.includes("locationSource: 'simulated'"), true);
+  assert.equal(html.includes('id="currentLocationButton"'), true);
+  assert.equal(html.includes('id="zoomInButton"'), false);
+  assert.equal(html.includes('id="zoomOutButton"'), false);
+  assert.equal(config.includes("locationSource: 'gps'"), true);
   assert.equal(app.includes("config.locationSource === 'gps'"), true);
   assert.equal(app.includes('navigator.geolocation'), true);
+  assert.equal(app.includes('window.isSecureContext'), true);
   assert.equal(app.includes('watchPosition'), true);
   assert.equal(app.includes('clearWatch'), true);
   assert.equal(app.includes('无法获取定位'), true);
