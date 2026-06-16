@@ -38,9 +38,7 @@
         </header>
 
         <section class="start-panel" id="startPanel">
-          <p class="panel-kicker">路线 + 鸟种落点</p>
           <h1>记录一次真实观鸟路线</h1>
-          <p>开始后允许定位权限，应用会按当前位置记录行进路线和鸟点。</p>
           <button id="startButton" class="primary-button" type="button">开始记录</button>
         </section>
 
@@ -56,7 +54,6 @@
 
         <section class="result-panel" id="resultPanel" aria-label="本次记录" hidden>
           <header class="result-header">
-            <p class="panel-kicker" id="resultKicker">本次记录</p>
             <h1 id="resultTitle">路线已保存</h1>
             <p id="resultMeta">等待记录结果</p>
           </header>
@@ -78,10 +75,6 @@
               <span>未定</span>
               <strong id="resultUncertain">0 未定</strong>
             </div>
-            <div>
-              <span>总数</span>
-              <strong id="resultBirdTotal">0 只</strong>
-            </div>
           </div>
 
           <section class="result-list-section" aria-label="鸟种清单">
@@ -94,7 +87,6 @@
 
           <div class="result-actions">
             <button id="historyEditButton" class="primary-button compact" type="button" hidden>编辑</button>
-            <button id="returnHomeButton" class="primary-button compact" type="button">返回主界面</button>
             <button id="favoriteResultButton" class="ghost-button compact" type="button" hidden>收藏</button>
             <button id="shareButton" class="ghost-button compact" type="button">分享</button>
           </div>
@@ -127,8 +119,6 @@
             <button id="settingsPlaceholderButton" class="ghost-button compact" type="button" disabled>设置（后续模块）</button>
             <button id="authPlaceholderButton" class="ghost-button compact" type="button" disabled>登录 / 登出（后续模块）</button>
           </section>
-
-          <button id="profileBackButton" class="primary-button compact" type="button">返回主界面</button>
         </section>
 
         <section class="history-panel" id="historyPanel" aria-label="历史记录" hidden>
@@ -146,8 +136,6 @@
             <p id="historyEmpty" class="history-empty">还没有历史记录。完成一次路线记录后，会显示在这里。</p>
             <div id="historyList" class="history-list"></div>
           </section>
-
-          <button id="historyBackButton" class="primary-button compact" type="button">返回个人页</button>
         </section>
 
         <button id="addBirdButton" class="bottom-action" type="button" disabled>
@@ -158,7 +146,6 @@
       <dialog id="finishDialog" class="finish-dialog">
         <form method="dialog">
           <h2>结束本次记录？</h2>
-          <p>保存后会保留当前轨迹。中止会丢弃本次记录。</p>
           <div class="dialog-actions">
             <button id="saveFinishButton" class="primary-button compact" value="save" type="submit">保存并结束</button>
             <button id="abortButton" class="danger-button compact" value="abort" type="submit">中止并丢弃</button>

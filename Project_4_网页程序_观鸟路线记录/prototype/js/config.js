@@ -220,7 +220,6 @@ window.CONFIG = {
     pickingHint: '点击地图确认起点',
     recordingHint: '开发模式：点击地图模拟行走轨迹',
     gpsPendingHint: '正在获取当前位置，请允许浏览器定位权限。',
-    gpsRecordingHint: '真实 GPS 模式：正在随定位变化记录轨迹。',
   },
   gps: {
     enableHighAccuracy: true,

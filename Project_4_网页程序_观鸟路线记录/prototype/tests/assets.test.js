@@ -43,7 +43,9 @@ test('finished record result view is available in the prototype shell', () => {
   assert.equal(html.includes('id="resultPanel"'), true);
   assert.equal(html.includes('id="resultSummary"'), true);
   assert.equal(html.includes('id="resultBirdList"'), true);
-  assert.equal(html.includes('id="returnHomeButton"'), true);
+  assert.equal(html.includes('id="returnHomeButton"'), false);
+  assert.equal(html.includes('id="resultBirdTotal"'), false);
+  assert.equal(html.includes('总数'), false);
   assert.equal(html.includes('id="shareButton"'), true);
   assert.equal(html.includes('id="shareDialog"'), true);
   assert.equal(html.includes('id="shareServiceStatus"'), true);
@@ -65,7 +67,10 @@ test('profile entry, import entry, and standalone history list page are availabl
   assert.equal(html.includes('id="importPreviewButton"'), true);
   assert.equal(html.includes('id="importServiceStatus"'), true);
   assert.equal(html.includes('id="historyPanel"'), true);
-  assert.equal(html.includes('id="historyBackButton"'), true);
+  assert.equal(html.includes('id="profileBackButton"'), false);
+  assert.equal(html.includes('id="historyBackButton"'), false);
+  assert.equal(html.includes('返回主界面'), false);
+  assert.equal(html.includes('返回个人页'), false);
   assert.equal(html.includes('id="historyListTitle"'), true);
   assert.equal(html.includes('id="historyListDescription"'), true);
   assert.equal(html.includes('id="historyList"'), true);
@@ -216,6 +221,19 @@ test('design documents lock local favorites as current-stage personal data', () 
   assert.equal(design.includes('本地收藏线路'), true);
   assert.equal(design.includes('旧记录没有收藏状态时按未收藏处理'), true);
   assert.equal(design.includes('删除一条历史记录时，其收藏状态随该记录一并删除'), true);
+});
+
+test('design documents lock simplified record UI and swipe deletion', () => {
+  const design = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/design.md'), 'utf8');
+
+  assert.equal(design.includes('未开始记录时，主界面地图也应展示当前所在定位点'), true);
+  assert.equal(design.includes('不显示状态胶囊、计数栏与鸟种名开关'), true);
+  assert.equal(design.includes('定位到当前位置入口位于右下角'), true);
+  assert.equal(design.includes('日期 / 起点 - 终点'), true);
+  assert.equal(design.includes('不显示总数卡片'), true);
+  assert.equal(design.includes('不显示总只数'), true);
+  assert.equal(design.includes('界面内不提供「返回主界面」按钮'), true);
+  assert.equal(design.includes('左滑指定条目后露出删除按钮'), true);
 });
 
 test('bird catalog contains the expanded national formal checklist data', () => {

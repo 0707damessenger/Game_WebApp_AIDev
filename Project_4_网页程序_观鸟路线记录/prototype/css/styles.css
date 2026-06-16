@@ -218,11 +218,12 @@ button:disabled {
 
 .map-tools {
   position: absolute;
-  top: calc(max(14px, env(safe-area-inset-top)) + 54px);
   right: 14px;
+  bottom: calc(84px + env(safe-area-inset-bottom));
   z-index: 2;
   display: grid;
   gap: 8px;
+  justify-items: end;
 }
 
 .map-tools[hidden] {
@@ -500,24 +501,42 @@ button:disabled {
 }
 
 .history-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 48px;
-  gap: 8px;
+  position: relative;
+  display: block;
   align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--danger);
 }
 
 .history-open {
-  grid-row: 1 / span 2;
+  position: relative;
+  z-index: 1;
   min-width: 0;
   display: grid;
   gap: 6px;
   min-height: 74px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 0;
+  border-radius: 0;
   padding: 12px;
-  background: white;
+  background: transparent;
   color: var(--ink);
   text-align: left;
+  transition: transform 0.2s ease;
+}
+
+.history-item.is-delete-revealed .history-open {
+  transform: translateX(-72px);
+}
+
+.history-actions {
+  position: absolute;
+  inset: 0 0 0 auto;
+  z-index: 0;
+  display: flex;
+  width: 72px;
+  background: var(--danger);
 }
 
 .history-open strong,
@@ -540,16 +559,22 @@ button:disabled {
 
 .history-favorite,
 .history-delete {
-  min-width: 44px;
-  border-radius: 8px;
+  min-width: 72px;
+  border-radius: 0;
   padding: 0 10px;
   font-size: 13px;
   font-weight: 800;
 }
 
 .history-favorite {
-  align-self: stretch;
+  position: absolute;
+  right: 84px;
+  top: 12px;
+  z-index: 2;
+  min-width: 44px;
+  min-height: 44px;
   border: 1px solid rgba(193, 132, 43, 0.42);
+  border-radius: 8px;
   background: white;
   border-color: rgba(193, 132, 43, 0.42);
   color: #765116;
@@ -562,13 +587,20 @@ button:disabled {
 }
 
 .history-delete {
-  align-self: end;
-  min-height: 32px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
+  min-height: 100%;
+  border: 0;
+  background: var(--danger);
+  color: white;
   font-size: 12px;
-  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.history-item.is-delete-revealed .history-delete {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .history-metrics {
@@ -623,7 +655,7 @@ button:disabled {
 
 .result-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(102px, 1fr));
   gap: 8px;
 }
 
@@ -730,8 +762,12 @@ button:disabled {
 
 .result-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+}
+
+.result-actions button {
+  min-width: 0;
 }
 
 .finish-dialog {
@@ -932,6 +968,10 @@ button:disabled {
 .fuzzy-groups {
   display: grid;
   gap: 10px;
+}
+
+.map-stage.is-idle .status-pill {
+  display: none;
 }
 
 .bird-mode-panel[hidden] {

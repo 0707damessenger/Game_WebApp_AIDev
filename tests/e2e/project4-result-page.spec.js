@@ -67,6 +67,36 @@ function sampleHistoryRecord() {
   };
 }
 
+async function mockGeolocation(page, point = { latitude: 31.2304, longitude: 121.4737 }) {
+  await page.addInitScript((coords) => {
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: {
+        getCurrentPosition(success) {
+          success({
+            coords: {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            },
+            timestamp: Date.now(),
+          });
+        },
+        watchPosition(success) {
+          success({
+            coords: {
+              latitude: coords.latitude,
+              longitude: coords.longitude,
+            },
+            timestamp: Date.now(),
+          });
+          return 1;
+        },
+        clearWatch() {},
+      },
+    });
+  }, point);
+}
+
 async function mockTiandituTiles(page) {
   await page.route('**/*.tianditu.gov.cn/**', async (route) => {
     await route.fulfill({
@@ -76,6 +106,25 @@ async function mockTiandituTiles(page) {
     });
   });
 }
+
+test('Project 4 idle main view shows current location with simplified controls', async ({ page }) => {
+  await mockGeolocation(page);
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await expect(page.locator('#startPanel')).toBeVisible();
+  await expect(page.locator('#startPanel')).not.toContainText('路线 + 鸟种落点');
+  await expect(page.locator('#startPanel')).not.toContainText('开始后允许定位权限');
+  await expect(page.locator('.status-pill')).toBeHidden();
+  await expect(page.locator('#birdNameToggle')).toBeHidden();
+  await expect(page.locator('#currentLocationButton')).toBeVisible();
+
+  await expect.poll(async () => {
+    return page.locator('path[fill="#c1842b"]').count();
+  }, {
+    message: 'expected the idle map to draw the current location marker',
+  }).toBeGreaterThan(0);
+});
 
 test('Project 4 shows the saved current record result page', async ({ page }) => {
   const sampleSession = sampleFinishedSession();
@@ -89,10 +138,11 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
 
   await expect(page.locator('#resultPanel')).toBeVisible();
   await expect(page.locator('#resultTitle')).toHaveText('本次记录');
+  await expect(page.locator('#resultMeta')).toHaveText('6月10日 · 上海 - 测试终点');
   await expect(page.locator('#resultDuration')).toHaveText('25 分钟');
   await expect(page.locator('#resultDistance')).toHaveText('152 m');
   await expect(page.locator('#resultSpecies')).toHaveText('1 种');
-  await expect(page.locator('#resultBirdTotal')).toHaveText('2 只');
+  await expect(page.locator('#resultSummary')).not.toContainText('总数');
   await expect(page.locator('#resultBirdList')).toContainText('白头鹎 × 2');
   await expect(page.locator('#shareButton')).toBeEnabled();
   await page.locator('#shareButton').click();
@@ -106,7 +156,7 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
   await expect(page.locator('.result-bird-item.is-highlighted')).toHaveCount(1);
   await expect(page.locator('.bird-point-button.is-highlighted')).toHaveCount(1);
 
-  await page.locator('#returnHomeButton').click();
+  await page.keyboard.press('Escape');
   await expect(page.locator('#resultPanel')).toBeHidden();
   await expect(page.locator('#startPanel')).toBeVisible();
   await expect(page.locator('#profileButton')).toBeVisible();
@@ -123,6 +173,7 @@ test('Project 4 can open the share skeleton from a history record result page', 
   await page.locator('#profileButton').click();
   await page.locator('#historyEntryButton').click();
   await expect(page.locator('#historyCount')).toHaveText('1 条');
+  await expect(page.locator('.history-item').first()).toContainText('上海 - 测试终点');
   await page.locator('.history-item').click();
 
   await expect(page.locator('#resultTitle')).toHaveText('历史记录');
@@ -277,7 +328,7 @@ test('Project 4 shows uncertain record counts separately on result pages', async
 
   await expect(page.locator('#resultSpecies')).toHaveText('1 种');
   await expect(page.locator('#resultUncertain')).toHaveText('1 未定');
-  await expect(page.locator('#resultBirdTotal')).toHaveText('5 只');
+  await expect(page.locator('#resultSummary')).not.toContainText('总数');
   await expect(page.locator('#resultBirdList')).toContainText('未确定鸟种 × 3');
   await expect(page.locator('#resultBirdList')).toContainText('湿地');
   await expect(page.locator('#shareButton')).toBeEnabled();
@@ -417,7 +468,7 @@ test('Project 4 edits a bird record inside a saved history entry and persists it
   await page.locator('#historySaveButton').click();
   await expect(page.locator('#resultPanel')).toBeVisible();
   await expect(page.locator('#resultTitle')).toHaveText('历史记录');
-  await expect(page.locator('#resultBirdTotal')).toHaveText('3 只');
+  await expect(page.locator('#resultSummary')).not.toContainText('总数');
 
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
   expect(persisted[0].birdRecords[0].count).toBe(3);
@@ -443,7 +494,7 @@ test('Project 4 discards history edits when the user cancels', async ({ page }) 
   // 取消后还原为编辑前内容，且本地存储未被改动。
   await expect(page.locator('#resultPanel')).toBeVisible();
   await expect(page.locator('#resultTitle')).toHaveText('历史记录');
-  await expect(page.locator('#resultBirdTotal')).toHaveText('2 只');
+  await expect(page.locator('#resultSummary')).not.toContainText('总数');
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
   expect(persisted[0].birdRecords).toHaveLength(1);
   expect(persisted[0].summary.totalBirds).toBe(2);
@@ -586,14 +637,27 @@ test('Project 4 deletes a whole history record only after confirmation', async (
   await page.locator('#profileButton').click();
   await page.locator('#historyEntryButton').click();
   await expect(page.locator('.history-item')).toHaveCount(2);
+  await expect(page.locator('.history-item').first()).toContainText('上海 - 测试终点');
+  await expect(page.locator('.history-item').first()).not.toContainText('2 只');
+  await expect(page.locator('.history-item').first().locator('.history-delete')).toBeHidden();
+
+  const firstItem = page.locator('.history-item').first();
+  const box = await firstItem.boundingBox();
+  expect(box).not.toBeNull();
+  await page.mouse.move(box.x + box.width - 16, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 24, box.y + box.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect(firstItem.locator('.history-delete')).toBeVisible();
 
   // 取消时不删除。
-  await page.locator('.history-item').first().locator('.history-delete').click();
+  await firstItem.locator('.history-delete').click();
   await expect(page.locator('#deleteHistoryDialog')).toBeVisible();
   await page.locator('#deleteHistoryDialog button[value="cancel"]').click();
   await expect(page.locator('.history-item')).toHaveCount(2);
 
   // 确认后删除该条。
+  await expect(page.locator('.history-item').first().locator('.history-delete')).toBeVisible();
   await page.locator('.history-item').first().locator('.history-delete').click();
   await page.locator('#deleteHistoryDialog button[value="delete"]').click();
   await expect(page.locator('.history-item')).toHaveCount(1);
@@ -618,20 +682,23 @@ test('Project 4 can favorite routes from the history list and open them from fav
   await page.locator('#profileButton').click();
   await page.locator('#historyEntryButton').click();
   await expect(page.locator('.history-item')).toHaveCount(2);
+  await expect(page.locator('.history-item').first()).not.toContainText('2 只');
   const favoriteButton = page.locator('.history-item').first().locator('.history-favorite');
   await favoriteButton.click();
   await expect(favoriteButton).toHaveText('★');
   await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
   await expect(favoriteButton).toHaveAttribute('aria-label', '取消收藏');
 
-  await page.locator('#historyBackButton').click();
+  await page.keyboard.press('Escape');
   await page.locator('#favoritesEntryButton').click();
   await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
   await expect(page.locator('.history-item')).toHaveCount(1);
+  await expect(page.locator('.history-item').first()).toContainText('上海 - 测试终点');
+  await expect(page.locator('.history-item').first()).not.toContainText('2 只');
+  await expect(page.locator('.history-item').first().locator('.history-delete')).toBeHidden();
   await page.locator('.history-item').click();
 
   await expect(page.locator('#resultTitle')).toHaveText('收藏线路');
-  await expect(page.locator('#resultKicker')).toHaveText('收藏线路');
   await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
 
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
@@ -654,12 +721,11 @@ test('Project 4 can unfavorite from detail and shows an empty favorites list', a
   await expect(page.locator('.history-item')).toHaveCount(1);
   await page.locator('.history-item').click();
   await expect(page.locator('#resultTitle')).toHaveText('收藏线路');
-  await expect(page.locator('#resultKicker')).toHaveText('收藏线路');
   await expect(page.locator('#favoriteResultButton')).toHaveText('取消收藏');
 
   await page.locator('#favoriteResultButton').click();
   await expect(page.locator('#favoriteResultButton')).toHaveText('收藏');
-  await page.locator('#returnHomeButton').click();
+  await page.keyboard.press('Escape');
 
   await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
   await expect(page.locator('.history-item')).toHaveCount(0);

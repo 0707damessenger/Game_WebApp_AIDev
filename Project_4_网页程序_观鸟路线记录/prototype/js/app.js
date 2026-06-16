@@ -24,6 +24,8 @@
   let tileErrorHint = '';
   let pendingDeleteHistoryId = null;
   let birdPointGroups = [];
+  let idleCurrentPoint = null;
+  let suppressRouteHistory = false;
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -44,10 +46,7 @@
     sessionBirds: document.querySelector('#sessionBirds'),
     profileButton: document.querySelector('#profileButton'),
     finishDialog: document.querySelector('#finishDialog'),
-    saveFinishButton: document.querySelector('#saveFinishButton'),
-    abortButton: document.querySelector('#abortButton'),
     resultPanel: document.querySelector('#resultPanel'),
-    resultKicker: document.querySelector('#resultKicker'),
     resultTitle: document.querySelector('#resultTitle'),
     resultMeta: document.querySelector('#resultMeta'),
     resultSummary: document.querySelector('#resultSummary'),
@@ -55,15 +54,12 @@
     resultDistance: document.querySelector('#resultDistance'),
     resultSpecies: document.querySelector('#resultSpecies'),
     resultUncertain: document.querySelector('#resultUncertain'),
-    resultBirdTotal: document.querySelector('#resultBirdTotal'),
     resultListCount: document.querySelector('#resultListCount'),
     resultBirdList: document.querySelector('#resultBirdList'),
     historyEditBar: document.querySelector('#historyEditBar'),
     historyEditButton: document.querySelector('#historyEditButton'),
     historySaveButton: document.querySelector('#historySaveButton'),
     historyCancelButton: document.querySelector('#historyCancelButton'),
-    sharePlaceholderButton: document.querySelector('#sharePlaceholderButton'),
-    returnHomeButton: document.querySelector('#returnHomeButton'),
     shareButton: document.querySelector('#shareButton'),
     shareDialog: document.querySelector('#shareDialog'),
     shareCloseButton: document.querySelector('#shareCloseButton'),
@@ -87,8 +83,6 @@
     historyCount: document.querySelector('#historyCount'),
     historyEmpty: document.querySelector('#historyEmpty'),
     historyList: document.querySelector('#historyList'),
-    profileBackButton: document.querySelector('#profileBackButton'),
-    historyBackButton: document.querySelector('#historyBackButton'),
     favoriteResultButton: document.querySelector('#favoriteResultButton'),
     birdDialog: document.querySelector('#birdDialog'),
     birdDialogTitle: document.querySelector('#birdDialogTitle'),
@@ -123,6 +117,7 @@
     initMap();
     bindEvents();
     render();
+    primeIdleCurrentLocation();
   }
 
   function initMap() {
@@ -221,6 +216,7 @@
         if (savedRecord) {
           selectedHistoryRecordId = savedRecord.id;
           activeView = 'currentResult';
+          pushRouteHistory();
         }
         persistSession(session);
       }
@@ -263,29 +259,6 @@
       render();
     });
 
-    elements.returnHomeButton.addEventListener('click', () => {
-      if (selectedHistoryRecordId && activeView !== 'currentResult') {
-        selectedHistoryRecordId = null;
-        highlightedBirdRecordId = null;
-        historyEditMode = false;
-        historyDraft = null;
-        activeView = 'historyList';
-        render();
-        return;
-      }
-
-      session = stateTools.createSession();
-      highlightedBirdRecordId = null;
-      selectedHistoryRecordId = null;
-      historyEditMode = false;
-      historyDraft = null;
-      activeView = 'main';
-      locationHintOverride = '';
-      stopGpsTracking();
-      clearPersistedSession();
-      render();
-    });
-
     elements.favoriteResultButton.addEventListener('click', () => {
       toggleFavoriteForRecord(selectedHistoryRecordId);
     });
@@ -302,6 +275,7 @@
       activeView = 'profile';
       selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
+      pushRouteHistory();
       render();
     });
 
@@ -310,6 +284,7 @@
       historyListMode = 'all';
       selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
+      pushRouteHistory();
       render();
     });
 
@@ -318,6 +293,7 @@
       historyListMode = 'favorites';
       selectedHistoryRecordId = null;
       highlightedBirdRecordId = null;
+      pushRouteHistory();
       render();
     });
 
@@ -331,20 +307,6 @@
 
     elements.importPreviewButton.addEventListener('click', () => {
       previewImportLink();
-    });
-
-    elements.profileBackButton.addEventListener('click', () => {
-      activeView = 'main';
-      selectedHistoryRecordId = null;
-      highlightedBirdRecordId = null;
-      render();
-    });
-
-    elements.historyBackButton.addEventListener('click', () => {
-      activeView = 'profile';
-      selectedHistoryRecordId = null;
-      highlightedBirdRecordId = null;
-      render();
     });
 
     elements.addBirdButton.addEventListener('click', () => {
@@ -415,6 +377,24 @@
 
     elements.currentLocationButton.addEventListener('click', () => {
       centerMapOnCurrentLocation();
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (closeOpenDialog()) {
+        return;
+      }
+
+      goBack();
+    });
+
+    window.addEventListener('popstate', () => {
+      suppressRouteHistory = true;
+      goBack();
+      suppressRouteHistory = false;
     });
 
     if (map) {
@@ -498,6 +478,7 @@
       timestamp: new Date(position.timestamp || Date.now()).toISOString(),
     };
 
+    idleCurrentPoint = point;
     locationHintOverride = '';
 
     if (session.state === stateTools.STATES.PICKING_START) {
@@ -536,7 +517,7 @@
 
   function centerMapOnCurrentLocation() {
     const mapSource = getMapSource();
-    const currentPoint = mapSource.currentPoint || session.currentPoint;
+    const currentPoint = mapSource.currentPoint || session.currentPoint || idleCurrentPoint;
     if (currentPoint) {
       centerMapAt(currentPoint);
       showLocationHint('已定位到当前位置。');
@@ -559,7 +540,10 @@
         lng: position.coords.longitude,
         label: '当前位置',
       };
+      idleCurrentPoint = point;
       centerMapAt(point);
+      renderMapLayers();
+      renderFallbackLayers();
       showLocationHint('已定位到当前位置。');
     }, (error) => {
       const message = error && error.code === 1
@@ -579,6 +563,31 @@
     }
   }
 
+  function primeIdleCurrentLocation() {
+    if (session.state !== stateTools.STATES.IDLE && session.state !== stateTools.STATES.ABORTED) {
+      return;
+    }
+
+    if (window.isSecureContext === false || !navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition((position) => {
+      idleCurrentPoint = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+        label: '当前位置',
+        timestamp: new Date(position.timestamp || Date.now()).toISOString(),
+      };
+      centerMapAt(idleCurrentPoint);
+      render();
+    }, () => {}, {
+      enableHighAccuracy: config.gps.enableHighAccuracy,
+      maximumAge: config.gps.maximumAgeMs,
+      timeout: config.gps.timeoutMs,
+    });
+  }
+
   function render() {
     const activeResult = getActiveResult();
     const isResultView = Boolean(activeResult);
@@ -586,6 +595,8 @@
     const isProfileView = activeView === 'profile';
     const isHistoryListView = activeView === 'historyList';
     const isFullPageView = isProfileView || isHistoryListView;
+    const isIdleMain = !isFullPageView && !isResultView &&
+      (session.state === stateTools.STATES.IDLE || session.state === stateTools.STATES.ABORTED);
     const summary = activeResult ? activeResult.summary : stateTools.summarizeSession(session);
 
     elements.sessionState.textContent = isSavedResult
@@ -613,7 +624,9 @@
     elements.mapFallback.dataset.mode = isResultView ? stateTools.STATES.FINISHED : session.state;
     elements.mapStage.classList.toggle('is-result-mode', isResultView);
     elements.mapStage.classList.toggle('is-full-page', isFullPageView);
+    elements.mapStage.classList.toggle('is-idle', isIdleMain);
     elements.mapTools.hidden = isFullPageView;
+    elements.birdNameToggle.hidden = isFullPageView || isIdleMain || (session.state !== stateTools.STATES.RECORDING && !isResultView);
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
     const inHistoryEdit = isSavedResult && historyEditMode;
@@ -648,9 +661,12 @@
         (config.locationSource === 'gps' ? config.mapInteraction.gpsPendingHint : config.mapInteraction.pickingHint);
       elements.hintStrip.hidden = false;
     } else if (session.state === stateTools.STATES.RECORDING) {
-      elements.hintStrip.textContent = locationHintOverride ||
-        (config.locationSource === 'gps' ? config.mapInteraction.gpsRecordingHint : config.mapInteraction.recordingHint);
-      elements.hintStrip.hidden = false;
+      if (config.locationSource === 'gps') {
+        elements.hintStrip.hidden = true;
+      } else {
+        elements.hintStrip.textContent = locationHintOverride || config.mapInteraction.recordingHint;
+        elements.hintStrip.hidden = false;
+      }
     } else if (session.state === stateTools.STATES.FINISHED) {
       elements.hintStrip.hidden = true;
     } else {
@@ -673,7 +689,6 @@
     }
 
     const label = resultViewLabel();
-    elements.resultKicker.textContent = label;
     elements.resultPanel.setAttribute('aria-label', label);
     elements.resultTitle.textContent = isEditingHistory()
       ? `编辑${label}`
@@ -683,9 +698,7 @@
     elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
     elements.resultSpecies.textContent = `${result.summary.speciesCount} 种`;
     elements.resultUncertain.textContent = `${result.summary.uncertainRecordCount || 0} 未定`;
-    elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
-    elements.returnHomeButton.textContent = resultBackLabel();
     elements.shareButton.disabled = !result;
     elements.favoriteResultButton.hidden = !selectedHistoryRecordId || historyEditMode;
     elements.favoriteResultButton.textContent = stateTools.isHistoryRecordFavorite(result) ? '取消收藏' : '收藏';
@@ -763,7 +776,6 @@
         formatDuration(record.summary.durationMinutes),
         formatDistance(record.summary.distanceMeters),
         `${record.summary.speciesCount} 种`,
-        `${record.summary.totalBirds} 只`,
       ].forEach((text) => {
         const metric = document.createElement('em');
         metric.textContent = text;
@@ -772,6 +784,10 @@
 
       open.append(title, detail, metrics);
       open.addEventListener('click', () => {
+        if (item.classList.contains('is-delete-revealed')) {
+          item.classList.remove('is-delete-revealed');
+          return;
+        }
         openHistoryRecord(record.id);
       });
 
@@ -795,9 +811,126 @@
         toggleFavoriteForRecord(record.id);
       });
 
-      item.append(open, favorite, remove);
+      const actions = document.createElement('div');
+      actions.className = 'history-actions';
+      actions.append(favorite, remove);
+
+      item.append(open, actions);
+      bindSwipeReveal(item);
       return item;
     }));
+  }
+
+  function bindSwipeReveal(item) {
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+
+    item.addEventListener('pointerdown', (event) => {
+      startX = event.clientX;
+      startY = event.clientY;
+      tracking = true;
+    });
+
+    item.addEventListener('pointerup', (event) => {
+      if (!tracking) {
+        return;
+      }
+
+      tracking = false;
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        return;
+      }
+
+      if (deltaX < -40) {
+        item.classList.add('is-delete-revealed');
+      } else if (deltaX > 30) {
+        item.classList.remove('is-delete-revealed');
+      }
+    });
+
+    item.addEventListener('pointercancel', () => {
+      tracking = false;
+    });
+  }
+
+  function pushRouteHistory() {
+    if (suppressRouteHistory || !window.history || typeof window.history.pushState !== 'function') {
+      return;
+    }
+
+    window.history.pushState({ birdRouteView: activeView }, '', window.location.href);
+  }
+
+  function closeOpenDialog() {
+    const dialogs = [
+      elements.finishDialog,
+      elements.shareDialog,
+      elements.importDialog,
+      elements.birdDialog,
+      elements.deleteHistoryDialog,
+      elements.birdPointDialog,
+    ];
+    const openDialog = dialogs.find((dialog) => dialog && dialog.open);
+    if (!openDialog) {
+      return false;
+    }
+
+    openDialog.close();
+    return true;
+  }
+
+  function goBack() {
+    if (isEditingHistory()) {
+      cancelHistoryEdits();
+      return;
+    }
+
+    if (selectedHistoryRecordId && activeView !== 'currentResult') {
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      historyEditMode = false;
+      historyDraft = null;
+      activeView = 'historyList';
+      render();
+      return;
+    }
+
+    if (activeView === 'currentResult') {
+      resetToMain();
+      return;
+    }
+
+    if (activeView === 'historyList') {
+      activeView = 'profile';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+      return;
+    }
+
+    if (activeView === 'profile') {
+      activeView = 'main';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+    }
+  }
+
+  function resetToMain() {
+    stopGpsTracking();
+    session = stateTools.createSession();
+    selectedHistoryRecordId = null;
+    highlightedBirdRecordId = null;
+    historyEditMode = false;
+    historyDraft = null;
+    activeView = 'main';
+    locationHintOverride = '';
+    clearPersistedSession();
+    render();
+    primeIdleCurrentLocation();
   }
 
   function requestDeleteHistoryRecord(recordId) {
@@ -854,14 +987,6 @@
     return '本次记录';
   }
 
-  function resultBackLabel() {
-    if (activeView === 'currentResult' || !selectedHistoryRecordId) {
-      return '返回主界面';
-    }
-
-    return historyListMode === 'favorites' ? '返回收藏列表' : '返回历史列表';
-  }
-
   function isEditingHistory() {
     return Boolean(historyEditMode && historyDraft);
   }
@@ -906,6 +1031,14 @@
       return activeResult;
     }
 
+    if ((session.state === stateTools.STATES.IDLE || session.state === stateTools.STATES.ABORTED) && idleCurrentPoint) {
+      return {
+        ...session,
+        currentPoint: idleCurrentPoint,
+        track: [],
+      };
+    }
+
     return session;
   }
 
@@ -920,6 +1053,7 @@
     historyEditMode = false;
     historyDraft = null;
     activeView = 'historyResult';
+    pushRouteHistory();
     render();
   }
 
@@ -936,11 +1070,18 @@
     const date = result.endedAt
       ? new Date(result.endedAt).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
       : '今天';
-    const place = result.startPoint && result.startPoint.label
-      ? result.startPoint.label
-      : '起点附近';
+    const place = routePlaceLabel(result);
 
     return `${date} · ${place}`;
+  }
+
+  function routePlaceLabel(result) {
+    const endPoint = result.currentPoint || result.track[result.track.length - 1] || null;
+    return `${pointLabel(result.startPoint, '起点')} - ${pointLabel(endPoint, '终点')}`;
+  }
+
+  function pointLabel(point, fallback) {
+    return point && point.label ? point.label : fallback;
   }
 
   function formatDuration(minutes) {
@@ -1465,6 +1606,10 @@
       polyline.setAttribute('class', 'fallback-route-polyline');
       polyline.setAttribute('points', points.map((point) => `${point.x},${point.y}`).join(' '));
       svg.appendChild(polyline);
+    }
+
+    if (points.length === 0 && mapSource.currentPoint) {
+      points.push(pointToFallbackPosition(mapSource.currentPoint));
     }
 
     points.forEach((point, index) => {
