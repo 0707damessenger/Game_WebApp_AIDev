@@ -20,6 +20,13 @@ function loadConfig() {
   return sandbox.window.CONFIG;
 }
 
+function loadFuzzyTools(config) {
+  const script = fs.readFileSync(path.join(prototypeRoot, 'js/fuzzy.js'), 'utf8');
+  const sandbox = { window: { CONFIG: config } };
+  vm.runInNewContext(script, sandbox);
+  return sandbox.window.BirdFuzzyMatch;
+}
+
 test('Leaflet assets are served from local prototype files', () => {
   const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
 
@@ -143,6 +150,47 @@ test('share and import configuration reserves server-link service while disabled
   assert.equal(config.shareImport.sharedLocationScope, 'fullRoute');
   assert.equal(typeof config.shareImport.pendingServiceLabel, 'string');
   assert.notEqual(config.shareImport.pendingServiceLabel.trim(), '');
+});
+
+test('fuzzy match UI and configuration are available in the prototype shell', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
+  const config = loadConfig();
+
+  assert.equal(html.includes('id="birdModeTabs"'), true);
+  assert.equal(html.includes('id="birdSearchModeButton"'), true);
+  assert.equal(html.includes('id="birdFuzzyModeButton"'), true);
+  assert.equal(html.includes('id="birdFuzzyPanel"'), true);
+  assert.equal(html.includes('./js/fuzzy.js'), true);
+  assert.equal(typeof config.fuzzyMatch, 'object');
+  assert.equal(Array.isArray(config.fuzzyMatch.featureGroups), true);
+  assert.equal(Array.isArray(config.fuzzyMatch.candidateRules), true);
+});
+
+test('fuzzy match rules return waterbird candidates for large wetland swimmers', () => {
+  const config = loadConfig();
+  const fuzzy = loadFuzzyTools(config);
+
+  const candidates = fuzzy.matchCandidates({
+    size: 'large',
+    colors: ['white'],
+    behaviors: ['swimming'],
+    habitats: ['wetland'],
+    postures: ['floating'],
+  });
+
+  assert.ok(candidates.length > 0);
+  assert.equal(candidates[0].name, '大天鹅');
+  assert.equal(candidates[0].scientificName, 'Cygnus cygnus');
+  assert.ok(candidates[0].score > 0);
+});
+
+test('design documents move fuzzy match into current-stage scope', () => {
+  const design = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/design.md'), 'utf8');
+  const exploration = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/exploration.md'), 'utf8');
+
+  assert.equal(design.includes('鸟种模糊匹配'), true);
+  assert.equal(design.includes('当前阶段不实现'), false);
+  assert.equal(exploration.includes('鸟种模糊匹配的特征维度'), false);
 });
 
 test('map initialization reads tile layers from the active provider', () => {

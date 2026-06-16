@@ -202,6 +202,144 @@ test('Project 4 searches the expanded bird catalog while adding a bird record', 
   await expect(page.locator('.bird-point-button')).toHaveCount(1);
 });
 
+test('Project 4 adds an uncertain bird record through fuzzy matching', async ({ page }) => {
+  const recordingSession = {
+    state: 'recording',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' },
+    ],
+    birdRecords: [],
+    distanceMeters: 152,
+    createdAt: '2026-06-10T01:00:00.000Z',
+  };
+
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, recordingSession);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+  await page.locator('#addBirdButton').click();
+  await page.locator('#birdFuzzyModeButton').click();
+
+  await expect(page.locator('#birdFuzzyPanel')).toBeVisible();
+  await expect(page.locator('#birdSubmitButton')).toBeDisabled();
+  await page.locator('[data-fuzzy-group="size"][data-fuzzy-value="large"]').click();
+  await page.locator('[data-fuzzy-group="habitats"][data-fuzzy-value="wetland"]').click();
+  await page.locator('[data-fuzzy-group="behaviors"][data-fuzzy-value="swimming"]').click();
+  await expect(page.locator('#birdFuzzyCandidates')).toContainText('大天鹅');
+  await expect(page.locator('#birdSubmitButton')).toBeEnabled();
+  await page.locator('#birdSubmitButton').click();
+
+  await expect(page.locator('#birdDialog')).not.toBeVisible();
+  await expect(page.locator('#sessionBirds')).toHaveText('0 种 · 1 未定');
+  await expect(page.locator('.bird-point-button')).toHaveCount(1);
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-current-session')));
+  expect(saved.birdRecords[0].identificationType).toBe('uncertain');
+  expect(saved.birdRecords[0].speciesName).toBe('未确定鸟种');
+  expect(saved.birdRecords[0].fuzzyFeatures.habitats).toContain('wetland');
+  expect(saved.birdRecords[0].candidateBirds[0].name).toBe('大天鹅');
+});
+
+test('Project 4 shows uncertain record counts separately on result pages', async ({ page }) => {
+  const sampleSession = sampleFinishedSession();
+  sampleSession.birdRecords.push({
+    id: 'bird-uncertain-1',
+    identificationType: 'uncertain',
+    speciesName: '未确定鸟种',
+    scientificName: '',
+    count: 3,
+    tags: [],
+    note: '远处水面',
+    fuzzyFeatures: {
+      size: 'large',
+      colors: ['white'],
+      behaviors: ['swimming'],
+      habitats: ['wetland'],
+      postures: ['floating'],
+    },
+    candidateBirds: [{ name: '大天鹅', scientificName: 'Cygnus cygnus', score: 5 }],
+    position: { lat: 31.231, lng: 121.4742, label: '测试终点', timestamp: '2026-06-10T01:20:00.000Z' },
+    createdAt: '2026-06-10T01:09:00.000Z',
+  });
+
+  await page.addInitScript((session) => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify(session));
+  }, sampleSession);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await expect(page.locator('#resultSpecies')).toHaveText('1 种');
+  await expect(page.locator('#resultUncertain')).toHaveText('1 未定');
+  await expect(page.locator('#resultBirdTotal')).toHaveText('5 只');
+  await expect(page.locator('#resultBirdList')).toContainText('未确定鸟种 × 3');
+  await expect(page.locator('#resultBirdList')).toContainText('湿地');
+  await expect(page.locator('#shareButton')).toBeEnabled();
+  await page.locator('#shareButton').click();
+  await expect(page.locator('#shareRecordSummary')).toContainText('未确定鸟种');
+});
+
+test('Project 4 edits and persists an uncertain history bird record', async ({ page }) => {
+  const record = sampleHistoryRecord();
+  record.birdRecords = [{
+    id: 'bird-uncertain-history',
+    identificationType: 'uncertain',
+    speciesName: '未确定鸟种',
+    scientificName: '',
+    count: 1,
+    tags: [],
+    note: '',
+    fuzzyFeatures: {
+      size: 'large',
+      colors: ['white'],
+      behaviors: ['swimming'],
+      habitats: ['wetland'],
+      postures: ['floating'],
+    },
+    candidateBirds: [{ name: '大天鹅', scientificName: 'Cygnus cygnus', score: 5 }],
+    position: { lat: 31.231, lng: 121.4742, label: '测试终点', timestamp: '2026-06-10T01:20:00.000Z' },
+    createdAt: '2026-06-10T01:09:00.000Z',
+  }];
+  record.summary = {
+    ...record.summary,
+    birdRecordCount: 1,
+    speciesCount: 0,
+    uncertainRecordCount: 1,
+    totalBirds: 1,
+  };
+
+  await page.addInitScript((historyRecord) => {
+    if (!localStorage.getItem('bird-route-history')) {
+      localStorage.setItem('bird-route-history', JSON.stringify([historyRecord]));
+    }
+  }, record);
+
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await enterEditMode(page);
+  await page.locator('.bird-point-button').click();
+  await expect(page.locator('#birdDialog')).toBeVisible();
+  await expect(page.locator('#birdFuzzyPanel')).toBeVisible();
+  await page.locator('[data-fuzzy-group="colors"][data-fuzzy-value="gray"]').click();
+  await page.locator('#birdNoteInput').fill('灰白色，大水面');
+  await page.locator('#birdSubmitButton').click();
+  await page.locator('#historySaveButton').click();
+
+  await page.reload();
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
+  expect(persisted[0].birdRecords[0].identificationType).toBe('uncertain');
+  expect(persisted[0].birdRecords[0].fuzzyFeatures.colors).toContain('gray');
+  expect(persisted[0].birdRecords[0].note).toBe('灰白色，大水面');
+  expect(persisted[0].summary.uncertainRecordCount).toBe(1);
+});
+
 test('Project 4 renders a user bird note as literal text, never as HTML', async ({ page }) => {
   const sharedPosition = { lat: 31.231, lng: 121.4742, label: '测试点', timestamp: '2026-06-10T01:20:00.000Z' };
   const maliciousNote = '<img src=x onerror="window.__xss=1">树梢';

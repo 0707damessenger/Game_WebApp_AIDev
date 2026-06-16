@@ -232,6 +232,90 @@ test('history records can be found by id', () => {
   assert.equal(state.findHistoryRecord(history, 'record-missing'), null);
 });
 
+test('old bird records without identification type still count as confirmed species', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession()),
+    { lat: 31.2304, lng: 121.4737 },
+  );
+  session = state.addBirdRecord(session, {
+    speciesName: '白头鹎',
+    scientificName: 'Pycnonotus sinensis',
+    count: 2,
+  }, new Date('2026-06-10T01:00:00.000Z'));
+  const legacy = {
+    ...session,
+    birdRecords: session.birdRecords.map(({ identificationType, fuzzyFeatures, candidateBirds, ...record }) => record),
+  };
+
+  const summary = state.summarizeSession(legacy);
+
+  assert.equal(summary.speciesCount, 1);
+  assert.equal(summary.uncertainRecordCount, 0);
+  assert.equal(summary.totalBirds, 2);
+});
+
+test('uncertain bird records do not increase confirmed species count', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession()),
+    { lat: 31.2304, lng: 121.4737 },
+  );
+  session = state.addBirdRecord(session, {
+    identificationType: 'uncertain',
+    speciesName: '未确定鸟种',
+    scientificName: '',
+    count: 3,
+    fuzzyFeatures: {
+      size: 'large',
+      colors: ['white', 'black'],
+      behaviors: ['swimming'],
+      habitats: ['wetland'],
+      postures: ['floating'],
+    },
+    candidateBirds: [
+      { name: '大天鹅', scientificName: 'Cygnus cygnus', score: 5 },
+    ],
+  }, new Date('2026-06-10T01:00:00.000Z'));
+
+  const summary = state.summarizeSession(session);
+
+  assert.equal(session.birdRecords[0].identificationType, 'uncertain');
+  assert.equal(summary.speciesCount, 0);
+  assert.equal(summary.uncertainRecordCount, 1);
+  assert.equal(summary.totalBirds, 3);
+});
+
+test('uncertain bird records can be edited without changing their route position', () => {
+  let session = state.confirmStartPoint(
+    state.beginStartSelection(state.createSession()),
+    { lat: 31.2304, lng: 121.4737 },
+  );
+  session = state.addBirdRecord(session, {
+    identificationType: 'uncertain',
+    speciesName: '未确定鸟种',
+    count: 1,
+    fuzzyFeatures: { size: 'large', colors: ['white'], behaviors: ['swimming'], habitats: ['wetland'], postures: [] },
+    candidateBirds: [{ name: '大天鹅', scientificName: 'Cygnus cygnus', score: 4 }],
+  }, new Date('2026-06-10T01:00:00.000Z'));
+  const originalPosition = session.birdRecords[0].position;
+
+  const edited = state.updateBirdRecord(session, session.birdRecords[0].id, {
+    identificationType: 'uncertain',
+    speciesName: '未确定鸟种',
+    count: 2,
+    tags: ['飞行'],
+    note: '距离较远',
+    fuzzyFeatures: { size: 'medium', colors: ['gray'], behaviors: ['flying'], habitats: ['forest'], postures: ['soaring'] },
+    candidateBirds: [{ name: '苍鹭', scientificName: 'Ardea cinerea', score: 3 }],
+  });
+
+  assert.equal(edited.birdRecords[0].identificationType, 'uncertain');
+  assert.equal(edited.birdRecords[0].speciesName, '未确定鸟种');
+  assert.equal(edited.birdRecords[0].count, 2);
+  assert.deepEqual(edited.birdRecords[0].fuzzyFeatures.behaviors, ['flying']);
+  assert.equal(edited.birdRecords[0].candidateBirds[0].name, '苍鹭');
+  assert.deepEqual(edited.birdRecords[0].position, originalPosition);
+});
+
 test('old history records default to not favorite', () => {
   assert.equal(state.isHistoryRecordFavorite({ id: 'record-old' }), false);
   assert.equal(state.isHistoryRecordFavorite({ id: 'record-favorite', isFavorite: true }), true);

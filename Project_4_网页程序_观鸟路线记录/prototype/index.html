@@ -75,6 +75,10 @@
               <strong id="resultSpecies">0 种</strong>
             </div>
             <div>
+              <span>未定</span>
+              <strong id="resultUncertain">0 未定</strong>
+            </div>
+            <div>
               <span>总数</span>
               <strong id="resultBirdTotal">0 只</strong>
             </div>
@@ -199,9 +203,23 @@
             <button id="birdCloseButton" class="ghost-button compact sheet-close" type="button">关闭</button>
           </header>
 
-          <label class="field-label" for="birdSearchInput">鸟种名称</label>
-          <input id="birdSearchInput" class="text-field" type="search" autocomplete="off" placeholder="搜索中文名或学名">
-          <div id="birdResults" class="bird-results" aria-label="鸟种搜索结果"></div>
+          <div id="birdModeTabs" class="segmented-control" role="tablist" aria-label="鸟点记录方式">
+            <button id="birdSearchModeButton" class="segment-button is-selected" type="button" role="tab" aria-selected="true">精确搜索</button>
+            <button id="birdFuzzyModeButton" class="segment-button" type="button" role="tab" aria-selected="false">模糊匹配</button>
+          </div>
+
+          <section id="birdSearchPanel" class="bird-mode-panel" aria-label="精确搜索">
+            <label class="field-label" for="birdSearchInput">鸟种名称</label>
+            <input id="birdSearchInput" class="text-field" type="search" autocomplete="off" placeholder="搜索中文名或学名">
+            <div id="birdResults" class="bird-results" aria-label="鸟种搜索结果"></div>
+          </section>
+
+          <section id="birdFuzzyPanel" class="bird-mode-panel" aria-label="模糊匹配" hidden>
+            <p id="birdFuzzyContext" class="selected-info">地点和时间会随当前鸟点自动保存。</p>
+            <div id="birdFuzzyGroups" class="fuzzy-groups" aria-label="鸟种特征"></div>
+            <div id="birdFuzzyCandidates" class="fuzzy-candidates" aria-label="候选建议"></div>
+            <p class="selected-info">候选仅作为方向建议，可继续前往 Merlin 进一步识别。</p>
+          </section>
           <p id="birdSelectedInfo" class="selected-info">请选择一个鸟种。</p>
 
           <div class="count-row">
@@ -254,7 +272,8 @@
 
     <script src="./vendor/leaflet/leaflet.js?v=local-20260609"></script>
     <script src="./js/birds.js?v=catalog-20260612-1"></script>
-    <script src="./js/state.js?v=favorites-20260614-1"></script>
-    <script src="./js/app.js?v=favorites-20260614-1"></script>
+    <script src="./js/state.js?v=fuzzy-20260616-1"></script>
+    <script src="./js/fuzzy.js?v=fuzzy-20260616-1"></script>
+    <script src="./js/app.js?v=fuzzy-20260616-1"></script>
   </body>
 </html>

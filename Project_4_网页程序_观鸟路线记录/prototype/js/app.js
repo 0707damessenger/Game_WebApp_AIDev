@@ -1,6 +1,7 @@
 (function attachApp() {
   const config = window.CONFIG;
   const stateTools = window.BirdRouteState;
+  const fuzzyTools = window.BirdFuzzyMatch;
   let history = loadHistory();
   let session = loadPersistedSession() || stateTools.createSession();
   let map = null;
@@ -53,6 +54,7 @@
     resultDuration: document.querySelector('#resultDuration'),
     resultDistance: document.querySelector('#resultDistance'),
     resultSpecies: document.querySelector('#resultSpecies'),
+    resultUncertain: document.querySelector('#resultUncertain'),
     resultBirdTotal: document.querySelector('#resultBirdTotal'),
     resultListCount: document.querySelector('#resultListCount'),
     resultBirdList: document.querySelector('#resultBirdList'),
@@ -91,8 +93,15 @@
     birdDialog: document.querySelector('#birdDialog'),
     birdDialogTitle: document.querySelector('#birdDialogTitle'),
     birdCloseButton: document.querySelector('#birdCloseButton'),
+    birdSearchModeButton: document.querySelector('#birdSearchModeButton'),
+    birdFuzzyModeButton: document.querySelector('#birdFuzzyModeButton'),
+    birdSearchPanel: document.querySelector('#birdSearchPanel'),
     birdSearchInput: document.querySelector('#birdSearchInput'),
     birdResults: document.querySelector('#birdResults'),
+    birdFuzzyPanel: document.querySelector('#birdFuzzyPanel'),
+    birdFuzzyContext: document.querySelector('#birdFuzzyContext'),
+    birdFuzzyGroups: document.querySelector('#birdFuzzyGroups'),
+    birdFuzzyCandidates: document.querySelector('#birdFuzzyCandidates'),
     birdSelectedInfo: document.querySelector('#birdSelectedInfo'),
     birdCountMinus: document.querySelector('#birdCountMinus'),
     birdCountPlus: document.querySelector('#birdCountPlus'),
@@ -353,6 +362,14 @@
       elements.birdDialog.close();
     });
 
+    elements.birdSearchModeButton.addEventListener('click', () => {
+      setBirdDraftMode('search');
+    });
+
+    elements.birdFuzzyModeButton.addEventListener('click', () => {
+      setBirdDraftMode('fuzzy');
+    });
+
     elements.birdSearchInput.addEventListener('input', () => {
       renderBirdResults(elements.birdSearchInput.value);
     });
@@ -579,7 +596,9 @@
         ? '个人'
         : stateLabel(session.state);
     elements.sessionDistance.textContent = formatDistance(summary.distanceMeters);
-    elements.sessionBirds.textContent = `${summary.speciesCount} 种`;
+    elements.sessionBirds.textContent = summary.uncertainRecordCount
+      ? `${summary.speciesCount} 种 · ${summary.uncertainRecordCount} 未定`
+      : `${summary.speciesCount} 种`;
 
     const isStartPanelVisible = !isFullPageView && !isResultView &&
       (session.state === stateTools.STATES.IDLE || session.state === stateTools.STATES.ABORTED);
@@ -663,6 +682,7 @@
     elements.resultDuration.textContent = formatDuration(result.summary.durationMinutes);
     elements.resultDistance.textContent = formatDistance(result.summary.distanceMeters);
     elements.resultSpecies.textContent = `${result.summary.speciesCount} 种`;
+    elements.resultUncertain.textContent = `${result.summary.uncertainRecordCount || 0} 未定`;
     elements.resultBirdTotal.textContent = `${result.summary.totalBirds} 只`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
     elements.returnHomeButton.textContent = resultBackLabel();
@@ -685,7 +705,7 @@
       button.classList.toggle('is-highlighted', record.id === highlightedBirdRecordId);
 
       const title = document.createElement('strong');
-      title.textContent = `${record.speciesName} × ${record.count}`;
+      title.textContent = `${recordDisplayName(record)} × ${record.count}`;
 
       const detail = document.createElement('span');
       detail.textContent = birdRecordDetail(record);
@@ -936,9 +956,54 @@
   function birdRecordDetail(record) {
     const tags = record.tags.length ? record.tags.join('、') : '';
     const note = record.note || '';
-    const parts = [record.scientificName, tags, note].filter(Boolean);
 
+    if (isUncertainRecord(record)) {
+      const fuzzy = fuzzyRecordDetail(record);
+      const fuzzyParts = [fuzzy, tags, note].filter(Boolean);
+      return fuzzyParts.length ? fuzzyParts.join(' · ') : '特征未补充';
+    }
+
+    const parts = [record.scientificName, tags, note].filter(Boolean);
     return parts.length ? parts.join(' · ') : '无备注';
+  }
+
+  function isUncertainRecord(record) {
+    return stateTools.normalizeIdentificationType(record.identificationType) === 'uncertain';
+  }
+
+  function recordDisplayName(record) {
+    return isUncertainRecord(record)
+      ? config.fuzzyMatch.uncertainSpeciesName
+      : record.speciesName;
+  }
+
+  function fuzzyRecordDetail(record) {
+    const features = fuzzyTools.normalizeFeatures(record.fuzzyFeatures);
+    const labels = [];
+    const groupMap = new Map(config.fuzzyMatch.featureGroups.map((group) => [group.key, group]));
+
+    if (features.size) {
+      labels.push(optionLabel(groupMap.get('size'), features.size));
+    }
+
+    ['colors', 'behaviors', 'habitats', 'postures'].forEach((key) => {
+      features[key].forEach((value) => labels.push(optionLabel(groupMap.get(key), value)));
+    });
+
+    const candidateText = Array.isArray(record.candidateBirds) && record.candidateBirds.length
+      ? `候选：${record.candidateBirds.slice(0, 3).map((candidate) => candidate.name).join('、')}`
+      : '';
+
+    return [labels.filter(Boolean).join('、'), candidateText].filter(Boolean).join(' · ');
+  }
+
+  function optionLabel(group, value) {
+    if (!group || !Array.isArray(group.options)) {
+      return value;
+    }
+
+    const option = group.options.find((item) => item.value === value);
+    return option ? option.label : value;
   }
 
   function focusBirdRecord(record) {
@@ -973,11 +1038,11 @@
     meta.textContent = `${formatResultMeta(result)} · ${formatDuration(result.summary.durationMinutes)} · ${formatDistance(result.summary.distanceMeters)}`;
 
     const metrics = document.createElement('span');
-    metrics.textContent = `${result.summary.speciesCount} 种 · ${result.summary.totalBirds} 只 · ${result.summary.birdRecordCount} 条鸟点`;
+    metrics.textContent = `${result.summary.speciesCount} 种 · ${result.summary.uncertainRecordCount || 0} 未定 · ${result.summary.totalBirds} 只 · ${result.summary.birdRecordCount} 条鸟点`;
 
     const birds = document.createElement('span');
     birds.textContent = result.birdRecords.length
-      ? result.birdRecords.map((record) => `${record.speciesName} × ${record.count}`).join('、')
+      ? result.birdRecords.map((record) => `${recordDisplayName(record)} × ${record.count}`).join('、')
       : '尚无鸟种记录';
 
     elements.shareRecordSummary.replaceChildren(title, meta, metrics, birds);
@@ -1022,6 +1087,7 @@
     elements.birdNoteInput.value = record ? record.note : '';
     elements.birdSubmitButton.textContent = record ? '保存修改' : '添加到当前位置';
     elements.birdDeleteButton.hidden = !record;
+    renderFuzzyGroups();
     renderBirdResults(elements.birdSearchInput.value);
     renderBirdDraft();
 
@@ -1080,31 +1146,58 @@
   }
 
   function renderBirdDraft() {
+    const isFuzzyMode = birdDraft.mode === 'fuzzy';
     elements.birdCountValue.textContent = String(birdDraft.count);
-    elements.birdSelectedInfo.textContent = birdDraft.selectedBird
-      ? `已选择：${birdDraft.selectedBird.name}（${birdDraft.selectedBird.scientificName}）`
-      : '请选择一个鸟种。';
+    elements.birdSearchModeButton.classList.toggle('is-selected', !isFuzzyMode);
+    elements.birdSearchModeButton.setAttribute('aria-selected', isFuzzyMode ? 'false' : 'true');
+    elements.birdFuzzyModeButton.classList.toggle('is-selected', isFuzzyMode);
+    elements.birdFuzzyModeButton.setAttribute('aria-selected', isFuzzyMode ? 'true' : 'false');
+    elements.birdSearchPanel.hidden = isFuzzyMode;
+    elements.birdFuzzyPanel.hidden = !isFuzzyMode;
+    elements.birdSelectedInfo.textContent = selectedInfoText();
 
     elements.tagToggles.forEach((button) => {
       button.classList.toggle('is-selected', birdDraft.tags.includes(button.dataset.tag));
     });
 
-    elements.birdSubmitButton.disabled = !birdDraft.selectedBird;
+    renderFuzzySelection();
+    elements.birdSubmitButton.disabled = isFuzzyMode
+      ? !fuzzyTools.hasManualFeature(birdDraft.fuzzyFeatures)
+      : !birdDraft.selectedBird;
   }
 
   function submitBirdRecord() {
-    if (!birdDraft.selectedBird) {
+    if (birdDraft.mode === 'search' && !birdDraft.selectedBird) {
       elements.birdSelectedInfo.textContent = '请先选择一个鸟种。';
       return;
     }
 
-    const payload = {
-      speciesName: birdDraft.selectedBird.name,
-      scientificName: birdDraft.selectedBird.scientificName,
-      count: birdDraft.count,
-      tags: birdDraft.tags,
-      note: elements.birdNoteInput.value.trim(),
-    };
+    if (birdDraft.mode === 'fuzzy' && !fuzzyTools.hasManualFeature(birdDraft.fuzzyFeatures)) {
+      elements.birdSelectedInfo.textContent = '请至少选择一个特征。';
+      return;
+    }
+
+    const payload = birdDraft.mode === 'fuzzy'
+      ? {
+          identificationType: 'uncertain',
+          speciesName: config.fuzzyMatch.uncertainSpeciesName,
+          scientificName: '',
+          count: birdDraft.count,
+          tags: birdDraft.tags,
+          note: elements.birdNoteInput.value.trim(),
+          fuzzyFeatures: fuzzyTools.normalizeFeatures(birdDraft.fuzzyFeatures),
+          candidateBirds: fuzzyTools.matchCandidates(birdDraft.fuzzyFeatures),
+        }
+      : {
+          identificationType: 'confirmed',
+          speciesName: birdDraft.selectedBird.name,
+          scientificName: birdDraft.selectedBird.scientificName,
+          count: birdDraft.count,
+          tags: birdDraft.tags,
+          note: elements.birdNoteInput.value.trim(),
+          fuzzyFeatures: {},
+          candidateBirds: [],
+        };
 
     if (isEditingHistory()) {
       // 历史编辑：只改草稿中已有的落点，并即时重算概要以便界面同步更新。
@@ -1124,8 +1217,8 @@
     elements.birdDialog.close();
     render();
     elements.hintStrip.textContent = birdDraft.editingRecordId
-      ? `已更新：${birdDraft.selectedBird.name}`
-      : `已添加：${birdDraft.selectedBird.name}`;
+      ? `已更新：${recordDisplayName(payload)}`
+      : `已添加：${recordDisplayName(payload)}`;
     elements.hintStrip.hidden = false;
   }
 
@@ -1156,23 +1249,132 @@
 
   function createBirdDraft(record = null) {
     if (record) {
+      const isFuzzyRecord = isUncertainRecord(record);
       return {
         editingRecordId: record.id,
-        selectedBird: {
+        mode: isFuzzyRecord ? 'fuzzy' : 'search',
+        selectedBird: isFuzzyRecord ? null : {
           name: record.speciesName,
           scientificName: record.scientificName,
         },
         count: record.count,
         tags: [...record.tags],
+        fuzzyFeatures: fuzzyTools.normalizeFeatures(record.fuzzyFeatures),
       };
     }
 
     return {
       editingRecordId: null,
+      mode: 'search',
       selectedBird: null,
       count: 1,
       tags: [],
+      fuzzyFeatures: fuzzyTools.normalizeFeatures(),
     };
+  }
+
+  function setBirdDraftMode(mode) {
+    birdDraft.mode = mode === 'fuzzy' ? 'fuzzy' : 'search';
+    renderBirdDraft();
+  }
+
+  function renderFuzzyGroups() {
+    const groups = config.fuzzyMatch.featureGroups.map((group) => {
+      const wrapper = document.createElement('section');
+      wrapper.className = 'fuzzy-group';
+
+      const title = document.createElement('strong');
+      title.className = 'fuzzy-group-title';
+      title.textContent = group.label;
+
+      const row = document.createElement('div');
+      row.className = 'fuzzy-option-row';
+      group.options.forEach((option) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'fuzzy-option';
+        button.dataset.fuzzyGroup = group.key;
+        button.dataset.fuzzyValue = option.value;
+        button.textContent = option.label;
+        button.addEventListener('click', () => {
+          toggleFuzzyFeature(group, option.value);
+          renderBirdDraft();
+        });
+        row.appendChild(button);
+      });
+
+      wrapper.append(title, row);
+      return wrapper;
+    });
+
+    elements.birdFuzzyGroups.replaceChildren(...groups);
+  }
+
+  function renderFuzzySelection() {
+    elements.birdFuzzyContext.textContent = birdDraft.editingRecordId
+      ? '正在编辑未确定鸟点；地点和时间沿用原鸟点记录。'
+      : '地点和时间会随当前鸟点自动保存。';
+
+    elements.birdFuzzyGroups.querySelectorAll('.fuzzy-option').forEach((button) => {
+      const group = button.dataset.fuzzyGroup;
+      const value = button.dataset.fuzzyValue;
+      const selected = group === 'size'
+        ? birdDraft.fuzzyFeatures.size === value
+        : Array.isArray(birdDraft.fuzzyFeatures[group]) && birdDraft.fuzzyFeatures[group].includes(value);
+      button.classList.toggle('is-selected', selected);
+    });
+
+    const candidates = fuzzyTools.matchCandidates(birdDraft.fuzzyFeatures);
+    if (!fuzzyTools.hasManualFeature(birdDraft.fuzzyFeatures)) {
+      const empty = document.createElement('span');
+      empty.textContent = '选择特征后显示候选建议。';
+      elements.birdFuzzyCandidates.replaceChildren(empty);
+      return;
+    }
+
+    if (candidates.length === 0) {
+      const empty = document.createElement('span');
+      empty.textContent = '暂无明显候选，可先保存特征和备注。';
+      elements.birdFuzzyCandidates.replaceChildren(empty);
+      return;
+    }
+
+    elements.birdFuzzyCandidates.replaceChildren(...candidates.map((candidate) => {
+      const item = document.createElement('div');
+      const name = document.createElement('strong');
+      name.textContent = candidate.name;
+      const detail = document.createElement('span');
+      detail.textContent = `${candidate.scientificName} · 匹配度 ${candidate.score}`;
+      item.append(name, detail);
+      return item;
+    }));
+  }
+
+  function toggleFuzzyFeature(group, value) {
+    if (group.key === 'size' || group.multiple === false) {
+      birdDraft.fuzzyFeatures[group.key] = birdDraft.fuzzyFeatures[group.key] === value ? '' : value;
+      return;
+    }
+
+    const current = Array.isArray(birdDraft.fuzzyFeatures[group.key])
+      ? birdDraft.fuzzyFeatures[group.key]
+      : [];
+    birdDraft.fuzzyFeatures[group.key] = current.includes(value)
+      ? current.filter((item) => item !== value)
+      : [...current, value];
+  }
+
+  function selectedInfoText() {
+    if (birdDraft.mode === 'fuzzy') {
+      const candidates = fuzzyTools.matchCandidates(birdDraft.fuzzyFeatures);
+      return fuzzyTools.hasManualFeature(birdDraft.fuzzyFeatures)
+        ? `将保存为未确定鸟种，当前有 ${candidates.length} 个候选建议。`
+        : '请选择一个或多个观察特征。';
+    }
+
+    return birdDraft.selectedBird
+      ? `已选择：${birdDraft.selectedBird.name}（${birdDraft.selectedBird.scientificName}）`
+      : '请选择一个鸟种。';
   }
 
   function renderMapLayers() {
@@ -1444,7 +1646,7 @@
         : String(group.records.length);
     }
 
-    return showBirdNames ? group.records[0].speciesName : '';
+    return showBirdNames ? recordDisplayName(group.records[0]) : '';
   }
 
   function openBirdPointPreview(records) {
@@ -1461,9 +1663,9 @@
       const note = record.note ? ` · ${record.note}` : '';
 
       const title = document.createElement('strong');
-      title.textContent = `${record.speciesName} × ${record.count}`;
+      title.textContent = `${recordDisplayName(record)} × ${record.count}`;
       const detail = document.createElement('span');
-      detail.textContent = `${record.scientificName}${tags}${note}`;
+      detail.textContent = birdRecordDetail(record);
       button.append(title, detail);
 
       button.addEventListener('click', () => {

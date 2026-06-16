@@ -86,11 +86,14 @@
 
     const birdRecord = {
       id: `bird-${now.getTime()}-${session.birdRecords.length + 1}`,
-      speciesName: record.speciesName,
+      identificationType: normalizeIdentificationType(record.identificationType),
+      speciesName: record.speciesName || '未确定鸟种',
       scientificName: record.scientificName || '',
       count: Math.max(1, Number(record.count) || 1),
       tags: Array.isArray(record.tags) ? [...record.tags] : [],
       note: record.note || '',
+      fuzzyFeatures: cloneFuzzyFeatures(record.fuzzyFeatures),
+      candidateBirds: cloneCandidateBirds(record.candidateBirds),
       position: clonePoint(session.currentPoint),
       createdAt: now.toISOString(),
     };
@@ -111,11 +114,18 @@
 
         return {
           ...record,
+          identificationType: normalizeIdentificationType(patch.identificationType || record.identificationType),
           speciesName: patch.speciesName || record.speciesName,
           scientificName: patch.scientificName || '',
           count: Math.max(1, Number(patch.count) || record.count),
           tags: Array.isArray(patch.tags) ? [...patch.tags] : record.tags,
           note: patch.note || '',
+          fuzzyFeatures: Object.prototype.hasOwnProperty.call(patch, 'fuzzyFeatures')
+            ? cloneFuzzyFeatures(patch.fuzzyFeatures)
+            : cloneFuzzyFeatures(record.fuzzyFeatures),
+          candidateBirds: Object.prototype.hasOwnProperty.call(patch, 'candidateBirds')
+            ? cloneCandidateBirds(patch.candidateBirds)
+            : cloneCandidateBirds(record.candidateBirds),
         };
       }),
     };
@@ -158,7 +168,9 @@
   }
 
   function summarizeSession(session) {
-    const species = new Set(session.birdRecords.map((record) => record.speciesName));
+    const confirmedRecords = session.birdRecords.filter((record) => normalizeIdentificationType(record.identificationType) === 'confirmed');
+    const uncertainRecords = session.birdRecords.filter((record) => normalizeIdentificationType(record.identificationType) === 'uncertain');
+    const species = new Set(confirmedRecords.map((record) => record.speciesName));
     const totalBirds = session.birdRecords.reduce((total, record) => total + record.count, 0);
 
     return {
@@ -166,6 +178,7 @@
       trackPointCount: session.track.length,
       birdRecordCount: session.birdRecords.length,
       speciesCount: species.size,
+      uncertainRecordCount: uncertainRecords.length,
       totalBirds,
       distanceMeters: Math.round(session.distanceMeters),
     };
@@ -192,7 +205,10 @@
       track: session.track.map(clonePoint),
       birdRecords: session.birdRecords.map((record) => ({
         ...record,
+        identificationType: normalizeIdentificationType(record.identificationType),
         tags: [...record.tags],
+        fuzzyFeatures: cloneFuzzyFeatures(record.fuzzyFeatures),
+        candidateBirds: cloneCandidateBirds(record.candidateBirds),
         position: clonePoint(record.position),
       })),
       summary: {
@@ -282,7 +298,9 @@
   // 编辑历史记录后，按当前鸟种落点重算概要中的鸟种相关数值；
   // 时长、距离、轨迹点数等与轨迹相关的数值保持不变（本阶段轨迹不可编辑）。
   function recomputeResultSummary(result) {
-    const species = new Set(result.birdRecords.map((record) => record.speciesName));
+    const confirmedRecords = result.birdRecords.filter((record) => normalizeIdentificationType(record.identificationType) === 'confirmed');
+    const uncertainRecords = result.birdRecords.filter((record) => normalizeIdentificationType(record.identificationType) === 'uncertain');
+    const species = new Set(confirmedRecords.map((record) => record.speciesName));
     const totalBirds = result.birdRecords.reduce((total, record) => total + record.count, 0);
 
     return {
@@ -291,9 +309,36 @@
         ...result.summary,
         birdRecordCount: result.birdRecords.length,
         speciesCount: species.size,
+        uncertainRecordCount: uncertainRecords.length,
         totalBirds,
       },
     };
+  }
+
+  function normalizeIdentificationType(value) {
+    return value === 'uncertain' ? 'uncertain' : 'confirmed';
+  }
+
+  function cloneFuzzyFeatures(features = {}) {
+    return {
+      size: features.size || '',
+      colors: Array.isArray(features.colors) ? [...features.colors] : [],
+      behaviors: Array.isArray(features.behaviors) ? [...features.behaviors] : [],
+      habitats: Array.isArray(features.habitats) ? [...features.habitats] : [],
+      postures: Array.isArray(features.postures) ? [...features.postures] : [],
+    };
+  }
+
+  function cloneCandidateBirds(candidates = []) {
+    if (!Array.isArray(candidates)) {
+      return [];
+    }
+
+    return candidates.map((candidate) => ({
+      name: candidate.name || '',
+      scientificName: candidate.scientificName || '',
+      score: Math.max(0, Number(candidate.score) || 0),
+    })).filter((candidate) => candidate.name);
   }
 
   function previewSharedRecordImport(history, sharedRecord, options = {}) {
@@ -392,6 +437,7 @@
     favoriteHistoryRecords,
     recomputeResultSummary,
     previewSharedRecordImport,
+    normalizeIdentificationType,
     distanceBetween,
   };
 

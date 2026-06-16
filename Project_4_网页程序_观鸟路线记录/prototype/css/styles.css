@@ -623,7 +623,7 @@ button:disabled {
 
 .result-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(86px, 1fr));
   gap: 8px;
 }
 
@@ -902,6 +902,98 @@ button:disabled {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px;
+  background: rgba(36, 107, 75, 0.08);
+}
+
+.segment-button {
+  min-height: 40px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--leaf-deep);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.segment-button.is-selected {
+  background: white;
+  box-shadow: 0 1px 4px rgba(20, 32, 28, 0.12);
+}
+
+.bird-mode-panel,
+.fuzzy-groups {
+  display: grid;
+  gap: 10px;
+}
+
+.bird-mode-panel[hidden] {
+  display: none;
+}
+
+.fuzzy-group {
+  display: grid;
+  gap: 7px;
+}
+
+.fuzzy-group-title {
+  color: var(--leaf-deep);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.fuzzy-option-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fuzzy-option {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0 11px;
+  background: white;
+  color: var(--leaf-deep);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fuzzy-option.is-selected {
+  border-color: var(--leaf);
+  background: var(--leaf);
+  color: white;
+}
+
+.fuzzy-candidates {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+}
+
+.fuzzy-candidates strong,
+.fuzzy-candidates span {
+  display: block;
+}
+
+.fuzzy-candidates strong {
+  color: var(--leaf-deep);
+  font-size: 13px;
+}
+
+.fuzzy-candidates span {
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .share-summary,
