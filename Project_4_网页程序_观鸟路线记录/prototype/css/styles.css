@@ -139,6 +139,34 @@ button:disabled {
   pointer-events: none;
 }
 
+/* 当前位置朝向箭头：随设备方向旋转，箭头尖端指向设备朝向。 */
+.heading-marker {
+  background: transparent;
+  border: 0;
+  pointer-events: none;
+}
+
+.heading-arrow {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  transform-origin: 50% 50%;
+  transition: transform 0.12s linear;
+}
+
+.heading-arrow-tip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 13px solid var(--leaf-deep);
+  filter: drop-shadow(0 1px 2px rgba(20, 32, 28, 0.35));
+  transform: translateX(-50%);
+}
+
 .bird-point-button {
   position: absolute;
   min-width: 28px;

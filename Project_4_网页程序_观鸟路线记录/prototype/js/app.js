@@ -27,6 +27,9 @@
   let idleCurrentPoint = null;
   let suppressRouteHistory = false;
   let toastTimerId = null;
+  let headingMarker = null;
+  let deviceHeading = null;
+  let headingListening = false;
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -123,6 +126,12 @@
     bindEvents();
     render();
     primeIdleCurrentLocation();
+    // 无需显式授权的平台（Android / 桌面）可在初始化时直接监听方向；
+    // iOS 需用户手势授权，留待「开始记录 / 定位」按钮触发。
+    const orientationEvent = window.DeviceOrientationEvent;
+    if (orientationEvent && typeof orientationEvent.requestPermission !== 'function') {
+      attachOrientationListeners();
+    }
   }
 
   function initMap() {
@@ -191,6 +200,7 @@
 
   function bindEvents() {
     elements.startButton.addEventListener('click', () => {
+      ensureHeadingTracking();
       activeView = 'main';
       selectedHistoryRecordId = null;
       locationHintOverride = '';
@@ -386,6 +396,7 @@
     });
 
     elements.currentLocationButton.addEventListener('click', () => {
+      ensureHeadingTracking();
       centerMapOnCurrentLocation();
     });
 
@@ -591,6 +602,105 @@
     if (map && !stageFallbackClickEnabled) {
       map.setView([point.lat, point.lng], config.defaultZoom);
     }
+  }
+
+  // 申请并开始读取设备方向，用于在当前位置叠加朝向箭头。
+  // iOS 需在用户手势中调用 requestPermission；其他平台直接监听。
+  function ensureHeadingTracking() {
+    if (headingListening) {
+      return;
+    }
+    const orientationEvent = window.DeviceOrientationEvent;
+    if (!orientationEvent) {
+      return;
+    }
+    if (typeof orientationEvent.requestPermission === 'function') {
+      orientationEvent.requestPermission()
+        .then((state) => {
+          if (state === 'granted') {
+            attachOrientationListeners();
+          }
+        })
+        .catch(() => {});
+    } else {
+      attachOrientationListeners();
+    }
+  }
+
+  function attachOrientationListeners() {
+    if (headingListening) {
+      return;
+    }
+    headingListening = true;
+    if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', handleDeviceOrientation);
+    } else {
+      window.addEventListener('deviceorientation', handleDeviceOrientation);
+    }
+  }
+
+  function handleDeviceOrientation(event) {
+    let heading = null;
+    if (typeof event.webkitCompassHeading === 'number' && !Number.isNaN(event.webkitCompassHeading)) {
+      // iOS：已是顺时针正北为 0 的罗盘朝向。
+      heading = event.webkitCompassHeading;
+    } else if (typeof event.alpha === 'number' && event.alpha !== null) {
+      // 绝对方向：alpha 为逆时针角度，转换为顺时针罗盘朝向。
+      heading = (360 - event.alpha) % 360;
+    }
+
+    if (heading === null || Number.isNaN(heading)) {
+      return;
+    }
+
+    deviceHeading = (heading + 360) % 360;
+    if (!headingMarker) {
+      // 首次拿到朝向：补一次完整渲染以创建箭头标记。
+      renderMapLayers();
+    } else {
+      applyHeadingRotation();
+    }
+  }
+
+  function applyHeadingRotation() {
+    if (!headingMarker || deviceHeading === null) {
+      return;
+    }
+    const element = headingMarker.getElement();
+    const arrow = element && element.querySelector('.heading-arrow');
+    if (arrow) {
+      arrow.style.transform = `rotate(${deviceHeading}deg)`;
+    }
+  }
+
+  function updateHeadingMarker(currentPoint, isResultView) {
+    const showHeading = Boolean(currentPoint) && !isResultView && deviceHeading !== null
+      && map && !stageFallbackClickEnabled;
+
+    if (!showHeading) {
+      if (headingMarker) {
+        headingMarker.remove();
+        headingMarker = null;
+      }
+      return;
+    }
+
+    if (!headingMarker) {
+      headingMarker = L.marker([currentPoint.lat, currentPoint.lng], {
+        icon: L.divIcon({
+          className: 'heading-marker',
+          html: '<div class="heading-arrow"><span class="heading-arrow-tip"></span></div>',
+          iconSize: [44, 44],
+          iconAnchor: [22, 22],
+        }),
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: -100,
+      }).addTo(map);
+    }
+
+    headingMarker.setLatLng([currentPoint.lat, currentPoint.lng]);
+    applyHeadingRotation();
   }
 
   function primeIdleCurrentLocation() {
@@ -1694,6 +1804,8 @@
     if (currentMarker && currentPoint) {
       currentMarker.setLatLng([currentPoint.lat, currentPoint.lng]);
     }
+
+    updateHeadingMarker(currentPoint, isResultView);
 
     if (isResultView) {
       // 结果页 / 历史查看：一次性框选完整轨迹，方便概览全程。
