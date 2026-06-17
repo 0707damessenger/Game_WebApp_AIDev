@@ -780,6 +780,27 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 
+.bird-item-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bird-item-head strong {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.record-time {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .result-bird-item strong {
   color: var(--leaf-deep);
   font-size: 15px;

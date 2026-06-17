@@ -760,13 +760,12 @@
       button.className = 'result-bird-item';
       button.classList.toggle('is-highlighted', record.id === highlightedBirdRecordId);
 
-      const title = document.createElement('strong');
-      title.textContent = `${recordDisplayName(record)} × ${record.count}`;
+      const head = buildRecordHead(record);
 
       const detail = document.createElement('span');
       detail.textContent = birdRecordDetail(record);
 
-      button.append(title, detail);
+      button.append(head, detail);
       button.addEventListener('click', () => {
         if (isEditingHistory()) {
           openBirdDialog(record);
@@ -1135,6 +1134,39 @@
     const hours = Math.floor(minutes / 60);
     const restMinutes = minutes % 60;
     return restMinutes > 0 ? `${hours} 小时 ${restMinutes} 分钟` : `${hours} 小时`;
+  }
+
+  // 鸟点记录时间，精确到分钟（如 14:30）；无有效时间返回空串（旧数据留空）。
+  function formatRecordTime(record) {
+    const iso = record && record.createdAt;
+    if (!iso) {
+      return '';
+    }
+    const parsed = new Date(iso);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+    return parsed.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  // 鸟点条目统一的标题行：左侧鸟种名×数量，右侧记录时间。
+  function buildRecordHead(record) {
+    const head = document.createElement('div');
+    head.className = 'bird-item-head';
+
+    const title = document.createElement('strong');
+    title.textContent = `${recordDisplayName(record)} × ${record.count}`;
+    head.append(title);
+
+    const time = formatRecordTime(record);
+    if (time) {
+      const timeEl = document.createElement('time');
+      timeEl.className = 'record-time';
+      timeEl.textContent = time;
+      head.append(timeEl);
+    }
+
+    return head;
   }
 
   function birdRecordDetail(record) {
@@ -1845,14 +1877,11 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'bird-point-list-button';
-      const tags = record.tags.length ? ` · ${record.tags.join('、')}` : '';
-      const note = record.note ? ` · ${record.note}` : '';
 
-      const title = document.createElement('strong');
-      title.textContent = `${recordDisplayName(record)} × ${record.count}`;
+      const head = buildRecordHead(record);
       const detail = document.createElement('span');
       detail.textContent = birdRecordDetail(record);
-      button.append(title, detail);
+      button.append(head, detail);
 
       button.addEventListener('click', () => {
         elements.birdPointDialog.close();
