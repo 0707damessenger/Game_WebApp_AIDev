@@ -181,7 +181,7 @@ button:disabled {
 
 .history-edit-bar {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
   z-index: 5;
@@ -189,9 +189,9 @@ button:disabled {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
-  padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
   background: rgba(248, 245, 238, 0.96);
-  box-shadow: 0 6px 18px rgba(20, 32, 28, 0.18);
+  box-shadow: 0 -6px 18px rgba(20, 32, 28, 0.18);
   backdrop-filter: blur(12px);
 }
 
@@ -256,6 +256,7 @@ button:disabled {
   z-index: 2;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -381,6 +382,47 @@ button:disabled {
   top: calc(max(14px, env(safe-area-inset-top)) + 56px);
   right: 112px;
   bottom: auto;
+}
+
+.toast {
+  position: absolute;
+  left: 50%;
+  top: calc(max(14px, env(safe-area-inset-top)) + 60px);
+  z-index: 6;
+  max-width: calc(100% - 36px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(18, 63, 49, 0.94);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 12px 28px rgba(20, 32, 28, 0.28);
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* 编辑态把底部交给「取消 / 保存」操作条，浮层提示下移到底部操作条之上。 */
+.map-stage.is-history-edit .toast {
+  top: auto;
+  bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .bottom-action {
@@ -655,31 +697,31 @@ button:disabled {
 
 .result-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(102px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .result-summary div {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
-  min-height: 66px;
+  min-height: 62px;
   align-content: center;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 9px;
+  padding: 8px 6px;
   background: white;
 }
 
 .result-summary span {
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
 }
 
 .result-summary strong {
   color: var(--leaf-deep);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
@@ -1246,8 +1288,15 @@ button:disabled {
     font-size: 27px;
   }
 
-  .result-summary,
   .result-actions {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .result-summary span {
+    font-size: 10px;
+  }
+
+  .result-summary strong {
+    font-size: 13px;
   }
 }

@@ -26,6 +26,7 @@
   let birdPointGroups = [];
   let idleCurrentPoint = null;
   let suppressRouteHistory = false;
+  let toastTimerId = null;
 
   const elements = {
     mapStage: document.querySelector('#mapStage'),
@@ -41,6 +42,7 @@
     finishButton: document.querySelector('#finishButton'),
     addBirdButton: document.querySelector('#addBirdButton'),
     hintStrip: document.querySelector('#hintStrip'),
+    toast: document.querySelector('#toast'),
     sessionState: document.querySelector('#sessionState'),
     sessionDistance: document.querySelector('#sessionDistance'),
     sessionBirds: document.querySelector('#sessionBirds'),
@@ -397,6 +399,8 @@
       suppressRouteHistory = false;
     });
 
+    window.addEventListener('resize', syncIdleToolsPosition);
+
     if (map) {
       map.on('click', (event) => {
         handleMapClick({
@@ -515,22 +519,40 @@
     render();
   }
 
+  // 即时反馈浮层：显示后数秒自动消失，避免常驻遮挡主操作模块。
+  function showToast(message) {
+    if (!message) {
+      return;
+    }
+    elements.toast.textContent = message;
+    elements.toast.hidden = false;
+    if (toastTimerId) {
+      clearTimeout(toastTimerId);
+    }
+    const duration = (config.toast && config.toast.durationMs) || 3000;
+    toastTimerId = setTimeout(() => {
+      elements.toast.hidden = true;
+      elements.toast.textContent = '';
+      toastTimerId = null;
+    }, duration);
+  }
+
   function centerMapOnCurrentLocation() {
     const mapSource = getMapSource();
     const currentPoint = mapSource.currentPoint || session.currentPoint || idleCurrentPoint;
     if (currentPoint) {
       centerMapAt(currentPoint);
-      showLocationHint('已定位到当前位置。');
+      showToast('已定位到当前位置。');
       return;
     }
 
     if (window.isSecureContext === false) {
-      showLocationHint('无法获取定位：手机浏览器只允许 HTTPS 或 localhost 页面申请定位。');
+      showToast('无法获取定位：手机浏览器只允许 HTTPS 或 localhost 页面申请定位。');
       return;
     }
 
     if (!navigator.geolocation) {
-      showLocationHint('无法获取定位：当前浏览器不支持 GPS。');
+      showToast('无法获取定位：当前浏览器不支持 GPS。');
       return;
     }
 
@@ -544,12 +566,12 @@
       centerMapAt(point);
       renderMapLayers();
       renderFallbackLayers();
-      showLocationHint('已定位到当前位置。');
+      showToast('已定位到当前位置。');
     }, (error) => {
       const message = error && error.code === 1
         ? '无法获取定位：定位权限被拒绝，请允许浏览器定位权限后重试。'
         : '无法获取定位：请检查定位服务或稍后重试。';
-      showLocationHint(message);
+      showToast(message);
     }, {
       enableHighAccuracy: config.gps.enableHighAccuracy,
       maximumAge: config.gps.maximumAgeMs,
@@ -679,6 +701,27 @@
     renderBirdPointOverlay();
     renderResultView();
     renderProfileView();
+    syncIdleToolsPosition();
+  }
+
+  // 底部「开始记录」卡片或编辑操作条会占据底部空间，把定位工具上移到其之上，避免被遮挡。
+  function syncIdleToolsPosition() {
+    if (elements.mapTools.hidden) {
+      elements.mapTools.style.bottom = '';
+      return;
+    }
+    const blockingPanel = !elements.startPanel.hidden
+      ? elements.startPanel
+      : (!elements.historyEditBar.hidden ? elements.historyEditBar : null);
+    if (!blockingPanel) {
+      elements.mapTools.style.bottom = '';
+      return;
+    }
+    const stageRect = elements.mapStage.getBoundingClientRect();
+    const panelRect = blockingPanel.getBoundingClientRect();
+    const gap = 12;
+    const bottom = Math.round(stageRect.bottom - panelRect.top + gap);
+    elements.mapTools.style.bottom = `${bottom}px`;
   }
 
   function renderResultView() {
@@ -1357,10 +1400,9 @@
     persistSession(session);
     elements.birdDialog.close();
     render();
-    elements.hintStrip.textContent = birdDraft.editingRecordId
+    showToast(birdDraft.editingRecordId
       ? `已更新：${recordDisplayName(payload)}`
-      : `已添加：${recordDisplayName(payload)}`;
-    elements.hintStrip.hidden = false;
+      : `已添加：${recordDisplayName(payload)}`);
   }
 
   function deleteSelectedBirdRecord() {
@@ -1384,8 +1426,7 @@
     persistSession(session);
     elements.birdDialog.close();
     render();
-    elements.hintStrip.textContent = '已删除鸟点记录';
-    elements.hintStrip.hidden = false;
+    showToast('已删除鸟点记录');
   }
 
   function createBirdDraft(record = null) {

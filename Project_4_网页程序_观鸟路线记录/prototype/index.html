@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>观鸟路线记录</title>
-    <script src="./js/config.js?v=map-20260612-1"></script>
+    <script src="./js/config.js?v=layout-20260617-1"></script>
     <link rel="stylesheet" href="./vendor/leaflet/leaflet.css?v=local-20260609">
-    <link rel="stylesheet" href="./css/styles.css?v=favorites-20260614-1">
+    <link rel="stylesheet" href="./css/styles.css?v=layout-20260617-1">
   </head>
   <body>
     <main class="phone-shell" aria-label="观鸟路线记录原型">
@@ -43,6 +43,8 @@
         </section>
 
         <div class="hint-strip" id="hintStrip" hidden></div>
+
+        <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
         <div class="history-edit-bar" id="historyEditBar" hidden>
           <strong>点鸟点编辑 / 删除，拖动可调整位置</strong>
@@ -231,7 +233,6 @@
 
           <button id="birdSubmitButton" class="primary-button" type="button">添加到当前位置</button>
           <button id="birdDeleteButton" class="danger-button" type="button" hidden>删除该鸟点</button>
-          <button class="ghost-button" type="button" disabled>模糊匹配（后续模块）</button>
         </section>
       </dialog>
 
@@ -261,6 +262,6 @@
     <script src="./js/birds.js?v=catalog-20260612-1"></script>
     <script src="./js/state.js?v=fuzzy-20260616-1"></script>
     <script src="./js/fuzzy.js?v=fuzzy-20260616-1"></script>
-    <script src="./js/app.js?v=fuzzy-20260616-1"></script>
+    <script src="./js/app.js?v=layout-20260617-1"></script>
   </body>
 </html>
