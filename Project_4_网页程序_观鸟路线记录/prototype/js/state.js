@@ -92,6 +92,7 @@
       count: Math.max(1, Number(record.count) || 1),
       tags: Array.isArray(record.tags) ? [...record.tags] : [],
       note: record.note || '',
+      isSensitive: Boolean(record.isSensitive),
       fuzzyFeatures: cloneFuzzyFeatures(record.fuzzyFeatures),
       candidateBirds: cloneCandidateBirds(record.candidateBirds),
       position: clonePoint(session.currentPoint),
@@ -120,6 +121,9 @@
           count: Math.max(1, Number(patch.count) || record.count),
           tags: Array.isArray(patch.tags) ? [...patch.tags] : record.tags,
           note: patch.note || '',
+          isSensitive: Object.prototype.hasOwnProperty.call(patch, 'isSensitive')
+            ? Boolean(patch.isSensitive)
+            : Boolean(record.isSensitive),
           fuzzyFeatures: Object.prototype.hasOwnProperty.call(patch, 'fuzzyFeatures')
             ? cloneFuzzyFeatures(patch.fuzzyFeatures)
             : cloneFuzzyFeatures(record.fuzzyFeatures),

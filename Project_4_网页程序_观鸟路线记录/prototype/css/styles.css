@@ -160,6 +160,11 @@ button:disabled {
   background: var(--amber);
 }
 
+.bird-point-button.is-sensitive {
+  border-color: var(--danger);
+  border-style: dashed;
+}
+
 .bird-point-button.is-highlighted {
   background: var(--danger);
   box-shadow:
@@ -1206,6 +1211,64 @@ button:disabled {
   border-color: var(--leaf);
   background: var(--leaf);
   color: white;
+}
+
+.sensitive-field {
+  display: grid;
+  gap: 8px;
+}
+
+.sensitive-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: white;
+  color: var(--leaf-deep);
+  font-weight: 800;
+}
+
+.sensitive-toggle .sensitive-toggle-state {
+  min-width: 32px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(20, 32, 28, 0.08);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.sensitive-toggle.is-selected {
+  border-color: var(--danger);
+  background: rgba(173, 61, 49, 0.08);
+  color: var(--danger);
+}
+
+.sensitive-toggle.is-selected .sensitive-toggle-state {
+  background: var(--danger);
+  color: white;
+}
+
+.sensitive-badge {
+  flex: 0 0 auto;
+  align-self: center;
+  border: 1px solid rgba(173, 61, 49, 0.4);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: rgba(173, 61, 49, 0.1);
+  color: var(--danger);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.share-sensitive-note {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .bird-point-list {

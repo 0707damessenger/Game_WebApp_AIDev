@@ -103,6 +103,9 @@
     birdCountPlus: document.querySelector('#birdCountPlus'),
     birdCountValue: document.querySelector('#birdCountValue'),
     birdNoteInput: document.querySelector('#birdNoteInput'),
+    birdSensitiveToggle: document.querySelector('#birdSensitiveToggle'),
+    birdSensitiveState: document.querySelector('#birdSensitiveState'),
+    birdSensitiveHint: document.querySelector('#birdSensitiveHint'),
     birdSubmitButton: document.querySelector('#birdSubmitButton'),
     birdDeleteButton: document.querySelector('#birdDeleteButton'),
     deleteHistoryDialog: document.querySelector('#deleteHistoryDialog'),
@@ -358,6 +361,11 @@
         }
         renderBirdDraft();
       });
+    });
+
+    elements.birdSensitiveToggle.addEventListener('click', () => {
+      birdDraft.isSensitive = !birdDraft.isSensitive;
+      renderBirdDraft();
     });
 
     elements.birdSubmitButton.addEventListener('click', () => {
@@ -1158,6 +1166,13 @@
     title.textContent = `${recordDisplayName(record)} × ${record.count}`;
     head.append(title);
 
+    if (record.isSensitive) {
+      const badge = document.createElement('span');
+      badge.className = 'sensitive-badge';
+      badge.textContent = '敏感';
+      head.append(badge);
+    }
+
     const time = formatRecordTime(record);
     if (time) {
       const timeEl = document.createElement('time');
@@ -1185,6 +1200,21 @@
 
   function isUncertainRecord(record) {
     return stateTools.normalizeIdentificationType(record.identificationType) === 'uncertain';
+  }
+
+  // 由一组鸟点记录计算分享摘要计数（剔除敏感后调用）。
+  function summarizeRecordsForShare(records) {
+    const confirmed = records.filter((record) => !isUncertainRecord(record));
+    const uncertain = records.filter((record) => isUncertainRecord(record));
+    const species = new Set(confirmed.map((record) => record.speciesName));
+    const totalBirds = records.reduce((total, record) => total + record.count, 0);
+
+    return {
+      speciesCount: species.size,
+      uncertainRecordCount: uncertain.length,
+      totalBirds,
+      birdRecordCount: records.length,
+    };
   }
 
   function recordDisplayName(record) {
@@ -1247,6 +1277,11 @@
   }
 
   function renderShareDialog(result) {
+    // 敏感鸟点不纳入分享内容：摘要的计数与名单都基于剔除敏感后的记录。
+    const sensitiveCount = result.birdRecords.filter((record) => record.isSensitive).length;
+    const shareableRecords = result.birdRecords.filter((record) => !record.isSensitive);
+    const shareSummary = summarizeRecordsForShare(shareableRecords);
+
     const title = document.createElement('strong');
     title.textContent = selectedHistoryRecordId ? '历史记录分享' : '本次记录分享';
 
@@ -1254,14 +1289,22 @@
     meta.textContent = `${formatResultMeta(result)} · ${formatDuration(result.summary.durationMinutes)} · ${formatDistance(result.summary.distanceMeters)}`;
 
     const metrics = document.createElement('span');
-    metrics.textContent = `${result.summary.speciesCount} 种 · ${result.summary.uncertainRecordCount || 0} 未定 · ${result.summary.totalBirds} 只 · ${result.summary.birdRecordCount} 条鸟点`;
+    metrics.textContent = `${shareSummary.speciesCount} 种 · ${shareSummary.uncertainRecordCount} 未定 · ${shareSummary.totalBirds} 只 · ${shareSummary.birdRecordCount} 条鸟点`;
 
     const birds = document.createElement('span');
-    birds.textContent = result.birdRecords.length
-      ? result.birdRecords.map((record) => `${recordDisplayName(record)} × ${record.count}`).join('、')
-      : '尚无鸟种记录';
+    birds.textContent = shareableRecords.length
+      ? shareableRecords.map((record) => `${recordDisplayName(record)} × ${record.count}`).join('、')
+      : '尚无可分享鸟种记录';
 
-    elements.shareRecordSummary.replaceChildren(title, meta, metrics, birds);
+    const children = [title, meta, metrics, birds];
+    if (sensitiveCount > 0) {
+      const sensitiveNote = document.createElement('span');
+      sensitiveNote.className = 'share-sensitive-note';
+      sensitiveNote.textContent = `已隐去 ${sensitiveCount} 条敏感鸟点，不会出现在分享内容中。`;
+      children.push(sensitiveNote);
+    }
+
+    elements.shareRecordSummary.replaceChildren(...children);
     elements.shareServiceStatus.textContent = config.shareImport.pendingServiceLabel;
     elements.copyShareLinkButton.disabled = !config.shareImport.serviceEnabled;
   }
@@ -1376,6 +1419,12 @@
       button.classList.toggle('is-selected', birdDraft.tags.includes(button.dataset.tag));
     });
 
+    const isSensitive = Boolean(birdDraft.isSensitive);
+    elements.birdSensitiveToggle.classList.toggle('is-selected', isSensitive);
+    elements.birdSensitiveToggle.setAttribute('aria-pressed', isSensitive ? 'true' : 'false');
+    elements.birdSensitiveState.textContent = isSensitive ? '开' : '关';
+    elements.birdSensitiveHint.hidden = !isSensitive;
+
     renderFuzzySelection();
     elements.birdSubmitButton.disabled = isFuzzyMode
       ? !fuzzyTools.hasManualFeature(birdDraft.fuzzyFeatures)
@@ -1401,6 +1450,7 @@
           count: birdDraft.count,
           tags: birdDraft.tags,
           note: elements.birdNoteInput.value.trim(),
+          isSensitive: Boolean(birdDraft.isSensitive),
           fuzzyFeatures: fuzzyTools.normalizeFeatures(birdDraft.fuzzyFeatures),
           candidateBirds: fuzzyTools.matchCandidates(birdDraft.fuzzyFeatures),
         }
@@ -1411,6 +1461,7 @@
           count: birdDraft.count,
           tags: birdDraft.tags,
           note: elements.birdNoteInput.value.trim(),
+          isSensitive: Boolean(birdDraft.isSensitive),
           fuzzyFeatures: {},
           candidateBirds: [],
         };
@@ -1473,6 +1524,7 @@
         },
         count: record.count,
         tags: [...record.tags],
+        isSensitive: Boolean(record.isSensitive),
         fuzzyFeatures: fuzzyTools.normalizeFeatures(record.fuzzyFeatures),
       };
     }
@@ -1483,6 +1535,7 @@
       selectedBird: null,
       count: 1,
       tags: [],
+      isSensitive: false,
       fuzzyFeatures: fuzzyTools.normalizeFeatures(),
     };
   }
@@ -1753,6 +1806,9 @@
       button.className = 'bird-point-button';
       if (group.records.length > 1) {
         button.classList.add('is-grouped');
+      }
+      if (group.records.some((record) => record.isSensitive)) {
+        button.classList.add('is-sensitive');
       }
       if (group.records.some((record) => record.id === highlightedBirdRecordId)) {
         button.classList.add('is-highlighted');

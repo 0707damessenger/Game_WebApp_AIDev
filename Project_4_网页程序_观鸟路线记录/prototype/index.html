@@ -231,6 +231,14 @@
           <label class="field-label" for="birdNoteInput">备注</label>
           <textarea id="birdNoteInput" class="text-area" rows="3" placeholder="例如：树梢、鸣叫、结群"></textarea>
 
+          <div class="sensitive-field">
+            <button id="birdSensitiveToggle" class="sensitive-toggle" type="button" aria-pressed="false">
+              <span class="sensitive-toggle-name">敏感鸟种</span>
+              <span class="sensitive-toggle-state" id="birdSensitiveState">关</span>
+            </button>
+            <p id="birdSensitiveHint" class="selected-info" hidden>已标记为敏感：本机仍显示真实信息，分享 / 导入时会自动剔除该鸟点。</p>
+          </div>
+
           <button id="birdSubmitButton" class="primary-button" type="button">添加到当前位置</button>
           <button id="birdDeleteButton" class="danger-button" type="button" hidden>删除该鸟点</button>
         </section>
