@@ -441,9 +441,143 @@ test('disabled share import service does not append imported records', () => {
   assert.equal(history.length, 1);
 });
 
+test('share snapshot excludes sensitive bird records and recomputes public summary', () => {
+  const record = {
+    id: 'history-source',
+    title: '历史记录',
+    startedAt: '2026-06-10T01:05:00.000Z',
+    endedAt: '2026-06-10T01:30:00.000Z',
+    startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+    currentPoint: { lat: 31.231, lng: 121.4742, label: '终点' },
+    track: [
+      { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+      { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-10T01:20:00.000Z' },
+    ],
+    birdRecords: [
+      {
+        id: 'bird-public',
+        identificationType: 'confirmed',
+        speciesName: '白头鹎',
+        scientificName: 'Pycnonotus sinensis',
+        count: 2,
+        tags: ['成鸟'],
+        note: '树梢鸣叫',
+        isSensitive: false,
+        position: { lat: 31.231, lng: 121.4742, label: '终点' },
+        createdAt: '2026-06-10T01:08:00.000Z',
+      },
+      {
+        id: 'bird-sensitive',
+        identificationType: 'confirmed',
+        speciesName: '敏感鸟',
+        scientificName: 'Sensitive bird',
+        count: 1,
+        tags: [],
+        note: '不应分享',
+        isSensitive: true,
+        position: { lat: 31.231, lng: 121.4742, label: '终点' },
+        createdAt: '2026-06-10T01:09:00.000Z',
+      },
+    ],
+    summary: {
+      state: 'finished',
+      trackPointCount: 2,
+      birdRecordCount: 2,
+      speciesCount: 2,
+      uncertainRecordCount: 0,
+      totalBirds: 3,
+      distanceMeters: 152,
+      durationMinutes: 25,
+    },
+    savedAt: '2026-06-10T01:31:00.000Z',
+  };
+
+  const snapshot = state.createShareSnapshot(record, {
+    shareId: 'share-fixed',
+    createdByUid: 'uid-1',
+    createdAt: '2026-06-11T00:00:00.000Z',
+  });
+
+  assert.equal(snapshot.shareId, 'share-fixed');
+  assert.equal(snapshot.createdByUid, 'uid-1');
+  assert.equal(snapshot.sourceRecordId, 'history-source');
+  assert.equal(snapshot.record.birdRecords.length, 1);
+  assert.equal(snapshot.record.birdRecords[0].speciesName, '白头鹎');
+  assert.equal(snapshot.record.birdRecords.some((item) => item.isSensitive), false);
+  assert.equal(snapshot.record.summary.birdRecordCount, 1);
+  assert.equal(snapshot.record.summary.speciesCount, 1);
+  assert.equal(snapshot.record.summary.totalBirds, 2);
+});
+
+test('imported share snapshot becomes a locked favorite import record', () => {
+  const snapshot = {
+    shareId: 'share-fixed',
+    record: {
+      id: 'history-source',
+      title: '历史记录',
+      startedAt: '2026-06-10T01:05:00.000Z',
+      endedAt: '2026-06-10T01:30:00.000Z',
+      startPoint: { lat: 31.2304, lng: 121.4737, label: '上海' },
+      currentPoint: { lat: 31.231, lng: 121.4742, label: '终点' },
+      track: [
+        { lat: 31.2304, lng: 121.4737, label: '上海', timestamp: '2026-06-10T01:05:00.000Z' },
+        { lat: 31.231, lng: 121.4742, label: '终点', timestamp: '2026-06-10T01:20:00.000Z' },
+      ],
+      birdRecords: [],
+      summary: {
+        state: 'finished',
+        trackPointCount: 2,
+        birdRecordCount: 0,
+        speciesCount: 0,
+        uncertainRecordCount: 0,
+        totalBirds: 0,
+        distanceMeters: 152,
+        durationMinutes: 25,
+      },
+      isFavorite: true,
+    },
+  };
+
+  const imported = state.createHistoryRecordFromShareSnapshot(snapshot, new Date('2026-06-11T00:10:00.000Z'));
+
+  assert.equal(imported.id, 'shared-share-fixed');
+  assert.equal(imported.importedFromShareId, 'share-fixed');
+  assert.equal(imported.sourceRecordId, 'history-source');
+  assert.equal(imported.savedAt, '2026-06-11T00:10:00.000Z');
+  assert.equal(imported.isFavorite, true);
+  assert.equal(imported.isImportedRecord, true);
+  assert.equal(state.isImportedHistoryRecord(imported), true);
+  assert.deepEqual(imported.track, snapshot.record.track);
+  assert.notEqual(imported.track, snapshot.record.track);
+});
+
+test('history record filters separate manual history from imported favorites', () => {
+  const history = [
+    { id: 'manual-a', isFavorite: true },
+    { id: 'manual-b' },
+    { id: 'shared-share-fixed', isFavorite: true, importedFromShareId: 'share-fixed', isImportedRecord: true },
+  ];
+
+  assert.deepEqual(state.manualHistoryRecords(history).map((record) => record.id), ['manual-a', 'manual-b']);
+  assert.deepEqual(state.favoriteHistoryRecords(history).map((record) => record.id), ['manual-a', 'shared-share-fixed']);
+});
+
+test('imported records cannot be toggled out of favorites', () => {
+  const imported = {
+    id: 'shared-share-fixed',
+    isFavorite: true,
+    importedFromShareId: 'share-fixed',
+    isImportedRecord: true,
+  };
+
+  const next = state.toggleHistoryFavorite([imported], imported.id);
+
+  assert.equal(next[0].isFavorite, true);
+});
+
 test('duplicate shared record resolves to existing history record without adding a copy', () => {
-  const existing = { id: 'record-shared', title: '已有分享记录' };
-  const incoming = { id: 'record-shared', title: '再次导入的分享记录' };
+  const existing = { id: 'shared-share-fixed', title: '已有分享记录', importedFromShareId: 'share-fixed' };
+  const incoming = { id: 'shared-share-fixed', title: '再次导入的分享记录', importedFromShareId: 'share-fixed' };
 
   const preview = state.previewSharedRecordImport([existing], incoming, {
     serviceEnabled: true,

@@ -222,15 +222,19 @@ test('map tile source configuration defaults to Tianditu with OpenStreetMap fall
   assert.equal(config.providers.osm.layers.length, 1);
 });
 
-test('share and import configuration reserves server-link service while disabled', () => {
+test('share and import configuration enables real CloudBase share links', () => {
   const config = loadConfig();
 
   assert.equal(typeof config.shareImport, 'object');
-  assert.equal(config.shareImport.serviceEnabled, false);
+  assert.equal(config.shareImport.serviceEnabled, true);
   assert.equal(config.shareImport.duplicateStrategy, 'openExisting');
   assert.equal(config.shareImport.sharedLocationScope, 'fullRoute');
-  assert.equal(typeof config.shareImport.pendingServiceLabel, 'string');
-  assert.notEqual(config.shareImport.pendingServiceLabel.trim(), '');
+  assert.equal(typeof config.cloud.sharedRoutesCollection, 'string');
+  assert.notEqual(config.cloud.sharedRoutesCollection.trim(), '');
+  assert.equal(typeof config.shareImport.shareUrlPrefix, 'string');
+  assert.notEqual(config.shareImport.shareUrlPrefix.trim(), '');
+  assert.equal(typeof config.shareImport.readyServiceLabel, 'string');
+  assert.notEqual(config.shareImport.readyServiceLabel.trim(), '');
 });
 
 test('fuzzy match UI and configuration are available in the prototype shell', () => {
@@ -294,6 +298,12 @@ test('design documents lock duplicate import as open existing without duplicate 
   const design = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/design.md'), 'utf8');
   const exploration = fs.readFileSync(path.resolve(prototypeRoot, '..', 'docs/exploration.md'), 'utf8');
 
+  assert.equal(design.includes('分享与导入真实链接'), true);
+  assert.equal(design.includes('固定快照'), true);
+  assert.equal(design.includes('粘贴导入'), true);
+  assert.equal(design.includes('匿名身份允许生成真实分享链接'), true);
+  assert.equal(design.includes('记录保存到当前身份的收藏线路'), true);
+  assert.equal(design.includes('导入记录只能查看、删除与再次分享'), true);
   assert.equal(design.includes('重复导入时不新增副本'), true);
   assert.equal(design.includes('打开已有记录'), true);
   assert.equal(exploration.includes('服务器短链接'), true);

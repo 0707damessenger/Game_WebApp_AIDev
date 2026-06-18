@@ -30,6 +30,8 @@
   let headingMarker = null;
   let deviceHeading = null;
   let headingListening = false;
+  let activeShareLink = '';
+  let importCandidate = null;
 
   // 云开发实例（仅邮箱身份用到；SDK 缺失或离线时降级为 null，匿名仍可用）
   let cloudApp = null;
@@ -87,6 +89,7 @@
     shareCloseButton: document.querySelector('#shareCloseButton'),
     shareRecordSummary: document.querySelector('#shareRecordSummary'),
     shareServiceStatus: document.querySelector('#shareServiceStatus'),
+    shareLinkOutput: document.querySelector('#shareLinkOutput'),
     copyShareLinkButton: document.querySelector('#copyShareLinkButton'),
     profilePanel: document.querySelector('#profilePanel'),
     historyEntryButton: document.querySelector('#historyEntryButton'),
@@ -105,6 +108,7 @@
     importPreviewButton: document.querySelector('#importPreviewButton'),
     importPreview: document.querySelector('#importPreview'),
     importServiceStatus: document.querySelector('#importServiceStatus'),
+    importSaveButton: document.querySelector('#importSaveButton'),
     historyPanel: document.querySelector('#historyPanel'),
     historyPanelKicker: document.querySelector('#historyPanelKicker'),
     historyListTitle: document.querySelector('#historyListTitle'),
@@ -330,6 +334,10 @@
       elements.shareDialog.close();
     });
 
+    elements.copyShareLinkButton.addEventListener('click', () => {
+      generateAndCopyShareLink();
+    });
+
     elements.profileButton.addEventListener('click', () => {
       activeView = 'profile';
       selectedHistoryRecordId = null;
@@ -415,6 +423,10 @@
 
     elements.importPreviewButton.addEventListener('click', () => {
       previewImportLink();
+    });
+
+    elements.importSaveButton.addEventListener('click', () => {
+      saveImportedShare();
     });
 
     elements.addBirdButton.addEventListener('click', () => {
@@ -649,6 +661,16 @@
     }, duration);
   }
 
+  function textBlock(value) {
+    const node = document.createElement('span');
+    node.textContent = value || '';
+    return node;
+  }
+
+  function errorMessage(error) {
+    return error && error.message ? error.message : String(error || '未知错误');
+  }
+
   function centerMapOnCurrentLocation() {
     const mapSource = getMapSource();
     const currentPoint = mapSource.currentPoint || session.currentPoint || idleCurrentPoint;
@@ -870,11 +892,12 @@
     elements.birdNameToggle.setAttribute('aria-pressed', showBirdNames ? 'true' : 'false');
 
     const inHistoryEdit = isSavedResult && historyEditMode;
+    const isImportedSavedResult = isSavedResult && stateTools.isImportedHistoryRecord(activeResult);
     // 编辑态采用「地图为主」布局：隐藏底部结果面板，改用顶部窄条承载保存/取消，
     // 让整张地图都可用于点选与拖动落点。
     elements.resultPanel.hidden = !isResultView || inHistoryEdit;
     elements.historyEditBar.hidden = !inHistoryEdit;
-    elements.historyEditButton.hidden = !(isSavedResult && !historyEditMode);
+    elements.historyEditButton.hidden = !(isSavedResult && !historyEditMode && !isImportedSavedResult);
     elements.mapStage.classList.toggle('is-history-edit', inHistoryEdit);
 
     if (!isFullPageView && !isResultView && canUseSimulatedFallbackStart()) {
@@ -961,7 +984,8 @@
     elements.resultUncertain.textContent = `${result.summary.uncertainRecordCount || 0} 未定`;
     elements.resultListCount.textContent = `${result.summary.birdRecordCount} 条`;
     elements.shareButton.disabled = !result;
-    elements.favoriteResultButton.hidden = !selectedHistoryRecordId || historyEditMode;
+    const isImportedResult = stateTools.isImportedHistoryRecord(result);
+    elements.favoriteResultButton.hidden = !selectedHistoryRecordId || historyEditMode || isImportedResult;
     elements.favoriteResultButton.textContent = stateTools.isHistoryRecordFavorite(result) ? '取消收藏' : '收藏';
 
     if (result.birdRecords.length === 0) {
@@ -1003,11 +1027,11 @@
     elements.historyPanelKicker.textContent = isFavoritesMode ? '收藏线路' : '历史记录';
     elements.historyListTitle.textContent = isFavoritesMode ? '收藏线路' : '历史列表';
     elements.historyListDescription.textContent = isFavoritesMode
-      ? '从这里打开本机收藏的观鸟路线。'
+      ? '从这里打开收藏和导入的观鸟路线。'
       : '从这里打开过去保存的观鸟路线。';
     elements.historyCount.textContent = `${visibleHistory.length} 条`;
     elements.historyEmpty.textContent = isFavoritesMode
-      ? '还没有收藏线路。可以在历史列表或历史详情中收藏路线。'
+      ? '还没有收藏或导入线路。可以在历史列表或历史详情中收藏路线，也可以导入分享链接。'
       : '还没有历史记录。完成一次路线记录后，会显示在这里。';
     elements.historyEmpty.hidden = visibleHistory.length > 0;
 
@@ -1017,8 +1041,10 @@
     }
 
     elements.historyList.replaceChildren(...visibleHistory.map((record) => {
+      const isImportedRecord = stateTools.isImportedHistoryRecord(record);
       const item = document.createElement('div');
       item.className = 'history-item';
+      item.classList.toggle('is-imported-record', isImportedRecord);
 
       const open = document.createElement('button');
       open.type = 'button';
@@ -1029,6 +1055,10 @@
 
       const detail = document.createElement('span');
       detail.textContent = historyRecordDetail(record);
+
+      const importedBadge = document.createElement('span');
+      importedBadge.className = 'history-badge';
+      importedBadge.textContent = '导入记录';
 
       const metrics = document.createElement('div');
       metrics.className = 'history-metrics';
@@ -1042,7 +1072,11 @@
         metrics.appendChild(metric);
       });
 
-      open.append(title, detail, metrics);
+      if (isImportedRecord) {
+        open.append(title, importedBadge, detail, metrics);
+      } else {
+        open.append(title, detail, metrics);
+      }
       open.addEventListener('click', () => {
         if (item.classList.contains('is-delete-revealed')) {
           item.classList.remove('is-delete-revealed');
@@ -1073,7 +1107,11 @@
 
       const actions = document.createElement('div');
       actions.className = 'history-actions';
-      actions.append(favorite, remove);
+      if (isImportedRecord) {
+        actions.append(remove);
+      } else {
+        actions.append(favorite, remove);
+      }
 
       item.append(open, actions);
       bindSwipeReveal(item);
@@ -1397,6 +1435,10 @@
     return Boolean(cloudDb && cloudAuth && authState && authState.mode === 'email' && authState.uid);
   }
 
+  function shareServiceReady() {
+    return Boolean(config.shareImport && config.shareImport.serviceEnabled && cloudDb && cloudAuth);
+  }
+
   // 以服务端会话为准刷新 uid，避免本地存的 uid 过期/不一致
   async function ensureCloudUid() {
     if (!cloudAuth) return null;
@@ -1440,6 +1482,15 @@
     }
   }
 
+  function throwIfShareCloudError(res) {
+    if (res && res.code) {
+      if (res.code === 'DATABASE_COLLECTION_NOT_EXIST' || /not exist/i.test(res.message || '')) {
+        throw new Error('云端集合「' + config.cloud.sharedRoutesCollection + '」不存在，请先在控制台创建该集合。');
+      }
+      throw new Error(res.message || res.code);
+    }
+  }
+
   async function cloudSaveHistory(value) {
     const uid = currentUid();
     if (!uid) throw new Error('未取得用户标识，无法保存到云端');
@@ -1453,6 +1504,111 @@
       const added = await coll.add({ ownerUid: uid, histories });
       throwIfCloudError(added);
     }
+  }
+
+  async function ensureShareServiceUid() {
+    if (!cloudAuth) {
+      throw new Error('云开发登录服务不可用');
+    }
+
+    try {
+      const state = await cloudAuth.getLoginState();
+      const uid = state && state.user && state.user.uid;
+      if (uid) {
+        return String(uid);
+      }
+    } catch (error) { /* 继续尝试匿名分享会话 */ }
+
+    if (cloudAuth.signInAnonymously) {
+      const res = await cloudAuth.signInAnonymously();
+      if (res && res.code) {
+        throw new Error(res.message || res.code);
+      }
+      const uid = res && res.user && res.user.uid;
+      if (uid) {
+        return String(uid);
+      }
+    }
+
+    const state = await cloudAuth.getLoginState();
+    const uid = state && state.user && state.user.uid;
+    if (!uid) {
+      throw new Error('未取得分享服务用户标识');
+    }
+    return String(uid);
+  }
+
+  async function cloudSaveShareSnapshot(snapshot) {
+    if (!snapshot || !snapshot.shareId) {
+      throw new Error('分享快照无效');
+    }
+    const coll = cloudDb.collection(config.cloud.sharedRoutesCollection);
+    const res = await coll.add(snapshot);
+    throwIfShareCloudError(res);
+  }
+
+  async function cloudLoadShareSnapshot(shareId) {
+    const coll = cloudDb.collection(config.cloud.sharedRoutesCollection);
+    const res = await coll.where({ shareId }).get();
+    throwIfShareCloudError(res);
+    const data = res && res.data;
+    const doc = Array.isArray(data) ? data[0] : data;
+    if (!doc || !doc.shareId || !doc.record) {
+      throw new Error('未找到分享内容');
+    }
+    return doc;
+  }
+
+  function createShareId() {
+    const random = Math.random().toString(36).slice(2, 10);
+    return `share-${Date.now().toString(36)}-${random}`;
+  }
+
+  function shareUrlFor(shareId) {
+    const prefix = config.shareImport.shareUrlPrefix || `${window.location.origin}${window.location.pathname}#share=`;
+    return `${prefix}${encodeURIComponent(shareId)}`;
+  }
+
+  function parseShareId(value) {
+    if (!value) {
+      return '';
+    }
+
+    try {
+      const parsed = new URL(value, window.location.href);
+      const hash = parsed.hash || '';
+      if (hash.startsWith('#share=')) {
+        return decodeURIComponent(hash.slice('#share='.length)).trim();
+      }
+      const queryId = parsed.searchParams.get('share');
+      return queryId ? queryId.trim() : '';
+    } catch (error) {
+      const match = value.match(/(?:#|[?&])share=([^&]+)/);
+      return match ? decodeURIComponent(match[1]).trim() : '';
+    }
+  }
+
+  async function copyText(value) {
+    if (!value) {
+      return;
+    }
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+
+    elements.shareLinkOutput.focus();
+    elements.shareLinkOutput.select();
+    document.execCommand('copy');
+  }
+
+  async function persistHistoryAndWait(value) {
+    if (isCloudMode()) {
+      await cloudSaveHistory(value);
+      return;
+    }
+    localStorage.setItem(config.historyStorageKey, JSON.stringify(value));
   }
 
   function mergeHistoriesById(base, extra) {
@@ -1500,11 +1656,17 @@
   function getVisibleHistoryRecords() {
     return historyListMode === 'favorites'
       ? stateTools.favoriteHistoryRecords(history)
-      : history;
+      : stateTools.manualHistoryRecords(history);
   }
 
   function toggleFavoriteForRecord(recordId) {
     if (!recordId) {
+      return;
+    }
+
+    const record = stateTools.findHistoryRecord(history, recordId);
+    if (stateTools.isImportedHistoryRecord(record)) {
+      showToast('导入记录不能取消收藏。');
       return;
     }
 
@@ -1533,6 +1695,13 @@
       return '本次记录';
     }
 
+    if (selectedHistoryRecordId) {
+      const record = stateTools.findHistoryRecord(history, selectedHistoryRecordId);
+      if (stateTools.isImportedHistoryRecord(record)) {
+        return '导入记录';
+      }
+    }
+
     if (selectedHistoryRecordId && historyListMode === 'favorites') {
       return '收藏线路';
     }
@@ -1551,6 +1720,10 @@
   function enterHistoryEditMode() {
     const record = stateTools.findHistoryRecord(history, selectedHistoryRecordId);
     if (!record) {
+      return;
+    }
+    if (stateTools.isImportedHistoryRecord(record)) {
+      showToast('导入记录不可编辑。');
       return;
     }
 
@@ -1812,14 +1985,24 @@
     }
 
     elements.shareRecordSummary.replaceChildren(...children);
-    elements.shareServiceStatus.textContent = config.shareImport.pendingServiceLabel;
-    elements.copyShareLinkButton.disabled = !config.shareImport.serviceEnabled;
+    activeShareLink = '';
+    elements.shareLinkOutput.value = '';
+    elements.shareServiceStatus.textContent = shareServiceReady()
+      ? config.shareImport.readyServiceLabel
+      : '分享服务不可用，请检查云开发配置或网络。';
+    elements.copyShareLinkButton.textContent = '生成并复制分享链接';
+    elements.copyShareLinkButton.disabled = !shareServiceReady();
   }
 
   function openImportDialog() {
     elements.importUrlInput.value = '';
-    elements.importServiceStatus.textContent = config.shareImport.pendingServiceLabel;
-    elements.importPreview.textContent = '当前仅展示导入流程入口，真实链接解析与保存将在服务器服务接入后开放。';
+    importCandidate = null;
+    elements.importServiceStatus.textContent = shareServiceReady()
+      ? '可读取分享链接'
+      : '分享服务不可用，请检查云开发配置或网络。';
+    elements.importPreview.textContent = '粘贴分享链接后，可先预览路线摘要，再保存到自己的收藏线路。';
+    elements.importSaveButton.textContent = '保存到我的收藏';
+    elements.importSaveButton.disabled = true;
 
     if (elements.importDialog.showModal) {
       elements.importDialog.showModal();
@@ -1827,23 +2010,134 @@
     }
   }
 
-  function previewImportLink() {
-    const preview = stateTools.previewSharedRecordImport(history, null, config.shareImport);
-    const url = elements.importUrlInput.value.trim();
+  async function generateAndCopyShareLink() {
+    const result = getActiveResult();
+    if (!result || !shareServiceReady()) {
+      return;
+    }
 
-    elements.importServiceStatus.textContent = config.shareImport.pendingServiceLabel;
+    elements.copyShareLinkButton.disabled = true;
+    elements.shareServiceStatus.textContent = '正在生成分享链接...';
+
+    try {
+      const uid = await ensureShareServiceUid();
+      const snapshot = stateTools.createShareSnapshot(result, {
+        shareId: createShareId(),
+        createdByUid: uid || '',
+      });
+      await cloudSaveShareSnapshot(snapshot);
+      activeShareLink = shareUrlFor(snapshot.shareId);
+      elements.shareLinkOutput.value = activeShareLink;
+      try {
+        await copyText(activeShareLink);
+        elements.shareServiceStatus.textContent = '分享链接已生成并复制。';
+        showToast('分享链接已复制。');
+      } catch (copyError) {
+        elements.shareServiceStatus.textContent = '分享链接已生成，请手动复制。';
+        showToast('分享链接已生成，请手动复制。');
+      }
+      elements.copyShareLinkButton.textContent = '再次复制分享链接';
+    } catch (error) {
+      elements.shareServiceStatus.textContent = '生成失败：' + errorMessage(error);
+      showToast('分享链接生成失败。');
+    } finally {
+      elements.copyShareLinkButton.disabled = !shareServiceReady();
+    }
+  }
+
+  async function previewImportLink() {
+    const url = elements.importUrlInput.value.trim();
+    importCandidate = null;
+    elements.importSaveButton.textContent = '保存到我的收藏';
+    elements.importSaveButton.disabled = true;
+
+    elements.importServiceStatus.textContent = shareServiceReady()
+      ? '正在读取分享链接...'
+      : '分享服务不可用，请检查云开发配置或网络。';
 
     if (!url) {
-      elements.importPreview.textContent = '请先粘贴分享链接。真实链接解析服务接入后，可在这里预览路线摘要。';
+      elements.importServiceStatus.textContent = '请先粘贴分享链接';
+      elements.importPreview.textContent = '请先粘贴分享链接。';
       return;
     }
 
-    if (preview.status === 'serviceUnavailable') {
-      elements.importPreview.textContent = '服务器链接服务待接入，当前仅能预览导入入口，暂不能保存到历史记录。';
+    if (!shareServiceReady()) {
+      elements.importPreview.textContent = '当前无法连接分享服务，暂不能读取分享内容。';
       return;
     }
 
-    elements.importPreview.textContent = '分享链接已读取，等待后续保存流程接入。';
+    try {
+      const shareId = parseShareId(url);
+      if (!shareId) {
+        elements.importServiceStatus.textContent = '分享链接格式不正确';
+        elements.importPreview.textContent = '没有识别到分享标识，请检查链接是否完整。';
+        return;
+      }
+
+      const snapshot = await cloudLoadShareSnapshot(shareId);
+      const importedRecord = stateTools.createHistoryRecordFromShareSnapshot(snapshot);
+      const preview = stateTools.previewSharedRecordImport(history, importedRecord, config.shareImport);
+
+      if (preview.status === 'duplicate') {
+        importCandidate = { status: 'duplicate', record: preview.duplicateRecord };
+        renderImportPreview(preview.duplicateRecord, '这条分享已导入过，可直接打开已有记录。');
+        elements.importServiceStatus.textContent = '已导入过';
+        elements.importSaveButton.textContent = '打开已有记录';
+        elements.importSaveButton.disabled = false;
+        return;
+      }
+
+      if (preview.status !== 'ready') {
+        elements.importServiceStatus.textContent = '分享内容不可导入';
+        elements.importPreview.textContent = '分享内容无效或已不可用。';
+        return;
+      }
+
+      importCandidate = { status: 'ready', record: preview.record };
+      renderImportPreview(preview.record, '已读取分享内容，可保存到自己的收藏线路。');
+      elements.importServiceStatus.textContent = '已读取分享内容';
+      elements.importSaveButton.textContent = '保存到我的收藏';
+      elements.importSaveButton.disabled = false;
+    } catch (error) {
+      elements.importServiceStatus.textContent = '读取失败：' + errorMessage(error);
+      elements.importPreview.textContent = '未能读取分享内容，请稍后重试。';
+    }
+  }
+
+  function renderImportPreview(record, lead) {
+    const summary = record && record.summary ? record.summary : {};
+    const birds = Array.isArray(record.birdRecords) && record.birdRecords.length
+      ? record.birdRecords.map((item) => `${recordDisplayName(item)} × ${item.count}`).join('、')
+      : '暂无鸟点记录';
+    elements.importPreview.replaceChildren(
+      textBlock(lead),
+      textBlock(`${formatResultMeta(record)} · ${formatDuration(summary.durationMinutes || 0)} · ${formatDistance(summary.distanceMeters || 0)}`),
+      textBlock(`${summary.speciesCount || 0} 种 · ${summary.uncertainRecordCount || 0} 未定 · ${summary.totalBirds || 0} 只 · ${summary.birdRecordCount || 0} 条鸟点`),
+      textBlock(birds),
+    );
+  }
+
+  async function saveImportedShare() {
+    if (!importCandidate || !importCandidate.record) {
+      return;
+    }
+
+    if (importCandidate.status === 'duplicate') {
+      elements.importDialog.close();
+      historyListMode = 'favorites';
+      openHistoryRecord(importCandidate.record.id);
+      return;
+    }
+
+    history = stateTools.addHistoryRecord(history, importCandidate.record);
+    await persistHistoryAndWait(history);
+    const importedId = importCandidate.record.id;
+    importCandidate = null;
+    elements.importDialog.close();
+    historyListMode = 'favorites';
+    activeView = 'historyResult';
+    openHistoryRecord(importedId);
+    showToast('已保存到我的收藏。');
   }
 
   function openBirdDialog(record = null) {

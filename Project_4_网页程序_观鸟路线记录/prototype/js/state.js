@@ -271,7 +271,11 @@
   }
 
   function isHistoryRecordFavorite(record) {
-    return Boolean(record && record.isFavorite === true);
+    return Boolean(record && (record.isFavorite === true || isImportedHistoryRecord(record)));
+  }
+
+  function isImportedHistoryRecord(record) {
+    return Boolean(record && (record.isImportedRecord === true || record.importedFromShareId));
   }
 
   function toggleHistoryFavorite(history, id) {
@@ -281,6 +285,10 @@
 
     return history.map((record) => {
       if (!record || record.id !== id) {
+        return record;
+      }
+
+      if (isImportedHistoryRecord(record)) {
         return record;
       }
 
@@ -297,6 +305,14 @@
     }
 
     return history.filter(isHistoryRecordFavorite);
+  }
+
+  function manualHistoryRecords(history) {
+    if (!Array.isArray(history)) {
+      return [];
+    }
+
+    return history.filter((record) => record && !isImportedHistoryRecord(record));
   }
 
   // 编辑历史记录后，按当前鸟种落点重算概要中的鸟种相关数值；
@@ -316,6 +332,43 @@
         uncertainRecordCount: uncertainRecords.length,
         totalBirds,
       },
+    };
+  }
+
+  function createShareSnapshot(record, options = {}) {
+    if (!record || !record.id) {
+      return null;
+    }
+
+    const shareId = options.shareId || `share-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    const shareableRecord = cloneResultLike(record);
+    shareableRecord.birdRecords = shareableRecord.birdRecords.filter((birdRecord) => !birdRecord.isSensitive);
+    const recomputed = recomputeResultSummary(shareableRecord);
+
+    return {
+      shareId,
+      sourceRecordId: record.id,
+      createdByUid: options.createdByUid || '',
+      createdAt: options.createdAt || new Date().toISOString(),
+      record: recomputed,
+    };
+  }
+
+  function createHistoryRecordFromShareSnapshot(snapshot, now = new Date()) {
+    if (!snapshot || !snapshot.shareId || !snapshot.record) {
+      return null;
+    }
+
+    const cloned = cloneResultLike(snapshot.record);
+    return {
+      ...cloned,
+      id: `shared-${snapshot.shareId}`,
+      title: '导入记录',
+      savedAt: now.toISOString(),
+      importedFromShareId: snapshot.shareId,
+      sourceRecordId: snapshot.sourceRecordId || cloned.id || '',
+      isFavorite: true,
+      isImportedRecord: true,
     };
   }
 
@@ -367,7 +420,7 @@
     }
 
     const duplicateRecord = options.duplicateStrategy === 'openExisting'
-      ? findHistoryRecord(currentHistory, sharedRecord.id)
+      ? findSharedImportRecord(currentHistory, sharedRecord)
       : null;
 
     if (duplicateRecord) {
@@ -384,6 +437,45 @@
       history: currentHistory,
       record: sharedRecord,
       duplicateRecord: null,
+    };
+  }
+
+  function findSharedImportRecord(history, sharedRecord) {
+    if (!Array.isArray(history) || !sharedRecord) {
+      return null;
+    }
+
+    const importedFromShareId = sharedRecord.importedFromShareId || sharedRecord.shareId || '';
+    if (importedFromShareId) {
+      const existing = history.find((record) => record && record.importedFromShareId === importedFromShareId);
+      if (existing) {
+        return existing;
+      }
+    }
+
+    return sharedRecord.id ? findHistoryRecord(history, sharedRecord.id) : null;
+  }
+
+  function cloneResultLike(result) {
+    return {
+      ...result,
+      startPoint: result.startPoint ? clonePoint(result.startPoint) : null,
+      currentPoint: result.currentPoint ? clonePoint(result.currentPoint) : null,
+      track: Array.isArray(result.track) ? result.track.map(clonePoint) : [],
+      birdRecords: Array.isArray(result.birdRecords)
+        ? result.birdRecords.map((record) => ({
+          ...record,
+          identificationType: normalizeIdentificationType(record.identificationType),
+          tags: Array.isArray(record.tags) ? [...record.tags] : [],
+          fuzzyFeatures: cloneFuzzyFeatures(record.fuzzyFeatures),
+          candidateBirds: cloneCandidateBirds(record.candidateBirds),
+          position: record.position ? clonePoint(record.position) : null,
+          isSensitive: Boolean(record.isSensitive),
+        }))
+        : [],
+      summary: {
+        ...(result.summary || {}),
+      },
     };
   }
 
@@ -436,9 +528,13 @@
     replaceHistoryRecord,
     deleteHistoryRecord,
     isHistoryRecordFavorite,
+    isImportedHistoryRecord,
     toggleHistoryFavorite,
     favoriteHistoryRecords,
+    manualHistoryRecords,
     recomputeResultSummary,
+    createShareSnapshot,
+    createHistoryRecordFromShareSnapshot,
     previewSharedRecordImport,
     normalizeIdentificationType,
     distanceBetween,

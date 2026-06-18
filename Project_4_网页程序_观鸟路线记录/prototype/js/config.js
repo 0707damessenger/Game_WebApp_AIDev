@@ -6,6 +6,8 @@ window.CONFIG = {
     envId: 'birdwatching-d5g8au815946b1b1e',
     // 邮箱身份的历史记录集合（每用户一份文档，doc(_id=uid)）
     historiesCollection: 'bird_histories',
+    // 公开分享快照集合（持链接可读；每次分享写入一份不可变快照）
+    sharedRoutesCollection: 'bird_shared_routes',
   },
   locationSource: 'gps',
   defaultCenter: {
@@ -53,10 +55,12 @@ window.CONFIG = {
   historyStorageKey: 'bird-route-history',
   authStorageKey: 'bird-route-auth',
   shareImport: {
-    serviceEnabled: false,
+    serviceEnabled: true,
     duplicateStrategy: 'openExisting',
     sharedLocationScope: 'fullRoute',
-    pendingServiceLabel: '服务器链接服务待接入',
+    shareUrlPrefix: 'https://bird-route.example/import#share=',
+    readyServiceLabel: '可生成分享链接',
+    pendingServiceLabel: '正在连接分享服务',
   },
   fuzzyMatch: {
     uncertainSpeciesName: '未确定鸟种',

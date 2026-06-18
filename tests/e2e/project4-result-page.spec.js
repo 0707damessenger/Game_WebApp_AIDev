@@ -107,6 +107,83 @@ async function mockTiandituTiles(page) {
   });
 }
 
+async function mockCloudbase(page) {
+  const stub = `
+  (() => {
+    const stores = {
+      bird_shared_routes: [],
+      bird_histories: [],
+    };
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function matches(doc, query) {
+      return Object.entries(query || {}).every(([key, value]) => doc[key] === value);
+    }
+
+    window.__cloudbaseStores = stores;
+    window.cloudbase = {
+      init() {
+        return {
+          auth() {
+            return {
+              async signInAnonymously() {
+                return { user: { uid: 'anon-share-uid' } };
+              },
+              async getLoginState() {
+                return { user: { uid: 'anon-share-uid', email: '' } };
+              },
+              async signOut() {},
+            };
+          },
+          database() {
+            return {
+              collection(name) {
+                if (!stores[name]) stores[name] = [];
+                const coll = stores[name];
+                return {
+                  where(query) {
+                    return {
+                      async get() {
+                        return { data: clone(coll.filter((doc) => matches(doc, query))) };
+                      },
+                      async update(patch) {
+                        let updated = 0;
+                        coll.forEach((doc) => {
+                          if (matches(doc, query)) {
+                            Object.assign(doc, clone(patch));
+                            updated += 1;
+                          }
+                        });
+                        return { updated };
+                      },
+                    };
+                  },
+                  async add(doc) {
+                    coll.unshift({ ...clone(doc), _id: name + '-' + (coll.length + 1) });
+                    return { id: name + '-' + coll.length };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+    };
+  })();
+  `;
+
+  await page.route('**/vendor/cloudbase/cloudbase.full.js', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: stub,
+    });
+  });
+}
+
 // 强制登录门：默认预置匿名身份，让既有用例直接进入应用（匿名=纯本地，不联网）。
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -155,7 +232,7 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
   await page.locator('#shareButton').click();
   await expect(page.locator('#shareDialog')).toBeVisible();
   await expect(page.locator('#shareDialog')).toContainText('完整路线和鸟点位置');
-  await expect(page.locator('#shareServiceStatus')).toContainText('服务器链接服务待接入');
+  await expect(page.locator('#shareServiceStatus')).toContainText('可生成分享链接');
   await page.locator('#shareCloseButton').click();
 
   await page.locator('.result-bird-item').click();
@@ -169,11 +246,12 @@ test('Project 4 shows the saved current record result page', async ({ page }) =>
   await expect(page.locator('#profileButton')).toBeVisible();
 });
 
-test('Project 4 can open the share skeleton from a history record result page', async ({ page }) => {
+test('Project 4 generates a real share link from a history record result page', async ({ page }) => {
   await page.addInitScript((record) => {
     localStorage.setItem('bird-route-history', JSON.stringify([record]));
   }, sampleHistoryRecord());
 
+  await mockCloudbase(page);
   await mockTiandituTiles(page);
   await page.goto(project4PrototypeUrl());
 
@@ -188,31 +266,90 @@ test('Project 4 can open the share skeleton from a history record result page', 
   await page.locator('#shareButton').click();
   await expect(page.locator('#shareDialog')).toBeVisible();
   await expect(page.locator('#shareRecordSummary')).toContainText('白头鹎');
-  await expect(page.locator('#shareServiceStatus')).toContainText('服务器链接服务待接入');
+  await expect(page.locator('#shareServiceStatus')).toContainText('可生成分享链接');
+  await page.locator('#copyShareLinkButton').click();
+  await expect(page.locator('#shareServiceStatus')).toContainText('分享链接已生成');
+  await expect(page.locator('#shareLinkOutput')).toHaveValue(/#share=/);
+
+  const sharedCount = await page.evaluate(() => window.__cloudbaseStores.bird_shared_routes.length);
+  expect(sharedCount).toBe(1);
 });
 
-test('Project 4 import entry shows pending service state without adding history', async ({ page }) => {
+test('Project 4 imports a pasted share link into local anonymous favorites as a locked import record', async ({ page }) => {
   await page.addInitScript((record) => {
-    localStorage.setItem('bird-route-history', JSON.stringify([record]));
+    window.__seedShareRecord = {
+      shareId: 'share-import-demo',
+      sourceRecordId: record.id,
+      createdByUid: 'share-owner',
+      createdAt: '2026-06-11T00:00:00.000Z',
+      record,
+    };
   }, sampleHistoryRecord());
 
+  await mockCloudbase(page);
   await mockTiandituTiles(page);
   await page.goto(project4PrototypeUrl());
+
+  await page.evaluate(() => {
+    window.__cloudbaseStores.bird_shared_routes.push(window.__seedShareRecord);
+  });
 
   await page.locator('#profileButton').click();
   await page.locator('#importEntryButton').click();
   await expect(page.locator('#importDialog')).toBeVisible();
-  await page.locator('#importUrlInput').fill('https://bird-route.example/share/demo');
+  await page.locator('#importUrlInput').fill('https://bird-route.example/import#share=share-import-demo');
   await page.locator('#importPreviewButton').click();
 
-  await expect(page.locator('#importServiceStatus')).toContainText('服务器链接服务待接入');
-  await expect(page.locator('#importPreview')).toContainText('暂不能保存');
+  await expect(page.locator('#importServiceStatus')).toContainText('已读取分享内容');
+  await expect(page.locator('#importPreview')).toContainText('白头鹎');
+  await expect(page.locator('#importSaveButton')).toBeEnabled();
+  await expect(page.locator('#importSaveButton')).toHaveText('保存到我的收藏');
+  await page.locator('#importSaveButton').click();
+  await expect(page.locator('#importDialog')).not.toBeVisible();
+  await expect(page.locator('#resultTitle')).toHaveText('导入记录');
+  await expect(page.locator('#resultBirdList')).toContainText('白头鹎 × 2');
+  await expect(page.locator('#historyEditButton')).toBeHidden();
+  await expect(page.locator('#favoriteResultButton')).toBeHidden();
+  await expect(page.locator('#shareButton')).toBeVisible();
 
-  const historyCount = await page.evaluate(() => {
+  const importedRecords = await page.evaluate(() => {
+    const history = JSON.parse(localStorage.getItem('bird-route-history') || '[]');
+    return history.filter((record) => record.importedFromShareId === 'share-import-demo');
+  });
+  expect(importedRecords).toHaveLength(1);
+  expect(importedRecords[0].isFavorite).toBe(true);
+  expect(importedRecords[0].isImportedRecord).toBe(true);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#historyPanel')).toBeVisible();
+  await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
+  await expect(page.locator('.history-item')).toHaveCount(1);
+  await expect(page.locator('.history-item').first()).toContainText('导入记录');
+  await expect(page.locator('.history-item').first().locator('.history-favorite')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#profilePanel')).toBeVisible();
+
+  await page.locator('#historyEntryButton').click();
+  await expect(page.locator('#historyListTitle')).toHaveText('历史列表');
+  await expect(page.locator('.history-item')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#profilePanel')).toBeVisible();
+
+  await page.locator('#importEntryButton').click();
+  await page.locator('#importUrlInput').fill('https://bird-route.example/import#share=share-import-demo');
+  await page.locator('#importPreviewButton').click();
+  await expect(page.locator('#importServiceStatus')).toContainText('已导入过');
+  await expect(page.locator('#importSaveButton')).toHaveText('打开已有记录');
+  await page.locator('#importSaveButton').click();
+  await expect(page.locator('#resultTitle')).toHaveText('导入记录');
+  await expect(page.locator('#historyEditButton')).toBeHidden();
+  await expect(page.locator('#favoriteResultButton')).toBeHidden();
+
+  const duplicateHistoryCount = await page.evaluate(() => {
     const history = JSON.parse(localStorage.getItem('bird-route-history') || '[]');
     return history.length;
   });
-  expect(historyCount).toBe(1);
+  expect(duplicateHistoryCount).toBe(1);
 });
 
 test('Project 4 searches the expanded bird catalog while adding a bird record', async ({ page }) => {
@@ -738,7 +875,7 @@ test('Project 4 can unfavorite from detail and shows an empty favorites list', a
 
   await expect(page.locator('#historyListTitle')).toHaveText('收藏线路');
   await expect(page.locator('.history-item')).toHaveCount(0);
-  await expect(page.locator('#historyEmpty')).toContainText('还没有收藏线路');
+  await expect(page.locator('#historyEmpty')).toContainText('还没有收藏或导入线路');
 
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history')));
   expect(persisted[0].isFavorite).toBe(false);
