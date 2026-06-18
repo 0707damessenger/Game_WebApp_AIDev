@@ -34,10 +34,12 @@
   // 云开发实例（仅邮箱身份用到；SDK 缺失或离线时降级为 null，匿名仍可用）
   let cloudApp = null;
   let cloudAuth = null;
+  let cloudDb = null;
   try {
     if (typeof cloudbase !== 'undefined' && config.cloud && config.cloud.envId) {
       cloudApp = cloudbase.init({ env: config.cloud.envId });
       cloudAuth = cloudApp.auth({ persistence: 'local' });
+      cloudDb = cloudApp.database();
     }
   } catch (error) {
     cloudApp = null;
@@ -155,11 +157,19 @@
   function init() {
     renderAuthGate();
     renderAccount();
-    migrateFinishedSessionIntoHistory();
+    if (isCloudMode()) {
+      // 邮箱身份：历史在云端，启动后异步加载
+      history = [];
+    } else {
+      migrateFinishedSessionIntoHistory();
+    }
     initMap();
     bindEvents();
     render();
     primeIdleCurrentLocation();
+    if (isCloudMode()) {
+      bootstrapCloudHistory();
+    }
     // 无需显式授权的平台（Android / 桌面）可在初始化时直接监听方向；
     // iOS 需用户手势授权，留待「开始记录 / 定位」按钮触发。
     const orientationEvent = window.DeviceOrientationEvent;
@@ -1271,6 +1281,7 @@
     persistAuthState({ mode: 'anonymous' });
     pendingEmailVerify = null;
     setLoginStatus('');
+    history = loadHistory();
     renderAuthGate();
     renderAccount();
     render();
@@ -1322,10 +1333,18 @@
         return;
       }
       const user = (res && res.data && res.data.user) || {};
-      persistAuthState({ mode: 'email', email: user.email || elements.loginEmail.value.trim(), uid: user.uid || '' });
+      persistAuthState({ mode: 'email', email: user.email || elements.loginEmail.value.trim(), uid: String(user.uid || '') });
       pendingEmailVerify = null;
       elements.loginCode.value = '';
-      setLoginStatus('登录成功', 'ok');
+      setLoginStatus('正在同步云端数据…');
+      try {
+        await migrateLocalHistoryToCloud();
+        setLoginStatus('登录成功', 'ok');
+      } catch (error) {
+        history = loadHistory();
+        setLoginStatus('登录成功（云端同步失败，可稍后重试）', 'ok');
+        showToast('本地路线上云失败：' + (error && error.message ? error.message : error));
+      }
       renderAuthGate();
       renderAccount();
       render();
@@ -1343,6 +1362,9 @@
     elements.loginEmail.value = '';
     elements.loginCode.value = '';
     setLoginStatus('');
+    history = [];
+    selectedHistoryRecordId = null;
+    highlightedBirdRecordId = null;
     activeView = 'main';
     renderAccount();
     renderAuthGate();
@@ -1364,6 +1386,108 @@
       elements.accountLoginButton.hidden = false;
       elements.accountLogoutButton.hidden = true;
     }
+  }
+
+  // ===== 邮箱身份云端历史（增量二：每用户一份文档，按 uid 隔离） =====
+  function currentUid() {
+    return (authState && authState.mode === 'email') ? authState.uid : null;
+  }
+
+  function isCloudMode() {
+    return Boolean(cloudDb && cloudAuth && authState && authState.mode === 'email' && authState.uid);
+  }
+
+  // 以服务端会话为准刷新 uid，避免本地存的 uid 过期/不一致
+  async function ensureCloudUid() {
+    if (!cloudAuth) return null;
+    try {
+      const state = await cloudAuth.getLoginState();
+      const uid = state && state.user && state.user.uid;
+      if (uid && authState) {
+        authState.uid = String(uid);
+        persistAuthState(authState);
+      }
+    } catch (error) { /* 会话不可用时退回本地存的 uid */ }
+    return authState ? authState.uid : null;
+  }
+
+  async function cloudLoadHistory() {
+    const uid = currentUid();
+    if (!uid) return [];
+    // 用 where(ownerUid) 查询以满足安全规则「查询是规则子集」的要求
+    const res = await cloudDb.collection(config.cloud.historiesCollection).where({ ownerUid: uid }).get();
+    if (res && res.code) {
+      // 还没有该用户的云端文档（集合空 / 文档不存在）时，规则可能报「不存在」或「权限拒绝」，
+      // 这属良性：视为暂无云端数据返回空，待首次写入创建文档后即可正常读取。
+      if (res.code === 'DATABASE_COLLECTION_NOT_EXIST'
+        || res.code === 'DATABASE_PERMISSION_DENIED'
+        || /not exist/i.test(res.message || '')) {
+        return [];
+      }
+      throw new Error(res.message || res.code);
+    }
+    const data = res && res.data;
+    const doc = Array.isArray(data) ? data[0] : data;
+    return doc && Array.isArray(doc.histories) ? doc.histories : [];
+  }
+
+  function throwIfCloudError(res) {
+    if (res && res.code) {
+      if (res.code === 'DATABASE_COLLECTION_NOT_EXIST' || /not exist/i.test(res.message || '')) {
+        throw new Error('云端集合「' + config.cloud.historiesCollection + '」不存在，请先在控制台创建该集合。');
+      }
+      throw new Error(res.message || res.code);
+    }
+  }
+
+  async function cloudSaveHistory(value) {
+    const uid = currentUid();
+    if (!uid) throw new Error('未取得用户标识，无法保存到云端');
+    const histories = Array.isArray(value) ? value : [];
+    const coll = cloudDb.collection(config.cloud.historiesCollection);
+    // 写也按 ownerUid 走 where（满足安全规则子集）：先更新该用户那份文档；没有则新建。
+    const upd = await coll.where({ ownerUid: uid }).update({ histories });
+    throwIfCloudError(upd);
+    const updatedCount = upd && (upd.updated != null ? upd.updated : (upd.stats && upd.stats.updated));
+    if (!updatedCount) {
+      const added = await coll.add({ ownerUid: uid, histories });
+      throwIfCloudError(added);
+    }
+  }
+
+  function mergeHistoriesById(base, extra) {
+    const map = new Map();
+    (base || []).forEach((record) => { if (record && record.id) map.set(record.id, record); });
+    (extra || []).forEach((record) => { if (record && record.id) map.set(record.id, record); });
+    return Array.from(map.values());
+  }
+
+  async function bootstrapCloudHistory() {
+    try {
+      await ensureCloudUid();
+      history = await cloudLoadHistory();
+    } catch (error) {
+      history = [];
+      showToast('云端历史加载失败：' + (error && error.message ? error.message : error));
+    }
+    // 启动时若存在已结束但未保存的本次记录，并入（持久化按当前身份路由到云端）
+    migrateFinishedSessionIntoHistory();
+    render();
+  }
+
+  // 匿名期间记录在本地的路线，在邮箱登录后并入云端、上传成功后清空本地
+  async function migrateLocalHistoryToCloud() {
+    await ensureCloudUid();
+    const localBefore = loadHistory();
+    let cloudHistory = [];
+    try { cloudHistory = await cloudLoadHistory(); } catch (error) { cloudHistory = []; }
+    if (localBefore.length) {
+      const merged = mergeHistoriesById(cloudHistory, localBefore);
+      await cloudSaveHistory(merged);
+      localStorage.removeItem(config.historyStorageKey);
+      cloudHistory = merged;
+    }
+    history = cloudHistory;
   }
 
   function requestDeleteHistoryRecord(recordId) {
@@ -2562,6 +2686,12 @@
   }
 
   function persistHistory(value) {
+    if (isCloudMode()) {
+      cloudSaveHistory(value).catch((error) => {
+        showToast('云端保存失败：' + (error && error.message ? error.message : error));
+      });
+      return;
+    }
     localStorage.setItem(config.historyStorageKey, JSON.stringify(value));
   }
 

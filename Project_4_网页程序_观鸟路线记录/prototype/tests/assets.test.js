@@ -109,6 +109,26 @@ test('forced login gate and its identity controls exist in the prototype shell',
   assert.equal(app.includes("mode: 'email'"), true);
 });
 
+test('email identity routes history to a per-user cloud document', () => {
+  const config = loadConfig();
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+
+  // 集合名由唯一配置源承载
+  assert.equal(typeof config.cloud.historiesCollection, 'string');
+  assert.ok(config.cloud.historiesCollection.length > 0);
+
+  // 云端历史按 uid 隔离：每用户一份文档，写入带 _uid 归属字段
+  assert.equal(app.includes('function cloudLoadHistory'), true);
+  assert.equal(app.includes('function cloudSaveHistory'), true);
+  assert.equal(app.includes('where({ ownerUid: uid })'), true);
+  assert.equal(app.includes('ownerUid: uid'), true);
+
+  // 持久化按身份路由；匿名→邮箱迁移上云后清空本地
+  assert.equal(app.includes('if (isCloudMode())'), true);
+  assert.equal(app.includes('function migrateLocalHistoryToCloud'), true);
+  assert.equal(app.includes('localStorage.removeItem(config.historyStorageKey)'), true);
+});
+
 test('settings page is reachable from the profile entry and exposes its controls', () => {
   const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
   const config = loadConfig();

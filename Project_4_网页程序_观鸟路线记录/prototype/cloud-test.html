@@ -143,7 +143,21 @@
         var state = await auth.getLoginState();
         if (!state) { log('当前未登录。', 'dim'); return; }
         var u = state.user || {};
-        log('✓ 已登录：uid=' + (u.uid || u.openid || '?') + ' loginType=' + (u.loginType || '?') + ' email=' + (u.email || '-'), 'ok');
+        log('✓ 已登录。用户对象的基本类型字段如下（用于确定唯一标识）：', 'ok');
+        var keys = [];
+        for (var k in u) { keys.push(k); }
+        keys.forEach(function (k) {
+          var v;
+          try { v = u[k]; } catch (e) { return; }
+          var t = (v === null) ? 'null' : typeof v;
+          if (t === 'string' || t === 'number' || t === 'boolean' || t === 'null') {
+            log('  ' + k + ' = ' + v);
+          } else {
+            log('  ' + k + ' : [' + t + ']');
+          }
+        });
+        // 重点候选字段单独再打一遍，便于一眼看到
+        log('候选标识：uid=' + u.uid + ' sub=' + u.sub + ' _id=' + u._id + ' customUserId=' + u.customUserId + ' openid=' + u.openid + ' userId=' + u.userId, 'dim');
       });
 
       document.getElementById('btnSignOut').onclick = guard('退出登录', async function () {

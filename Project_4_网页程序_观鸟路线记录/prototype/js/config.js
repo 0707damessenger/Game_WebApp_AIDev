@@ -4,6 +4,8 @@ window.CONFIG = {
   cloud: {
     // 微信云开发 CloudBase 环境 ID（唯一配置源；非密钥，访问控制靠控制台「安全来源」白名单）
     envId: 'birdwatching-d5g8au815946b1b1e',
+    // 邮箱身份的历史记录集合（每用户一份文档，doc(_id=uid)）
+    historiesCollection: 'bird_histories',
   },
   locationSource: 'gps',
   defaultCenter: {
