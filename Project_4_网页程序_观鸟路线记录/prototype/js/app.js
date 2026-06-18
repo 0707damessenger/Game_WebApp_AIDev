@@ -1342,7 +1342,7 @@
       labels.push(optionLabel(groupMap.get('size'), features.size));
     }
 
-    ['colors', 'behaviors', 'habitats', 'postures'].forEach((key) => {
+    ['colors', 'behaviors', 'habitats'].forEach((key) => {
       features[key].forEach((value) => labels.push(optionLabel(groupMap.get(key), value)));
     });
 

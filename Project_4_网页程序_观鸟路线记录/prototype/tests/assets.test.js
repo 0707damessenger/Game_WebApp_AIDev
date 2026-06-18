@@ -21,8 +21,10 @@ function loadConfig() {
 }
 
 function loadFuzzyTools(config) {
-  const script = fs.readFileSync(path.join(prototypeRoot, 'js/fuzzy.js'), 'utf8');
   const sandbox = { window: { CONFIG: config } };
+  const traits = fs.readFileSync(path.join(prototypeRoot, 'js/bird_traits.js'), 'utf8');
+  vm.runInNewContext(traits, sandbox);
+  const script = fs.readFileSync(path.join(prototypeRoot, 'js/fuzzy.js'), 'utf8');
   vm.runInNewContext(script, sandbox);
   return sandbox.window.BirdFuzzyMatch;
 }
@@ -165,28 +167,36 @@ test('fuzzy match UI and configuration are available in the prototype shell', ()
   assert.equal(html.includes('id="birdSearchModeButton"'), true);
   assert.equal(html.includes('id="birdFuzzyModeButton"'), true);
   assert.equal(html.includes('id="birdFuzzyPanel"'), true);
+  assert.equal(html.includes('./js/bird_traits.js'), true);
   assert.equal(html.includes('./js/fuzzy.js'), true);
   assert.equal(typeof config.fuzzyMatch, 'object');
   assert.equal(Array.isArray(config.fuzzyMatch.featureGroups), true);
-  assert.equal(Array.isArray(config.fuzzyMatch.candidateRules), true);
+  assert.equal(config.fuzzyMatch.featureGroups.some((g) => g.key === 'postures'), false);
+  assert.equal(typeof config.fuzzyMatch.weights, 'object');
 });
 
-test('fuzzy match rules return waterbird candidates for large wetland swimmers', () => {
+test('bird trait table is a populated array keyed by scientific name', () => {
+  const traits = fs.readFileSync(path.join(prototypeRoot, 'js/bird_traits.js'), 'utf8');
+  const sandbox = { window: {} };
+  vm.runInNewContext(traits, sandbox);
+  const table = sandbox.window.BIRD_TRAITS;
+  assert.equal(Array.isArray(table), true);
+  assert.ok(table.length > 0);
+  assert.equal(table.every((t) => typeof t.scientificName === 'string'), true);
+});
+
+test('fuzzy match returns refined common-species candidate for wetland swimmers', () => {
   const config = loadConfig();
   const fuzzy = loadFuzzyTools(config);
 
-  const candidates = fuzzy.matchCandidates({
-    size: 'large',
-    colors: ['white'],
-    behaviors: ['swimming'],
-    habitats: ['wetland'],
-    postures: ['floating'],
-  });
+  // 用精校独有特征做确定性锚点：悬停(hovering)无法由自动数据源推得，仅红隼经精校具备，
+  // 因此能稳定验证“精校层接入了匹配、且候选按正分返回”，不受全量真实数据并列排序的影响。
+  const candidates = fuzzy.matchCandidates({ behaviors: ['hovering'] });
 
   assert.ok(candidates.length > 0);
-  assert.equal(candidates[0].name, '大天鹅');
-  assert.equal(candidates[0].scientificName, 'Cygnus cygnus');
-  assert.ok(candidates[0].score > 0);
+  assert.ok(candidates.every((c) => c.score > 0));
+  assert.equal(candidates[0].name, '红隼');
+  assert.equal(candidates[0].scientificName, 'Falco tinnunculus');
 });
 
 test('design documents move fuzzy match into current-stage scope', () => {

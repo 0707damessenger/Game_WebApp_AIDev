@@ -329,7 +329,6 @@
       colors: Array.isArray(features.colors) ? [...features.colors] : [],
       behaviors: Array.isArray(features.behaviors) ? [...features.behaviors] : [],
       habitats: Array.isArray(features.habitats) ? [...features.habitats] : [],
-      postures: Array.isArray(features.postures) ? [...features.postures] : [],
     };
   }
 

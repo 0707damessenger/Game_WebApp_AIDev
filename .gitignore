@@ -20,3 +20,7 @@ playwright-report/
 
 # 可视化伴侣（brainstorm mockup 过程稿）
 .superpowers/
+
+# 模糊匹配特征构建的原始数据集（体积大、含第三方授权，不入库；按 data_raw/README.md 自行下载）
+Project_4_网页程序_观鸟路线记录/data_raw/*
+!Project_4_网页程序_观鸟路线记录/data_raw/README.md

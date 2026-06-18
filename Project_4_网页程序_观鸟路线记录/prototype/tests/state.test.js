@@ -269,7 +269,6 @@ test('uncertain bird records do not increase confirmed species count', () => {
       colors: ['white', 'black'],
       behaviors: ['swimming'],
       habitats: ['wetland'],
-      postures: ['floating'],
     },
     candidateBirds: [
       { name: '大天鹅', scientificName: 'Cygnus cygnus', score: 5 },
@@ -293,7 +292,7 @@ test('uncertain bird records can be edited without changing their route position
     identificationType: 'uncertain',
     speciesName: '未确定鸟种',
     count: 1,
-    fuzzyFeatures: { size: 'large', colors: ['white'], behaviors: ['swimming'], habitats: ['wetland'], postures: [] },
+    fuzzyFeatures: { size: 'large', colors: ['white'], behaviors: ['swimming'], habitats: ['wetland'] },
     candidateBirds: [{ name: '大天鹅', scientificName: 'Cygnus cygnus', score: 4 }],
   }, new Date('2026-06-10T01:00:00.000Z'));
   const originalPosition = session.birdRecords[0].position;
@@ -304,7 +303,7 @@ test('uncertain bird records can be edited without changing their route position
     count: 2,
     tags: ['飞行'],
     note: '距离较远',
-    fuzzyFeatures: { size: 'medium', colors: ['gray'], behaviors: ['flying'], habitats: ['forest'], postures: ['soaring'] },
+    fuzzyFeatures: { size: 'medium', colors: ['gray'], behaviors: ['flying'], habitats: ['forest'] },
     candidateBirds: [{ name: '苍鹭', scientificName: 'Ardea cinerea', score: 3 }],
   });
 

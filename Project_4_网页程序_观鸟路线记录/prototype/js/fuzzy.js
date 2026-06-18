@@ -5,7 +5,6 @@
       colors: normalizeArray(features.colors),
       behaviors: normalizeArray(features.behaviors),
       habitats: normalizeArray(features.habitats),
-      postures: normalizeArray(features.postures),
     };
   }
 
@@ -14,50 +13,44 @@
     return Boolean(normalized.size) ||
       normalized.colors.length > 0 ||
       normalized.behaviors.length > 0 ||
-      normalized.habitats.length > 0 ||
-      normalized.postures.length > 0;
+      normalized.habitats.length > 0;
   }
 
   function matchCandidates(features = {}, options = {}) {
     const config = options.config || root.CONFIG || {};
-    const rules = Array.isArray(config.fuzzyMatch && config.fuzzyMatch.candidateRules)
-      ? config.fuzzyMatch.candidateRules
-      : [];
+    const fuzzyConfig = config.fuzzyMatch || {};
+    const weights = fuzzyConfig.weights || { size: 3, color: 1, behavior: 2, habitat: 2 };
+    const maxCandidates = fuzzyConfig.maxCandidates || 5;
+    const traitTable = Array.isArray(options.traits)
+      ? options.traits
+      : (Array.isArray(root.BIRD_TRAITS) ? root.BIRD_TRAITS : []);
     const normalized = normalizeFeatures(features);
 
-    return rules
-      .map((rule) => {
-        const score = scoreRule(rule.traits || {}, normalized);
-        return {
-          name: rule.name,
-          scientificName: rule.scientificName || '',
-          score,
-        };
-      })
+    return traitTable
+      .map((bird) => ({
+        name: bird.name,
+        scientificName: bird.scientificName || '',
+        score: scoreBird(bird, normalized, weights),
+      }))
       .filter((candidate) => candidate.score > 0)
       .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'zh-CN'))
-      .slice(0, 5);
+      .slice(0, maxCandidates);
   }
 
-  function scoreRule(traits, features) {
+  function scoreBird(bird, features, weights) {
     let score = 0;
-    if (features.size && includesTrait(traits.size, features.size)) {
-      score += 3;
+    if (features.size && bird.size && bird.size === features.size) {
+      score += weights.size;
     }
-    score += overlapScore(traits.colors, features.colors);
-    score += overlapScore(traits.behaviors, features.behaviors) * 2;
-    score += overlapScore(traits.habitats, features.habitats) * 2;
-    score += overlapScore(traits.postures, features.postures);
+    score += overlapCount(bird.colors, features.colors) * weights.color;
+    score += overlapCount(bird.behaviors, features.behaviors) * weights.behavior;
+    score += overlapCount(bird.habitats, features.habitats) * weights.habitat;
     return score;
   }
 
-  function overlapScore(traits, values) {
-    const traitValues = normalizeArray(traits);
-    return normalizeArray(values).filter((value) => traitValues.includes(value)).length;
-  }
-
-  function includesTrait(traits, value) {
-    return normalizeArray(traits).includes(value);
+  function overlapCount(birdValues, userValues) {
+    const set = normalizeArray(birdValues);
+    return normalizeArray(userValues).filter((value) => set.includes(value)).length;
   }
 
   function normalizeArray(value) {

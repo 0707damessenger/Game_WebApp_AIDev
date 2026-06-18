@@ -110,111 +110,16 @@ window.CONFIG = {
           { value: 'coast', label: '海岸' },
         ],
       },
-      {
-        key: 'postures',
-        label: '姿态',
-        multiple: true,
-        options: [
-          { value: 'floating', label: '浮在水面' },
-          { value: 'longLegs', label: '长腿站立' },
-          { value: 'upright', label: '直立' },
-          { value: 'tailUp', label: '尾上翘' },
-          { value: 'climbing', label: '攀爬树干' },
-          { value: 'hovering', label: '悬停' },
-          { value: 'soaring', label: '展翅滑翔' },
-        ],
-      },
     ],
-    candidateRules: [
-      {
-        name: '大天鹅',
-        scientificName: 'Cygnus cygnus',
-        traits: {
-          size: ['large', 'veryLarge'],
-          colors: ['white'],
-          behaviors: ['swimming'],
-          habitats: ['wetland', 'river'],
-          postures: ['floating'],
-        },
-      },
-      {
-        name: '绿头鸭',
-        scientificName: 'Anas platyrhynchos',
-        traits: {
-          size: ['medium'],
-          colors: ['green', 'brown', 'gray'],
-          behaviors: ['swimming'],
-          habitats: ['wetland', 'river', 'urban'],
-          postures: ['floating'],
-        },
-      },
-      {
-        name: '苍鹭',
-        scientificName: 'Ardea cinerea',
-        traits: {
-          size: ['large'],
-          colors: ['gray', 'white', 'black'],
-          behaviors: ['wading', 'flying'],
-          habitats: ['wetland', 'river', 'farmland'],
-          postures: ['longLegs', 'upright'],
-        },
-      },
-      {
-        name: '白鹭',
-        scientificName: 'Egretta garzetta',
-        traits: {
-          size: ['medium'],
-          colors: ['white'],
-          behaviors: ['wading', 'flying'],
-          habitats: ['wetland', 'river', 'farmland', 'coast'],
-          postures: ['longLegs'],
-        },
-      },
-      {
-        name: '黑水鸡',
-        scientificName: 'Gallinula chloropus',
-        traits: {
-          size: ['medium'],
-          colors: ['black', 'gray', 'red'],
-          behaviors: ['swimming', 'wading'],
-          habitats: ['wetland', 'river'],
-          postures: ['tailUp', 'floating'],
-        },
-      },
-      {
-        name: '麻雀',
-        scientificName: 'Passer montanus',
-        traits: {
-          size: ['small'],
-          colors: ['brown', 'gray'],
-          behaviors: ['perching', 'foragingGround'],
-          habitats: ['urban', 'farmland', 'shrub'],
-          postures: ['upright'],
-        },
-      },
-      {
-        name: '白头鹎',
-        scientificName: 'Pycnonotus sinensis',
-        traits: {
-          size: ['small', 'medium'],
-          colors: ['gray', 'white', 'brown'],
-          behaviors: ['perching', 'calling'],
-          habitats: ['urban', 'forest', 'shrub'],
-          postures: ['upright'],
-        },
-      },
-      {
-        name: '红隼',
-        scientificName: 'Falco tinnunculus',
-        traits: {
-          size: ['medium'],
-          colors: ['brown', 'gray'],
-          behaviors: ['hovering', 'soaring', 'flying'],
-          habitats: ['grassland', 'farmland', 'urban'],
-          postures: ['hovering', 'soaring'],
-        },
-      },
-    ],
+    // 候选打分权重（可调）：各维度命中一项加多少分。
+    weights: {
+      size: 3,
+      color: 1,
+      behavior: 2,
+      habitat: 2,
+    },
+    // 候选最多展示条数。
+    maxCandidates: 5,
   },
   mapInteraction: {
     pickingHint: '点击地图确认起点',

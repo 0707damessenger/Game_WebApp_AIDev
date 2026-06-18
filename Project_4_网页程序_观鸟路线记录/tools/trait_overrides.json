@@ -1,0 +1,10 @@
+{
+  "Cygnus cygnus":        { "size": "veryLarge", "colors": ["white"],                 "behaviors": ["swimming"],                 "habitats": ["wetland", "river"] },
+  "Anas platyrhynchos":   { "size": "medium",    "colors": ["green", "brown", "gray"], "behaviors": ["swimming"],                 "habitats": ["wetland", "river", "urban"] },
+  "Ardea cinerea":        { "size": "large",     "colors": ["gray", "white", "black"], "behaviors": ["wading", "flying"],         "habitats": ["wetland", "river", "farmland"] },
+  "Egretta garzetta":     { "size": "medium",    "colors": ["white"],                 "behaviors": ["wading", "flying"],         "habitats": ["wetland", "river", "farmland", "coast"] },
+  "Gallinula chloropus":  { "size": "medium",    "colors": ["black", "gray", "red"],   "behaviors": ["swimming", "wading"],       "habitats": ["wetland", "river"] },
+  "Passer montanus":      { "size": "small",     "colors": ["brown", "gray"],          "behaviors": ["perching", "foragingGround"], "habitats": ["urban", "farmland", "shrub"] },
+  "Pycnonotus sinensis":  { "size": "small",     "colors": ["gray", "white", "brown"], "behaviors": ["perching", "calling"],      "habitats": ["urban", "forest", "shrub"] },
+  "Falco tinnunculus":    { "size": "medium",    "colors": ["brown", "gray"],          "behaviors": ["hovering", "soaring", "flying"], "habitats": ["grassland", "farmland", "urban"] }
+}
