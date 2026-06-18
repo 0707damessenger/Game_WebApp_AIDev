@@ -279,8 +279,10 @@ test('Project 4 adds an uncertain bird record through fuzzy matching', async ({ 
 
   await expect(page.locator('#birdFuzzyPanel')).toBeVisible();
   await expect(page.locator('#birdSubmitButton')).toBeDisabled();
-  await page.locator('[data-fuzzy-group="size"][data-fuzzy-value="large"]').click();
+  // 大天鹅的真实特征为「很大 / 游水 / 湿地+河流」，按此选择可使其成为唯一最高分候选。
+  await page.locator('[data-fuzzy-group="size"][data-fuzzy-value="veryLarge"]').click();
   await page.locator('[data-fuzzy-group="habitats"][data-fuzzy-value="wetland"]').click();
+  await page.locator('[data-fuzzy-group="habitats"][data-fuzzy-value="river"]').click();
   await page.locator('[data-fuzzy-group="behaviors"][data-fuzzy-value="swimming"]').click();
   await expect(page.locator('#birdFuzzyCandidates')).toContainText('大天鹅');
   await expect(page.locator('#birdSubmitButton')).toBeEnabled();
