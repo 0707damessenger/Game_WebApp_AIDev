@@ -75,6 +75,13 @@
     historyEntryButton: document.querySelector('#historyEntryButton'),
     favoritesEntryButton: document.querySelector('#favoritesEntryButton'),
     importEntryButton: document.querySelector('#importEntryButton'),
+    settingsEntryButton: document.querySelector('#settingsEntryButton'),
+    settingsPanel: document.querySelector('#settingsPanel'),
+    settingsLocationGpsButton: document.querySelector('#settingsLocationGpsButton'),
+    settingsLocationSimButton: document.querySelector('#settingsLocationSimButton'),
+    settingsVersion: document.querySelector('#settingsVersion'),
+    clearDataButton: document.querySelector('#clearDataButton'),
+    clearDataDialog: document.querySelector('#clearDataDialog'),
     importDialog: document.querySelector('#importDialog'),
     importCloseButton: document.querySelector('#importCloseButton'),
     importUrlInput: document.querySelector('#importUrlInput'),
@@ -314,6 +321,35 @@
 
     elements.importEntryButton.addEventListener('click', () => {
       openImportDialog();
+    });
+
+    elements.settingsEntryButton.addEventListener('click', () => {
+      activeView = 'settings';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      pushRouteHistory();
+      render();
+    });
+
+    elements.settingsLocationGpsButton.addEventListener('click', () => {
+      setLocationSource('gps');
+    });
+
+    elements.settingsLocationSimButton.addEventListener('click', () => {
+      setLocationSource('simulated');
+    });
+
+    elements.clearDataButton.addEventListener('click', () => {
+      if (elements.clearDataDialog.showModal) {
+        elements.clearDataDialog.showModal();
+      }
+    });
+
+    elements.clearDataDialog.addEventListener('close', () => {
+      if (elements.clearDataDialog.returnValue !== 'clear') {
+        return;
+      }
+      clearAllLocalData();
     });
 
     elements.importCloseButton.addEventListener('click', () => {
@@ -734,7 +770,8 @@
     const isSavedResult = Boolean(selectedHistoryRecordId && activeResult);
     const isProfileView = activeView === 'profile';
     const isHistoryListView = activeView === 'historyList';
-    const isFullPageView = isProfileView || isHistoryListView;
+    const isSettingsView = activeView === 'settings';
+    const isFullPageView = isProfileView || isHistoryListView || isSettingsView;
     const isIdleMain = !isFullPageView && !isResultView &&
       (session.state === stateTools.STATES.IDLE || session.state === stateTools.STATES.ABORTED);
     const summary = activeResult ? activeResult.summary : stateTools.summarizeSession(session);
@@ -745,6 +782,8 @@
         ? (historyListMode === 'favorites' ? '收藏' : '历史')
       : isProfileView
         ? '个人'
+      : isSettingsView
+        ? '设置'
         : stateLabel(session.state);
     elements.sessionDistance.textContent = formatDistance(summary.distanceMeters);
     elements.sessionBirds.textContent = summary.uncertainRecordCount
@@ -761,6 +800,10 @@
     elements.resultPanel.hidden = !isResultView;
     elements.profilePanel.hidden = !isProfileView;
     elements.historyPanel.hidden = !isHistoryListView;
+    elements.settingsPanel.hidden = !isSettingsView;
+    if (isSettingsView) {
+      renderSettings();
+    }
     elements.mapFallback.dataset.mode = isResultView ? stateTools.STATES.FINISHED : session.state;
     elements.mapStage.classList.toggle('is-result-mode', isResultView);
     elements.mapStage.classList.toggle('is-full-page', isFullPageView);
@@ -1031,6 +1074,7 @@
       elements.importDialog,
       elements.birdDialog,
       elements.deleteHistoryDialog,
+      elements.clearDataDialog,
       elements.birdPointDialog,
     ];
     const openDialog = dialogs.find((dialog) => dialog && dialog.open);
@@ -1071,6 +1115,14 @@
       return;
     }
 
+    if (activeView === 'settings') {
+      activeView = 'profile';
+      selectedHistoryRecordId = null;
+      highlightedBirdRecordId = null;
+      render();
+      return;
+    }
+
     if (activeView === 'profile') {
       activeView = 'main';
       selectedHistoryRecordId = null;
@@ -1091,6 +1143,40 @@
     clearPersistedSession();
     render();
     primeIdleCurrentLocation();
+  }
+
+  function setLocationSource(source) {
+    if (source !== 'gps' && source !== 'simulated') {
+      return;
+    }
+    if (config.locationSource === source) {
+      return;
+    }
+    config.locationSource = source;
+    render();
+    showToast(source === 'gps' ? '定位来源已切换为真实 GPS。' : '定位来源已切换为模拟行走。');
+  }
+
+  function clearAllLocalData() {
+    stopGpsTracking();
+    localStorage.removeItem(config.storageKey);
+    localStorage.removeItem(config.historyStorageKey);
+    history = [];
+    session = stateTools.createSession();
+    selectedHistoryRecordId = null;
+    highlightedBirdRecordId = null;
+    historyEditMode = false;
+    historyDraft = null;
+    historyListMode = 'all';
+    render();
+    showToast('已清空本地数据。');
+  }
+
+  function renderSettings() {
+    elements.settingsVersion.textContent = config.appVersion || '—';
+    const isGps = config.locationSource === 'gps';
+    elements.settingsLocationGpsButton.setAttribute('aria-pressed', isGps ? 'true' : 'false');
+    elements.settingsLocationSimButton.setAttribute('aria-pressed', isGps ? 'false' : 'true');
   }
 
   function requestDeleteHistoryRecord(recordId) {

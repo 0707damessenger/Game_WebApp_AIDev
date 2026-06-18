@@ -116,9 +116,13 @@
             <span>预览他人分享的观鸟路线</span>
           </button>
 
+          <button id="settingsEntryButton" class="profile-entry-button" type="button">
+            <strong>设置</strong>
+            <span>定位来源、版本信息与清空本地数据</span>
+          </button>
+
           <section class="profile-placeholder-section" aria-label="后续个人功能">
             <button id="profileInfoPlaceholderButton" class="ghost-button compact" type="button" disabled>个人信息（后续模块）</button>
-            <button id="settingsPlaceholderButton" class="ghost-button compact" type="button" disabled>设置（后续模块）</button>
             <button id="authPlaceholderButton" class="ghost-button compact" type="button" disabled>登录 / 登出（后续模块）</button>
           </section>
         </section>
@@ -137,6 +141,57 @@
             </div>
             <p id="historyEmpty" class="history-empty">还没有历史记录。完成一次路线记录后，会显示在这里。</p>
             <div id="historyList" class="history-list"></div>
+          </section>
+        </section>
+
+        <section class="settings-panel profile-panel" id="settingsPanel" aria-label="设置" hidden>
+          <header class="profile-header">
+            <p class="panel-kicker">设置</p>
+            <h1>设置</h1>
+            <p>定位来源、版本信息与本地数据管理。</p>
+          </header>
+
+          <section class="settings-section" aria-label="定位来源">
+            <div class="result-section-heading">
+              <h2>定位来源</h2>
+            </div>
+            <p class="settings-note">切换在下次开始记录时生效，不影响进行中的记录。</p>
+            <div class="settings-segment" role="group" aria-label="定位来源选择">
+              <button id="settingsLocationGpsButton" class="settings-segment-button" type="button" aria-pressed="false">真实 GPS</button>
+              <button id="settingsLocationSimButton" class="settings-segment-button" type="button" aria-pressed="false">模拟行走</button>
+            </div>
+          </section>
+
+          <section class="settings-section" aria-label="版本信息">
+            <div class="result-section-heading">
+              <h2>版本信息</h2>
+            </div>
+            <dl class="settings-info">
+              <div class="settings-info-row">
+                <dt>原型版本</dt>
+                <dd id="settingsVersion">—</dd>
+              </div>
+              <div class="settings-info-row">
+                <dt>鸟类名录</dt>
+                <dd>全国正式鸟类记录本地静态名录，支持中文名与学名搜索。</dd>
+              </div>
+              <div class="settings-info-row">
+                <dt>模糊匹配特征</dt>
+                <dd>由公开鸟类特征数据集生成、常见种人工精校的本地静态特征表。</dd>
+              </div>
+              <div class="settings-info-row">
+                <dt>地图底图</dt>
+                <dd>默认天地图国内矢量底图与中文注记，保留公共瓦片源回退。</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="settings-section" aria-label="本地数据">
+            <div class="result-section-heading">
+              <h2>本地数据</h2>
+            </div>
+            <p class="settings-note">清空将移除本机全部历史记录、收藏与未保存草稿，操作不可撤销。</p>
+            <button id="clearDataButton" class="danger-button" type="button">清空本地数据</button>
           </section>
         </section>
 
@@ -250,6 +305,17 @@
           <p>删除后无法恢复。</p>
           <div class="dialog-actions">
             <button class="danger-button compact" value="delete" type="submit">删除</button>
+            <button class="ghost-button compact" value="cancel" type="submit">取消</button>
+          </div>
+        </form>
+      </dialog>
+
+      <dialog id="clearDataDialog" class="finish-dialog">
+        <form method="dialog">
+          <h2>清空本地数据？</h2>
+          <p>将移除本机全部历史记录、收藏与未保存草稿，操作不可撤销。</p>
+          <div class="dialog-actions">
+            <button class="danger-button compact" value="clear" type="submit">清空</button>
             <button class="ghost-button compact" value="cancel" type="submit">取消</button>
           </div>
         </form>

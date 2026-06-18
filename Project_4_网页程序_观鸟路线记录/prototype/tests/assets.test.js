@@ -84,6 +84,35 @@ test('profile entry, import entry, and standalone history list page are availabl
   assert.equal(profilePanel.includes('id="historyList"'), false);
 });
 
+test('settings page is reachable from the profile entry and exposes its controls', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
+  const config = loadConfig();
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+
+  // 个人页设置入口替代了原占位按钮。
+  assert.equal(html.includes('id="settingsEntryButton"'), true);
+  assert.equal(html.includes('id="settingsPlaceholderButton"'), false);
+  assert.equal(html.includes('设置（后续模块）'), false);
+
+  // 设置页本体与三类控件。
+  assert.equal(html.includes('id="settingsPanel"'), true);
+  assert.equal(html.includes('id="settingsLocationGpsButton"'), true);
+  assert.equal(html.includes('id="settingsLocationSimButton"'), true);
+  assert.equal(html.includes('id="settingsVersion"'), true);
+  assert.equal(html.includes('id="clearDataButton"'), true);
+  assert.equal(html.includes('id="clearDataDialog"'), true);
+
+  // 版本号由唯一配置源承载。
+  assert.equal(typeof config.appVersion, 'string');
+  assert.ok(config.appVersion.length > 0);
+
+  // 清空逻辑移除两份本地持久化数据；定位切换写回唯一配置。
+  assert.equal(app.includes('localStorage.removeItem(config.storageKey)'), true);
+  assert.equal(app.includes('localStorage.removeItem(config.historyStorageKey)'), true);
+  assert.equal(app.includes("config.locationSource = source"), true);
+  assert.equal(app.includes("activeView === 'settings'"), true);
+});
+
 test('hidden map fallback does not overlay the interactive map', () => {
   const css = fs.readFileSync(path.join(prototypeRoot, 'css/styles.css'), 'utf8');
 

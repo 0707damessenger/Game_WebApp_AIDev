@@ -494,7 +494,8 @@ button:disabled {
 }
 
 .profile-panel,
-.history-panel {
+.history-panel,
+.settings-panel {
   position: absolute;
   inset: 0;
   z-index: 4;
@@ -508,7 +509,8 @@ button:disabled {
 }
 
 .profile-panel[hidden],
-.history-panel[hidden] {
+.history-panel[hidden],
+.settings-panel[hidden] {
   display: none;
 }
 
@@ -568,6 +570,72 @@ button:disabled {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.35;
+}
+
+.settings-section {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.settings-segment {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-segment-button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: white;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-segment-button[aria-pressed="true"] {
+  border-color: var(--leaf-deep);
+  background: var(--leaf-deep);
+  color: white;
+}
+
+.settings-info {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: white;
+}
+
+.settings-info-row {
+  display: grid;
+  gap: 2px;
+}
+
+.settings-info-row dt {
+  color: var(--leaf-deep);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.settings-info-row dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .history-list {

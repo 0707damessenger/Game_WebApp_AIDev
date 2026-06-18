@@ -789,3 +789,72 @@ test('Project 4 does not draw a duplicate SVG route when Tianditu tile errors en
   await expect(page.locator('.route-line')).toHaveCount(1);
   await expect(page.locator('#testRouteLayer > *')).toHaveCount(0);
 });
+
+test('Project 4 settings page shows the prototype version and switches the location source', async ({ page }) => {
+  await mockGeolocation(page);
+  await mockTiandituTiles(page);
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#settingsEntryButton').click();
+
+  await expect(page.locator('#settingsPanel')).toBeVisible();
+
+  const expectedVersion = await page.evaluate(() => window.CONFIG.appVersion);
+  await expect(page.locator('#settingsVersion')).toHaveText(expectedVersion);
+
+  // 默认定位来源与配置一致（gps）。
+  await expect(page.locator('#settingsLocationGpsButton')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#settingsLocationSimButton')).toHaveAttribute('aria-pressed', 'false');
+
+  await page.locator('#settingsLocationSimButton').click();
+  await expect(page.locator('#settingsLocationSimButton')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#settingsLocationGpsButton')).toHaveAttribute('aria-pressed', 'false');
+  expect(await page.evaluate(() => window.CONFIG.locationSource)).toBe('simulated');
+
+  // ESC 返回个人页，不影响设置已切换的来源。
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#profilePanel')).toBeVisible();
+  await expect(page.locator('#settingsPanel')).toBeHidden();
+});
+
+test('Project 4 settings clears all local data only after confirmation', async ({ page }) => {
+  const recordA = { ...sampleHistoryRecord(), id: 'history-a', savedAt: '2026-06-09T02:00:00.000Z' };
+  const recordB = { ...sampleHistoryRecord(), id: 'history-b', savedAt: '2026-06-09T01:00:00.000Z' };
+
+  await mockGeolocation(page);
+  await mockTiandituTiles(page);
+  await page.addInitScript((records) => {
+    localStorage.setItem('bird-route-history', JSON.stringify(records));
+  }, [recordA, recordB]);
+
+  await page.goto(project4PrototypeUrl());
+
+  await page.locator('#profileButton').click();
+  await page.locator('#settingsEntryButton').click();
+
+  // 模拟本机还存在一份未保存草稿键，验证清空会一并移除。
+  await page.evaluate(() => {
+    localStorage.setItem('bird-route-current-session', JSON.stringify({ state: 'aborted' }));
+  });
+
+  // 取消时不清空。
+  await page.locator('#clearDataButton').click();
+  await expect(page.locator('#clearDataDialog')).toBeVisible();
+  await page.locator('#clearDataDialog button[value="cancel"]').click();
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-history') || '[]'))).toHaveLength(2);
+
+  // 确认后移除全部本地数据。
+  await page.locator('#clearDataButton').click();
+  await page.locator('#clearDataDialog button[value="clear"]').click();
+  await expect(page.locator('#toast')).toContainText('已清空本地数据');
+
+  expect(await page.evaluate(() => localStorage.getItem('bird-route-history'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('bird-route-current-session'))).toBeNull();
+
+  // 历史记录列表已回到空状态。
+  await page.keyboard.press('Escape');
+  await page.locator('#historyEntryButton').click();
+  await expect(page.locator('.history-item')).toHaveCount(0);
+  await expect(page.locator('#historyEmpty')).toBeVisible();
+});
