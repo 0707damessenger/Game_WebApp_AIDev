@@ -49,6 +49,7 @@ window.CONFIG = {
   },
   storageKey: 'bird-route-current-session',
   historyStorageKey: 'bird-route-history',
+  authStorageKey: 'bird-route-auth',
   shareImport: {
     serviceEnabled: false,
     duplicateStrategy: 'openExisting',

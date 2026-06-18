@@ -31,6 +31,21 @@
   let deviceHeading = null;
   let headingListening = false;
 
+  // 云开发实例（仅邮箱身份用到；SDK 缺失或离线时降级为 null，匿名仍可用）
+  let cloudApp = null;
+  let cloudAuth = null;
+  try {
+    if (typeof cloudbase !== 'undefined' && config.cloud && config.cloud.envId) {
+      cloudApp = cloudbase.init({ env: config.cloud.envId });
+      cloudAuth = cloudApp.auth({ persistence: 'local' });
+    }
+  } catch (error) {
+    cloudApp = null;
+    cloudAuth = null;
+  }
+  let authState = loadAuthState();
+  let pendingEmailVerify = null;
+
   const elements = {
     mapStage: document.querySelector('#mapStage'),
     mapFallback: document.querySelector('#mapFallback'),
@@ -123,11 +138,23 @@
     birdPointCloseButton: document.querySelector('#birdPointCloseButton'),
     birdPointList: document.querySelector('#birdPointList'),
     tagToggles: Array.from(document.querySelectorAll('.tag-toggle')),
+    loginGate: document.querySelector('#loginGate'),
+    anonLoginButton: document.querySelector('#anonLoginButton'),
+    loginEmail: document.querySelector('#loginEmail'),
+    loginSendCodeButton: document.querySelector('#loginSendCodeButton'),
+    loginCode: document.querySelector('#loginCode'),
+    loginVerifyButton: document.querySelector('#loginVerifyButton'),
+    loginStatus: document.querySelector('#loginStatus'),
+    accountStatus: document.querySelector('#accountStatus'),
+    accountLoginButton: document.querySelector('#accountLoginButton'),
+    accountLogoutButton: document.querySelector('#accountLogoutButton'),
   };
 
   init();
 
   function init() {
+    renderAuthGate();
+    renderAccount();
     migrateFinishedSessionIntoHistory();
     initMap();
     bindEvents();
@@ -329,6 +356,26 @@
       highlightedBirdRecordId = null;
       pushRouteHistory();
       render();
+    });
+
+    elements.anonLoginButton.addEventListener('click', () => {
+      loginAnonymous();
+    });
+
+    elements.loginSendCodeButton.addEventListener('click', () => {
+      sendEmailCode();
+    });
+
+    elements.loginVerifyButton.addEventListener('click', () => {
+      verifyEmailCode();
+    });
+
+    elements.accountLoginButton.addEventListener('click', () => {
+      openLoginGateForUpgrade();
+    });
+
+    elements.accountLogoutButton.addEventListener('click', () => {
+      logout();
     });
 
     elements.settingsLocationGpsButton.addEventListener('click', () => {
@@ -1177,6 +1224,146 @@
     const isGps = config.locationSource === 'gps';
     elements.settingsLocationGpsButton.setAttribute('aria-pressed', isGps ? 'true' : 'false');
     elements.settingsLocationSimButton.setAttribute('aria-pressed', isGps ? 'false' : 'true');
+  }
+
+  // ===== 登录与数据归属（增量一：登录门与登录态；数据层暂仍走本地） =====
+  function loadAuthState() {
+    try {
+      const raw = localStorage.getItem(config.authStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && (parsed.mode === 'anonymous' || parsed.mode === 'email') ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function persistAuthState(state) {
+    authState = state;
+    localStorage.setItem(config.authStorageKey, JSON.stringify(state));
+  }
+
+  function clearAuthState() {
+    authState = null;
+    localStorage.removeItem(config.authStorageKey);
+  }
+
+  function isLoggedIn() {
+    return Boolean(authState && authState.mode);
+  }
+
+  function renderAuthGate() {
+    elements.loginGate.hidden = isLoggedIn();
+  }
+
+  function openLoginGateForUpgrade() {
+    setLoginStatus('');
+    elements.loginGate.hidden = false;
+  }
+
+  function setLoginStatus(message, kind) {
+    elements.loginStatus.textContent = message || '';
+    elements.loginStatus.classList.toggle('is-error', kind === 'error');
+    elements.loginStatus.classList.toggle('is-ok', kind === 'ok');
+  }
+
+  function loginAnonymous() {
+    persistAuthState({ mode: 'anonymous' });
+    pendingEmailVerify = null;
+    setLoginStatus('');
+    renderAuthGate();
+    renderAccount();
+    render();
+  }
+
+  async function sendEmailCode() {
+    if (!cloudAuth) {
+      setLoginStatus('当前环境无法连接云开发：请用本地服务器以 http 方式打开页面。', 'error');
+      return;
+    }
+    const email = elements.loginEmail.value.trim();
+    if (!email) {
+      setLoginStatus('请先填写邮箱。', 'error');
+      return;
+    }
+    setLoginStatus('正在发送验证码…');
+    try {
+      const res = await cloudAuth.signInWithOtp({ email });
+      if (res && res.error) {
+        setLoginStatus('发送失败：' + (res.error.message || res.error.error || res.error), 'error');
+        return;
+      }
+      pendingEmailVerify = res && res.data && res.data.verifyOtp;
+      if (typeof pendingEmailVerify !== 'function') {
+        setLoginStatus('未取得验证回调，请重试。', 'error');
+        return;
+      }
+      setLoginStatus('验证码已发送，请查收邮箱后填入。', 'ok');
+    } catch (error) {
+      setLoginStatus('发送异常：' + (error && error.message ? error.message : error), 'error');
+    }
+  }
+
+  async function verifyEmailCode() {
+    if (typeof pendingEmailVerify !== 'function') {
+      setLoginStatus('请先点「发送验证码」。', 'error');
+      return;
+    }
+    const token = elements.loginCode.value.trim();
+    if (!token) {
+      setLoginStatus('请先填写收到的验证码。', 'error');
+      return;
+    }
+    setLoginStatus('正在校验…');
+    try {
+      const res = await pendingEmailVerify({ token });
+      if (res && res.error) {
+        setLoginStatus('登录失败：' + (res.error.message || res.error.error || res.error), 'error');
+        return;
+      }
+      const user = (res && res.data && res.data.user) || {};
+      persistAuthState({ mode: 'email', email: user.email || elements.loginEmail.value.trim(), uid: user.uid || '' });
+      pendingEmailVerify = null;
+      elements.loginCode.value = '';
+      setLoginStatus('登录成功', 'ok');
+      renderAuthGate();
+      renderAccount();
+      render();
+    } catch (error) {
+      setLoginStatus('校验异常：' + (error && error.message ? error.message : error), 'error');
+    }
+  }
+
+  async function logout() {
+    if (authState && authState.mode === 'email' && cloudAuth) {
+      try { await cloudAuth.signOut(); } catch (error) { /* 忽略登出网络异常 */ }
+    }
+    clearAuthState();
+    pendingEmailVerify = null;
+    elements.loginEmail.value = '';
+    elements.loginCode.value = '';
+    setLoginStatus('');
+    activeView = 'main';
+    renderAccount();
+    renderAuthGate();
+    render();
+  }
+
+  function renderAccount() {
+    if (!elements.accountStatus) return;
+    if (authState && authState.mode === 'email') {
+      elements.accountStatus.textContent = '已登录：' + (authState.email || '邮箱账号');
+      elements.accountLoginButton.hidden = true;
+      elements.accountLogoutButton.hidden = false;
+    } else if (authState && authState.mode === 'anonymous') {
+      elements.accountStatus.textContent = '匿名使用（数据存本机）';
+      elements.accountLoginButton.hidden = false;
+      elements.accountLogoutButton.hidden = true;
+    } else {
+      elements.accountStatus.textContent = '未登录';
+      elements.accountLoginButton.hidden = false;
+      elements.accountLogoutButton.hidden = true;
+    }
   }
 
   function requestDeleteHistoryRecord(recordId) {

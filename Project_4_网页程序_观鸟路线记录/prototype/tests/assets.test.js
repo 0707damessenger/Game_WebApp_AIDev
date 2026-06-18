@@ -80,8 +80,33 @@ test('profile entry, import entry, and standalone history list page are availabl
   assert.equal(html.includes('id="favoriteResultButton"'), true);
   assert.equal(html.includes('id="profileInfoPlaceholderButton"'), true);
   assert.equal(html.includes('个人信息（后续模块）'), true);
-  assert.equal(html.includes('登录 / 登出（后续模块）'), true);
+  // 占位的「登录/登出」已替换为真实账号入口
+  assert.equal(html.includes('登录 / 登出（后续模块）'), false);
+  assert.equal(html.includes('id="accountLoginButton"'), true);
+  assert.equal(html.includes('id="accountLogoutButton"'), true);
   assert.equal(profilePanel.includes('id="historyList"'), false);
+});
+
+test('forced login gate and its identity controls exist in the prototype shell', () => {
+  const html = fs.readFileSync(path.join(prototypeRoot, 'index.html'), 'utf8');
+  const config = loadConfig();
+  const app = fs.readFileSync(path.join(prototypeRoot, 'js/app.js'), 'utf8');
+
+  // 登录门与两种身份入口
+  assert.equal(html.includes('id="loginGate"'), true);
+  assert.equal(html.includes('id="anonLoginButton"'), true);
+  assert.equal(html.includes('id="loginSendCodeButton"'), true);
+  assert.equal(html.includes('id="loginVerifyButton"'), true);
+
+  // 登录态持久化键，且为唯一配置源所承载
+  assert.equal(typeof config.authStorageKey, 'string');
+  assert.ok(config.authStorageKey.length > 0);
+
+  // SDK 在主原型中引入；邮箱身份走 OTP；匿名落到本地身份
+  assert.equal(html.includes('vendor/cloudbase/cloudbase.full.js'), true);
+  assert.equal(app.includes("signInWithOtp"), true);
+  assert.equal(app.includes("mode: 'anonymous'"), true);
+  assert.equal(app.includes("mode: 'email'"), true);
 });
 
 test('settings page is reachable from the profile entry and exposes its controls', () => {

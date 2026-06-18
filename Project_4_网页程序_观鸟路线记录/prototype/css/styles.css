@@ -1480,3 +1480,92 @@ button:disabled {
     font-size: 13px;
   }
 }
+
+
+/* 登录门：全屏覆盖层，强制登录 */
+.login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  background: var(--paper);
+  overflow: auto;
+}
+
+.login-gate[hidden] { display: none; }
+
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.login-card h1 {
+  margin: 0 0 2px;
+  color: var(--leaf-deep);
+  font-size: 26px;
+  line-height: 1.12;
+}
+
+.login-intro {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.login-label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: #3a4a40;
+}
+
+.login-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.login-status {
+  margin: 4px 0 0;
+  min-height: 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.login-status.is-error { color: var(--danger); }
+.login-status.is-ok { color: var(--leaf-deep); }
+
+/* 个人页账号区 */
+.profile-account-section {
+  display: grid;
+  gap: 10px;
+}

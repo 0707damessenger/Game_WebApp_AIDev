@@ -121,9 +121,17 @@
             <span>定位来源、版本信息与清空本地数据</span>
           </button>
 
+          <section class="profile-account-section" aria-label="账号">
+            <div class="result-section-heading">
+              <h2>账号</h2>
+            </div>
+            <p id="accountStatus" class="settings-note">未登录</p>
+            <button id="accountLoginButton" class="primary-button compact" type="button" hidden>登录 / 注册（邮箱）</button>
+            <button id="accountLogoutButton" class="ghost-button compact" type="button" hidden>登出</button>
+          </section>
+
           <section class="profile-placeholder-section" aria-label="后续个人功能">
             <button id="profileInfoPlaceholderButton" class="ghost-button compact" type="button" disabled>个人信息（后续模块）</button>
-            <button id="authPlaceholderButton" class="ghost-button compact" type="button" disabled>登录 / 登出（后续模块）</button>
           </section>
         </section>
 
@@ -330,6 +338,27 @@
           <div id="birdPointList" class="bird-point-list"></div>
         </section>
       </dialog>
+      <section class="login-gate" id="loginGate" aria-label="登录" hidden>
+        <div class="login-card">
+          <p class="panel-kicker">欢迎</p>
+          <h1>观鸟路线记录</h1>
+          <p class="login-intro">选择一种方式开始。匿名记录只存本机；邮箱登录可云端保存、跨设备同步。</p>
+
+          <button id="anonLoginButton" class="primary-button" type="button">匿名使用（数据存本机）</button>
+
+          <div class="login-divider"><span>或邮箱登录 / 注册</span></div>
+
+          <label class="login-label" for="loginEmail">邮箱</label>
+          <input id="loginEmail" class="login-input" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com" />
+          <button id="loginSendCodeButton" class="ghost-button" type="button">发送验证码</button>
+
+          <label class="login-label" for="loginCode">验证码</label>
+          <input id="loginCode" class="login-input" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="邮箱收到的验证码" />
+          <button id="loginVerifyButton" class="primary-button" type="button">验证并登录</button>
+
+          <p id="loginStatus" class="login-status" role="status" aria-live="polite"></p>
+        </div>
+      </section>
     </main>
 
     <script src="./vendor/leaflet/leaflet.js?v=local-20260609"></script>
@@ -337,6 +366,7 @@
     <script src="./js/bird_traits.js?v=traits-20260618-1"></script>
     <script src="./js/state.js?v=features-20260617-1"></script>
     <script src="./js/fuzzy.js?v=fuzzy-20260618-1"></script>
-    <script src="./js/app.js?v=features-20260618-1"></script>
+    <script src="./vendor/cloudbase/cloudbase.full.js"></script>
+    <script src="./js/app.js?v=features-20260618-2"></script>
   </body>
 </html>

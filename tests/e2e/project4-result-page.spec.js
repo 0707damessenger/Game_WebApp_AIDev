@@ -107,6 +107,13 @@ async function mockTiandituTiles(page) {
   });
 }
 
+// 强制登录门：默认预置匿名身份，让既有用例直接进入应用（匿名=纯本地，不联网）。
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('bird-route-auth', JSON.stringify({ mode: 'anonymous' }));
+  });
+});
+
 test('Project 4 idle main view shows current location with simplified controls', async ({ page }) => {
   await mockGeolocation(page);
   await mockTiandituTiles(page);
@@ -859,4 +866,32 @@ test('Project 4 settings clears all local data only after confirmation', async (
   await page.locator('#historyEntryButton').click();
   await expect(page.locator('.history-item')).toHaveCount(0);
   await expect(page.locator('#historyEmpty')).toBeVisible();
+});
+
+test('Project 4 shows a forced login gate and enters the app after anonymous login', async ({ page }) => {
+  await mockGeolocation(page);
+  await mockTiandituTiles(page);
+  // 清掉 beforeEach 预置的身份，露出登录门
+  await page.addInitScript(() => localStorage.removeItem('bird-route-auth'));
+  await page.goto(project4PrototypeUrl());
+
+  // 未登录 -> 登录门可见、主开始面板被覆盖
+  await expect(page.locator('#loginGate')).toBeVisible();
+  await expect(page.locator('#anonLoginButton')).toBeVisible();
+  await expect(page.locator('#loginSendCodeButton')).toBeVisible();
+
+  // 匿名登录 -> 进入应用
+  await page.locator('#anonLoginButton').click();
+  await expect(page.locator('#loginGate')).toBeHidden();
+  await expect(page.locator('#startPanel')).toBeVisible();
+
+  // 应用已把身份持久化（记住登录态的依据）
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('bird-route-auth') || 'null'));
+  expect(persisted && persisted.mode).toBe('anonymous');
+
+  // 个人页账号区显示匿名态与「登录/注册」入口
+  await page.locator('#profileButton').click();
+  await expect(page.locator('#accountStatus')).toContainText('匿名');
+  await expect(page.locator('#accountLoginButton')).toBeVisible();
+  await expect(page.locator('#accountLogoutButton')).toBeHidden();
 });
