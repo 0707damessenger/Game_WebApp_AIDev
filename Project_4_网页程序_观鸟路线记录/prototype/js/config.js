@@ -1,6 +1,10 @@
 window.CONFIG = {
   appName: '观鸟路线记录',
   appVersion: '0.8.0',
+  cloud: {
+    // 微信云开发 CloudBase 环境 ID（唯一配置源；非密钥，访问控制靠控制台「安全来源」白名单）
+    envId: 'birdwatching-d5g8au815946b1b1e',
+  },
   locationSource: 'gps',
   defaultCenter: {
     lat: 31.2304,

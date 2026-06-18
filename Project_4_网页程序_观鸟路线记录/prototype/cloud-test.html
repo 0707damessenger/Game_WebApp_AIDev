@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>云开发连通自检 · 观鸟路线记录</title>
+  <!-- 先加载唯一配置源，再加载已下载到本地的 CloudBase Web SDK（v2.28.8） -->
+  <script src="js/config.js"></script>
+  <script src="vendor/cloudbase/cloudbase.full.js"></script>
+  <style>
+    :root { color-scheme: light; }
+    body {
+      margin: 0; padding: 16px;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f4f6f3; color: #1f2a23; line-height: 1.5;
+      max-width: 560px; margin: 0 auto;
+    }
+    h1 { font-size: 20px; margin: 0 0 4px; color: #1f5132; }
+    .sub { margin: 0 0 16px; color: #5b6b60; font-size: 13px; }
+    fieldset { border: 1px solid #d4ddd5; border-radius: 8px; margin: 0 0 14px; padding: 12px; }
+    legend { color: #1f5132; font-weight: 700; font-size: 14px; padding: 0 6px; }
+    label { display: block; font-size: 13px; margin: 8px 0 2px; color: #3a4a40; }
+    input { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #c5cfc7; border-radius: 6px; font-size: 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    button { padding: 9px 12px; border: 1px solid #1f5132; border-radius: 6px; background: #1f5132; color: #fff; font-size: 14px; cursor: pointer; }
+    button.ghost { background: #fff; color: #1f5132; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #log { background: #11201a; color: #c9f0d6; border-radius: 8px; padding: 12px; font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; white-space: pre-wrap; word-break: break-all; min-height: 160px; max-height: 50vh; overflow: auto; }
+    .ok { color: #7ee2a0; }
+    .err { color: #ff9b8a; }
+    .dim { color: #8aa394; }
+  </style>
+</head>
+<body>
+  <h1>云开发连通自检</h1>
+  <p class="sub">用于验证后端是否打通：匿名 / 邮箱登录 → 往云数据库写一条 → 读回来。此页面与主原型相互独立。</p>
+
+  <fieldset>
+    <legend>1. 登录</legend>
+    <label for="email">邮箱</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="username" />
+    <label for="password">密码（≥ 8 位，含字母与数字）</label>
+    <input id="password" type="password" placeholder="至少 8 位" autocomplete="current-password" />
+    <div class="row">
+      <button class="ghost" id="btnAnon">匿名登录（最省事）</button>
+      <button class="ghost" id="btnSignUp">邮箱注册</button>
+      <button id="btnSignIn">邮箱登录</button>
+      <button class="ghost" id="btnWho">当前用户</button>
+      <button class="ghost" id="btnSignOut">退出登录</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>2. 数据库读写（集合：smoke_test）</legend>
+    <label for="msg">要写入的一句话</label>
+    <input id="msg" type="text" placeholder="hello cloudbase" value="hello cloudbase" />
+    <div class="row">
+      <button id="btnWrite">写一条</button>
+      <button class="ghost" id="btnRead">读最近 5 条</button>
+    </div>
+  </fieldset>
+
+  <div id="log"></div>
+
+  <script>
+    (function () {
+      var logEl = document.getElementById('log');
+      function log(msg, cls) {
+        var line = document.createElement('div');
+        if (cls) line.className = cls;
+        var t = new Date();
+        var hh = String(t.getHours()).padStart(2, '0');
+        var mm = String(t.getMinutes()).padStart(2, '0');
+        var ss = String(t.getSeconds()).padStart(2, '0');
+        line.textContent = '[' + hh + ':' + mm + ':' + ss + '] ' + msg;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+      function show(obj) {
+        try { return JSON.stringify(obj, null, 0); } catch (e) { return String(obj); }
+      }
+
+      // 防御：SDK / 配置是否就绪
+      if (typeof cloudbase === 'undefined') {
+        log('未找到 cloudbase（SDK 未加载成功）。', 'err');
+        return;
+      }
+      var envId = window.CONFIG && window.CONFIG.cloud && window.CONFIG.cloud.envId;
+      if (!envId) {
+        log('CONFIG.cloud.envId 缺失，请检查 js/config.js。', 'err');
+        return;
+      }
+
+      var app = cloudbase.init({ env: envId });
+      var auth = app.auth({ persistence: 'local' });
+      var db = app.database();
+      log('SDK 已初始化，环境 ID = ' + envId, 'dim');
+      log('提示：先点「匿名登录」最快看连通；邮箱登录需在控制台开启邮箱登录方式。', 'dim');
+
+      function wrap(name, fn) {
+        return async function () {
+          try {
+            log('→ ' + name + ' …', 'dim');
+            await fn();
+          } catch (e) {
+            log('✗ ' + name + ' 失败：' + (e && (e.message || e.code) ? (e.message || '') + ' ' + (e.code || '') : show(e)), 'err');
+            if (e && e.code) log('  错误码：' + e.code, 'err');
+          }
+        };
+      }
+
+      function getEmail() { return document.getElementById('email').value.trim(); }
+      function getPwd() { return document.getElementById('password').value; }
+
+      document.getElementById('btnAnon').onclick = wrap('匿名登录', async function () {
+        await auth.signInAnonymously();
+        log('✓ 匿名登录成功', 'ok');
+      });
+
+      document.getElementById('btnSignUp').onclick = wrap('邮箱注册', async function () {
+        await auth.signUpWithEmailAndPassword(getEmail(), getPwd());
+        log('✓ 注册请求已发出：请去邮箱点击验证链接后，再用「邮箱登录」。', 'ok');
+      });
+
+      document.getElementById('btnSignIn').onclick = wrap('邮箱登录', async function () {
+        await auth.signInWithEmailAndPassword(getEmail(), getPwd());
+        log('✓ 邮箱登录成功', 'ok');
+      });
+
+      document.getElementById('btnWho').onclick = wrap('查询当前用户', async function () {
+        var state = await auth.getLoginState();
+        if (!state) { log('当前未登录。', 'dim'); return; }
+        var u = state.user || {};
+        log('✓ 已登录：uid=' + (u.uid || u.openid || '?') + ' 登录方式=' + (u.loginType || '?'), 'ok');
+      });
+
+      document.getElementById('btnSignOut').onclick = wrap('退出登录', async function () {
+        await auth.signOut();
+        log('✓ 已退出登录', 'ok');
+      });
+
+      document.getElementById('btnWrite').onclick = wrap('写一条数据', async function () {
+        var res = await db.collection('smoke_test').add({
+          msg: document.getElementById('msg').value,
+          createdAt: db.serverDate ? db.serverDate() : new Date(),
+          ua: navigator.userAgent
+        });
+        log('✓ 写入成功，文档 ID = ' + (res.id || res._id || show(res)), 'ok');
+      });
+
+      document.getElementById('btnRead').onclick = wrap('读取数据', async function () {
+        var res = await db.collection('smoke_test').orderBy('createdAt', 'desc').limit(5).get();
+        var rows = res.data || [];
+        log('✓ 读到 ' + rows.length + ' 条：', 'ok');
+        rows.forEach(function (r, i) {
+          log('  ' + (i + 1) + '. ' + (r.msg || '(空)') + '  [' + (r._id || '') + ']');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
