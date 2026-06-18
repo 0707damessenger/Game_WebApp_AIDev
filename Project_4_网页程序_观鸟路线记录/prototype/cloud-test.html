@@ -10,10 +10,9 @@
   <style>
     :root { color-scheme: light; }
     body {
-      margin: 0; padding: 16px;
+      margin: 0 auto; padding: 16px; max-width: 560px;
       font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
       background: #f4f6f3; color: #1f2a23; line-height: 1.5;
-      max-width: 560px; margin: 0 auto;
     }
     h1 { font-size: 20px; margin: 0 0 4px; color: #1f5132; }
     .sub { margin: 0 0 16px; color: #5b6b60; font-size: 13px; }
@@ -33,18 +32,22 @@
 </head>
 <body>
   <h1>云开发连通自检</h1>
-  <p class="sub">用于验证后端是否打通：匿名 / 邮箱登录 → 往云数据库写一条 → 读回来。此页面与主原型相互独立。</p>
+  <p class="sub">验证后端是否打通：登录（匿名 / 邮箱验证码）→ 往云数据库写一条 → 读回来。此页面与主原型相互独立。</p>
 
   <fieldset>
     <legend>1. 登录</legend>
-    <label for="email">邮箱</label>
+
+    <label for="email">邮箱（验证码登录）</label>
     <input id="email" type="email" placeholder="you@example.com" autocomplete="username" />
-    <label for="password">密码（≥ 8 位，含字母与数字）</label>
-    <input id="password" type="password" placeholder="至少 8 位" autocomplete="current-password" />
     <div class="row">
+      <button id="btnSendOtp">① 发送邮箱验证码</button>
       <button class="ghost" id="btnAnon">匿名登录（最省事）</button>
-      <button class="ghost" id="btnSignUp">邮箱注册</button>
-      <button id="btnSignIn">邮箱登录</button>
+    </div>
+
+    <label for="otp">邮箱收到的验证码</label>
+    <input id="otp" type="text" inputmode="numeric" placeholder="粘贴邮件里的验证码" autocomplete="one-time-code" />
+    <div class="row">
+      <button id="btnVerifyOtp">② 验证并登录</button>
       <button class="ghost" id="btnWho">当前用户</button>
       <button class="ghost" id="btnSignOut">退出登录</button>
     </div>
@@ -69,77 +72,86 @@
         var line = document.createElement('div');
         if (cls) line.className = cls;
         var t = new Date();
-        var hh = String(t.getHours()).padStart(2, '0');
-        var mm = String(t.getMinutes()).padStart(2, '0');
-        var ss = String(t.getSeconds()).padStart(2, '0');
-        line.textContent = '[' + hh + ':' + mm + ':' + ss + '] ' + msg;
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        line.textContent = '[' + p(t.getHours()) + ':' + p(t.getMinutes()) + ':' + p(t.getSeconds()) + '] ' + msg;
         logEl.appendChild(line);
         logEl.scrollTop = logEl.scrollHeight;
       }
-      function show(obj) {
-        try { return JSON.stringify(obj, null, 0); } catch (e) { return String(obj); }
+      function show(obj) { try { return JSON.stringify(obj); } catch (e) { return String(obj); } }
+      // 统一打印 {data, error} 风格的错误；返回 true 表示有错误（应中止）
+      function failed(name, error) {
+        if (!error) return false;
+        var msg = error.message || error.error_description || error.error || show(error);
+        log('✗ ' + name + ' 失败：' + msg, 'err');
+        if (error.code || error.error) log('  错误码：' + (error.code || error.error), 'err');
+        return true;
       }
 
-      // 防御：SDK / 配置是否就绪
-      if (typeof cloudbase === 'undefined') {
-        log('未找到 cloudbase（SDK 未加载成功）。', 'err');
-        return;
-      }
+      if (typeof cloudbase === 'undefined') { log('未找到 cloudbase（SDK 未加载成功）。', 'err'); return; }
       var envId = window.CONFIG && window.CONFIG.cloud && window.CONFIG.cloud.envId;
-      if (!envId) {
-        log('CONFIG.cloud.envId 缺失，请检查 js/config.js。', 'err');
-        return;
-      }
+      if (!envId) { log('CONFIG.cloud.envId 缺失，请检查 js/config.js。', 'err'); return; }
 
       var app = cloudbase.init({ env: envId });
       var auth = app.auth({ persistence: 'local' });
       var db = app.database();
       log('SDK 已初始化，环境 ID = ' + envId, 'dim');
-      log('提示：先点「匿名登录」最快看连通；邮箱登录需在控制台开启邮箱登录方式。', 'dim');
+      log('邮箱登录两步：先「①发送验证码」→ 查收邮件 → 填验证码 →「②验证并登录」。', 'dim');
 
-      function wrap(name, fn) {
+      // 保存「①发送验证码」后返回的 verifyOtp 回调，供第②步使用
+      var pendingVerifyOtp = null;
+
+      // 把会抛异常的调用也兜住
+      function guard(name, fn) {
         return async function () {
-          try {
-            log('→ ' + name + ' …', 'dim');
-            await fn();
-          } catch (e) {
-            log('✗ ' + name + ' 失败：' + (e && (e.message || e.code) ? (e.message || '') + ' ' + (e.code || '') : show(e)), 'err');
-            if (e && e.code) log('  错误码：' + e.code, 'err');
-          }
+          try { await fn(); }
+          catch (e) { log('✗ ' + name + ' 异常：' + (e && e.message ? e.message : show(e)), 'err'); }
         };
       }
 
       function getEmail() { return document.getElementById('email').value.trim(); }
-      function getPwd() { return document.getElementById('password').value; }
+      function getOtp() { return document.getElementById('otp').value.trim(); }
 
-      document.getElementById('btnAnon').onclick = wrap('匿名登录', async function () {
+      document.getElementById('btnSendOtp').onclick = guard('发送验证码', async function () {
+        var email = getEmail();
+        if (!email) { log('请先填写邮箱。', 'err'); return; }
+        log('→ 发送验证码到 ' + email + ' …', 'dim');
+        var res = await auth.signInWithOtp({ email: email });
+        if (failed('发送验证码', res && res.error)) return;
+        pendingVerifyOtp = res.data && res.data.verifyOtp;
+        if (typeof pendingVerifyOtp !== 'function') { log('✗ 未拿到 verifyOtp 回调，返回：' + show(res), 'err'); return; }
+        log('✓ 验证码已发送，请查收邮箱（含垃圾箱），把验证码填到下面。', 'ok');
+      });
+
+      document.getElementById('btnVerifyOtp').onclick = guard('验证并登录', async function () {
+        if (typeof pendingVerifyOtp !== 'function') { log('请先点「①发送邮箱验证码」。', 'err'); return; }
+        var token = getOtp();
+        if (!token) { log('请先填写收到的验证码。', 'err'); return; }
+        log('→ 校验验证码 …', 'dim');
+        var res = await pendingVerifyOtp({ token: token });
+        if (failed('验证并登录', res && res.error)) return;
+        var u = (res.data && res.data.user) || {};
+        log('✓ 邮箱登录成功：uid=' + (u.uid || '?') + ' email=' + (u.email || getEmail()), 'ok');
+        pendingVerifyOtp = null;
+      });
+
+      document.getElementById('btnAnon').onclick = guard('匿名登录', async function () {
         await auth.signInAnonymously();
         log('✓ 匿名登录成功', 'ok');
       });
 
-      document.getElementById('btnSignUp').onclick = wrap('邮箱注册', async function () {
-        await auth.signUpWithEmailAndPassword(getEmail(), getPwd());
-        log('✓ 注册请求已发出：请去邮箱点击验证链接后，再用「邮箱登录」。', 'ok');
-      });
-
-      document.getElementById('btnSignIn').onclick = wrap('邮箱登录', async function () {
-        await auth.signInWithEmailAndPassword(getEmail(), getPwd());
-        log('✓ 邮箱登录成功', 'ok');
-      });
-
-      document.getElementById('btnWho').onclick = wrap('查询当前用户', async function () {
+      document.getElementById('btnWho').onclick = guard('查询当前用户', async function () {
         var state = await auth.getLoginState();
         if (!state) { log('当前未登录。', 'dim'); return; }
         var u = state.user || {};
-        log('✓ 已登录：uid=' + (u.uid || u.openid || '?') + ' 登录方式=' + (u.loginType || '?'), 'ok');
+        log('✓ 已登录：uid=' + (u.uid || u.openid || '?') + ' loginType=' + (u.loginType || '?') + ' email=' + (u.email || '-'), 'ok');
       });
 
-      document.getElementById('btnSignOut').onclick = wrap('退出登录', async function () {
+      document.getElementById('btnSignOut').onclick = guard('退出登录', async function () {
         await auth.signOut();
         log('✓ 已退出登录', 'ok');
       });
 
-      document.getElementById('btnWrite').onclick = wrap('写一条数据', async function () {
+      document.getElementById('btnWrite').onclick = guard('写一条数据', async function () {
         var res = await db.collection('smoke_test').add({
           msg: document.getElementById('msg').value,
           createdAt: db.serverDate ? db.serverDate() : new Date(),
@@ -148,13 +160,11 @@
         log('✓ 写入成功，文档 ID = ' + (res.id || res._id || show(res)), 'ok');
       });
 
-      document.getElementById('btnRead').onclick = wrap('读取数据', async function () {
+      document.getElementById('btnRead').onclick = guard('读取数据', async function () {
         var res = await db.collection('smoke_test').orderBy('createdAt', 'desc').limit(5).get();
         var rows = res.data || [];
         log('✓ 读到 ' + rows.length + ' 条：', 'ok');
-        rows.forEach(function (r, i) {
-          log('  ' + (i + 1) + '. ' + (r.msg || '(空)') + '  [' + (r._id || '') + ']');
-        });
+        rows.forEach(function (r, i) { log('  ' + (i + 1) + '. ' + (r.msg || '(空)') + '  [' + (r._id || '') + ']'); });
       });
     })();
   </script>
