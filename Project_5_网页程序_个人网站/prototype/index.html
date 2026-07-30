@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>个人网站模板</title>
+  <script>
+    window.CONFIG = {
+      initialView: "home",
+      nav: [
+        { id: "home", label: "首页", tone: "home" },
+        { id: "projects", label: "项目", tone: "projects" },
+        { id: "notes", label: "笔记", tone: "notes" },
+        { id: "links", label: "链接", tone: "links" }
+      ],
+      themes: {
+        home: {
+          accent: "#05b0ff",
+          wash: "#eef7ff",
+          shadow: "rgba(5, 176, 255, 0.12)"
+        },
+        projects: {
+          accent: "#ff8405",
+          wash: "#fff5ea",
+          shadow: "rgba(255, 132, 5, 0.12)"
+        },
+        notes: {
+          accent: "#4fa949",
+          wash: "#e9ffed",
+          shadow: "rgba(79, 169, 73, 0.12)"
+        },
+        links: {
+          accent: "#4e687b",
+          wash: "#f1f4f7",
+          shadow: "rgba(78, 104, 123, 0.12)"
+        }
+      },
+      pages: {
+        home: {
+          name: "待填写",
+          role: "待填写",
+          summary: [
+            { lead: "待填写", text: "这里留给一句个人定位或当前状态。" },
+            { lead: "待填写", text: "这里留给经历、兴趣方向、正在做的事，以及希望别人如何认识你。" },
+            { lead: "", text: "联系方式、社交账号和其他说明可以先放在这里，后续再替换为真实内容。" }
+          ]
+        },
+        projects: {
+          title: "项目",
+          subtitle: "内容待填写",
+          featured: [
+            { title: "待填写", description: "内容待填写" },
+            { title: "待填写", description: "内容待填写" },
+            { title: "待填写", description: "内容待填写" },
+            { title: "待填写", description: "内容待填写" }
+          ],
+          sections: [
+            {
+              title: "参与项目",
+              items: [
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" }
+              ]
+            },
+            {
+              title: "开源项目",
+              items: [
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" }
+              ]
+            }
+          ]
+        },
+        notes: {
+          filters: ["全部", "日常", "代码", "后感"],
+          activeFilter: "全部",
+          items: [
+            { title: "待填写", category: "笔记", date: "日期待填写" },
+            { title: "待填写", category: "笔记", date: "日期待填写" },
+            { title: "待填写", category: "笔记", date: "日期待填写" }
+          ]
+        },
+        links: {
+          title: "链接",
+          subtitle: "内容待填写",
+          groups: [
+            {
+              title: "朋友们",
+              items: [
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" },
+                { title: "待填写", description: "内容待填写" }
+              ]
+            },
+            {
+              title: "组织",
+              items: [
+                { title: "待填写", description: "内容待填写" }
+              ]
+            }
+          ]
+        }
+      }
+    };
+  </script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --accent: #05b0ff;
+      --wash: #eef7ff;
+      --accent-shadow: rgba(5, 176, 255, 0.12);
+      --ink: #222;
+      --muted: #999;
+      --line: rgba(34, 34, 34, 0.08);
+      --content-width: 800px;
+      --wide-width: 1180px;
+      --nav-height: 68px;
+      color: var(--ink);
+      font-family: BlinkMacSystemFont, "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 14px;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #fff;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    button {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button:focus-visible,
+    a:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 4px;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+    }
+
+    .site-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: var(--nav-height);
+      font-size: 24px;
+      font-weight: 200;
+      line-height: 1;
+    }
+
+    .nav-link {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35em;
+      min-height: var(--nav-height);
+      padding: 0 1em;
+      color: #333;
+      transition: color 180ms ease, background 180ms ease;
+    }
+
+    .nav-link::before {
+      content: "";
+      width: 1.05em;
+      height: 1.05em;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--tone-color), #fff 38%);
+      box-shadow: inset 0 0 0 0.18em rgba(255, 255, 255, 0.75);
+    }
+
+    .nav-link[data-tone="projects"]::before {
+      border-radius: 0.28em;
+      transform: rotate(8deg);
+    }
+
+    .nav-link[data-tone="notes"]::before {
+      border-radius: 0.12em;
+      clip-path: polygon(0 0, 86% 0, 100% 20%, 100% 100%, 0 100%);
+    }
+
+    .nav-link[data-tone="links"]::before {
+      border-radius: 0.16em;
+      background:
+        linear-gradient(90deg, transparent 36%, rgba(255, 255, 255, 0.8) 36%, rgba(255, 255, 255, 0.8) 64%, transparent 64%),
+        color-mix(in srgb, var(--tone-color), #fff 36%);
+    }
+
+    .nav-link.is-active {
+      background: var(--tone-wash);
+      color: var(--tone-color);
+    }
+
+    .nav-link.is-active .nav-text {
+      font-weight: 400;
+    }
+
+    .nav-link:hover {
+      background: var(--tone-wash);
+      color: var(--tone-color);
+    }
+
+    .nav-text {
+      font-weight: 200;
+    }
+
+    .view {
+      display: none;
+      min-height: calc(100vh - var(--nav-height));
+      background: linear-gradient(var(--wash), #fff) repeat-x top left;
+      background-size: 100% 300px;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    .view.is-active {
+      display: block;
+      animation: view-in 220ms ease forwards;
+    }
+
+    .layout {
+      width: min(var(--content-width), calc(100% - 40px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 9.5em 0 8em;
+      text-align: center;
+    }
+
+    .avatar-mark {
+      width: 15em;
+      height: 15em;
+      margin: 0 auto;
+      border-radius: 999px;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.96) 0 18%, transparent 19%),
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 30%), color-mix(in srgb, var(--accent), #fff 72%));
+      box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .hero h1 {
+      margin: 0;
+      padding: 0.34em 0 0.1em;
+      font-size: clamp(48px, 9vw, 72px);
+      font-weight: 200;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(34, 34, 34, 0.5);
+      font-size: 1.6em;
+      font-weight: 200;
+    }
+
+    .summary {
+      padding: 1em 0 9em;
+      color: #666;
+      font-size: 1.4em;
+      font-weight: 200;
+      line-height: 1.45;
+    }
+
+    .summary p {
+      margin: 0;
+      padding: 0.8em 0;
+      text-wrap: pretty;
+    }
+
+    .summary strong,
+    .summary b {
+      color: #333;
+      font-weight: 400;
+    }
+
+    .page-head {
+      padding: 5.2em 0 2em;
+      text-align: center;
+    }
+
+    .page-head h1 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 2.4em;
+      font-weight: 200;
+      line-height: 1.2;
+    }
+
+    .page-head p {
+      margin: 0.6em 0 0;
+      color: var(--muted);
+      font-size: 1.1em;
+      font-weight: 200;
+    }
+
+    .project-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1.1em;
+      padding: 1em 0 4em;
+      text-align: center;
+    }
+
+    .project-card {
+      display: block;
+      min-height: 13em;
+      padding: 1.8em 0.8em;
+      border-radius: 8px;
+      color: var(--accent);
+      transition: background 180ms ease, transform 180ms ease;
+    }
+
+    .project-card:hover {
+      background: color-mix(in srgb, var(--wash), #fff 45%);
+      transform: translateY(-2px);
+    }
+
+    .project-icon {
+      width: 7em;
+      height: 7em;
+      margin: 0 auto 1em;
+      border-radius: 1.6em;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 22%), color-mix(in srgb, var(--accent), #fff 72%));
+      box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .project-card h2,
+    .note-item h2,
+    .link-card h2 {
+      margin: 0;
+      font-weight: 300;
+      text-wrap: pretty;
+    }
+
+    .project-card h2 {
+      font-size: 1.7em;
+    }
+
+    .project-card p,
+    .link-card p {
+      margin: 0.4em 0 0;
+      color: var(--muted);
+      font-weight: 200;
+    }
+
+    .link-section {
+      padding: 2.5em 0;
+    }
+
+    .link-section h2 {
+      margin: 0;
+      padding: 0 1.3em 0.8em;
+      color: #222;
+      font-size: 2em;
+      font-weight: 200;
+      text-align: center;
+    }
+
+    .plain-list {
+      display: grid;
+      gap: 0.15em;
+    }
+
+    .plain-list a {
+      display: block;
+      padding: 0.85em 1.6em 0.8em;
+      border-radius: 5px;
+      color: var(--accent);
+      transition: background 180ms ease;
+    }
+
+    .plain-list a:hover {
+      background: color-mix(in srgb, var(--wash), #fff 48%);
+    }
+
+    .plain-list h3 {
+      margin: 0;
+      font-size: 1.55em;
+      font-weight: 300;
+      line-height: 1.25;
+    }
+
+    .plain-list p {
+      margin: 0.25em 0 0;
+      color: var(--muted);
+      font-weight: 200;
+    }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5em;
+      padding: 5.6em 0 3em;
+      font-size: 1.15em;
+    }
+
+    .filter-button {
+      min-height: 32px;
+      padding: 0 0.8em;
+      border-radius: 4px;
+      color: var(--accent);
+      font-weight: 200;
+      transition: background 180ms ease;
+    }
+
+    .filter-button.is-active,
+    .filter-button:hover {
+      background: #fff;
+      font-weight: 400;
+    }
+
+    .notes-list {
+      padding: 1em 0 9em;
+    }
+
+    .note-item {
+      display: block;
+      margin: 0 0 2.4em;
+      color: var(--accent);
+    }
+
+    .note-item h2 {
+      font-size: clamp(28px, 6vw, 44px);
+      font-weight: 200;
+      line-height: 1.12;
+    }
+
+    .note-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1em;
+      margin-top: 0.35em;
+      color: var(--muted);
+      font-weight: 200;
+      line-height: 1.8;
+    }
+
+    .tag {
+      color: var(--accent);
+    }
+
+    .links-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 1em;
+      padding: 1em 0 9em;
+    }
+
+    .link-group-title {
+      grid-column: 1 / -1;
+      margin: 0;
+      padding: 1.8em 0 0.2em;
+      color: #222;
+      font-size: 2.4em;
+      font-weight: 200;
+      text-align: center;
+    }
+
+    .link-card {
+      position: relative;
+      display: block;
+      min-height: 7em;
+      padding: 1em 1em 1em 6.5em;
+      border-radius: 8px;
+      color: var(--accent);
+      transition: background 180ms ease;
+    }
+
+    .link-card:hover {
+      background: color-mix(in srgb, var(--wash), #fff 42%);
+    }
+
+    .link-avatar {
+      position: absolute;
+      left: 1em;
+      top: 1em;
+      width: 4.8em;
+      height: 4.8em;
+      border-radius: 999px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 30%), color-mix(in srgb, var(--accent), #fff 78%));
+      box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .link-card h2 {
+      padding-top: 0.25em;
+      font-size: 1.45em;
+      line-height: 1.2;
+    }
+
+    @keyframes view-in {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 680px) {
+      :root {
+        --nav-height: 62px;
+      }
+
+      .site-nav {
+        font-size: 28px;
+      }
+
+      .nav-link {
+        padding: 0 0.65em;
+      }
+
+      .nav-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .hero {
+        padding: 6em 0 5em;
+      }
+
+      .avatar-mark {
+        width: 10em;
+        height: 10em;
+      }
+
+      .hero p {
+        font-size: 1.35em;
+      }
+
+      .summary {
+        padding-bottom: 6em;
+        font-size: 1.18em;
+      }
+
+      .page-head {
+        padding-top: 3em;
+      }
+
+      .project-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .plain-list a {
+        padding-left: 1em;
+        padding-right: 1em;
+      }
+
+      .filter-bar {
+        padding: 3em 0 1.8em;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 1ms !important;
+        scroll-behavior: auto !important;
+        transition-duration: 1ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="site-nav" id="site-nav" aria-label="主导航"></nav>
+  </header>
+
+  <main id="app"></main>
+
+  <script>
+    const config = window.CONFIG;
+    const root = document.documentElement;
+    const app = document.querySelector("#app");
+    const nav = document.querySelector("#site-nav");
+    const state = {
+      activeView: config.initialView,
+      activeNoteFilter: config.pages.notes.activeFilter
+    };
+
+    function escapeHTML(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function disabledLink(content, className) {
+      return `<a class="${className}" href="#" data-disabled="true" aria-disabled="true">${content}</a>`;
+    }
+
+    function renderNav() {
+      nav.innerHTML = config.nav.map((item) => {
+        const theme = config.themes[item.tone];
+        const isActive = item.id === state.activeView;
+        return `
+          <button
+            class="nav-link${isActive ? " is-active" : ""}"
+            type="button"
+            data-target="${escapeHTML(item.id)}"
+            data-tone="${escapeHTML(item.tone)}"
+            aria-label="${escapeHTML(item.label)}"
+            aria-current="${isActive ? "page" : "false"}"
+            style="--tone-color: ${escapeHTML(theme.accent)}; --tone-wash: ${escapeHTML(theme.wash)};"
+          >
+            <span class="nav-text">${escapeHTML(item.label)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderHomeView(page) {
+      const summary = page.summary.map((item) => {
+        const lead = item.lead ? `<strong>${escapeHTML(item.lead)}</strong> ` : "";
+        return `<p>${lead}${escapeHTML(item.text)}</p>`;
+      }).join("");
+
+      return `
+        <section class="view" data-view="home" aria-labelledby="home-title" hidden>
+          <div class="hero">
+            <div class="avatar-mark" aria-hidden="true"></div>
+            <h1 id="home-title">${escapeHTML(page.name)}</h1>
+            <p>${escapeHTML(page.role)}</p>
+          </div>
+          <div class="summary layout">${summary}</div>
+        </section>
+      `;
+    }
+
+    function renderProjectCard(item) {
+      return disabledLink(`
+        <div class="project-icon" aria-hidden="true"></div>
+        <h2>${escapeHTML(item.title)}</h2>
+        <p>${escapeHTML(item.description)}</p>
+      `, "project-card");
+    }
+
+    function renderPlainItem(item) {
+      return disabledLink(`<h3>${escapeHTML(item.title)}</h3><p>${escapeHTML(item.description)}</p>`, "");
+    }
+
+    function renderProjectsView(page) {
+      const featured = page.featured.map(renderProjectCard).join("");
+      const sections = page.sections.map((section) => `
+        <section class="link-section layout" aria-label="${escapeHTML(section.title)}">
+          <h2>${escapeHTML(section.title)}</h2>
+          <div class="plain-list">${section.items.map(renderPlainItem).join("")}</div>
+        </section>
+      `).join("");
+
+      return `
+        <section class="view" data-view="projects" aria-labelledby="projects-title" hidden>
+          <div class="page-head layout">
+            <h1 id="projects-title">${escapeHTML(page.title)}</h1>
+            <p>${escapeHTML(page.subtitle)}</p>
+          </div>
+          <div class="project-grid layout" aria-label="个人项目">${featured}</div>
+          ${sections}
+        </section>
+      `;
+    }
+
+    function renderNotesView(page) {
+      const filters = page.filters.map((filter) => `
+        <button class="filter-button${filter === state.activeNoteFilter ? " is-active" : ""}" type="button" data-filter="${escapeHTML(filter)}">${escapeHTML(filter)}</button>
+      `).join("");
+      const items = page.items.map((item, index) => disabledLink(`
+        <h2${index === 0 ? ' id="notes-title"' : ""}>${escapeHTML(item.title)}</h2>
+        <p class="note-meta"><span class="tag">${escapeHTML(item.category)}</span><time>${escapeHTML(item.date)}</time></p>
+      `, "note-item")).join("");
+
+      return `
+        <section class="view" data-view="notes" aria-labelledby="notes-title" hidden>
+          <div class="filter-bar" aria-label="笔记分类">${filters}</div>
+          <div class="notes-list layout">${items}</div>
+        </section>
+      `;
+    }
+
+    function renderLinkCard(item) {
+      return disabledLink(`
+        <span class="link-avatar" aria-hidden="true"></span>
+        <h2>${escapeHTML(item.title)}</h2>
+        <p>${escapeHTML(item.description)}</p>
+      `, "link-card");
+    }
+
+    function renderLinksView(page) {
+      const groups = page.groups.map((group) => `
+        <h2 class="link-group-title">${escapeHTML(group.title)}</h2>
+        ${group.items.map(renderLinkCard).join("")}
+      `).join("");
+
+      return `
+        <section class="view" data-view="links" aria-labelledby="links-title" hidden>
+          <div class="page-head layout">
+            <h1 id="links-title">${escapeHTML(page.title)}</h1>
+            <p>${escapeHTML(page.subtitle)}</p>
+          </div>
+          <div class="links-list layout">${groups}</div>
+        </section>
+      `;
+    }
+
+    function applyTheme(viewId) {
+      const navItem = config.nav.find((item) => item.id === viewId) || config.nav[0];
+      const theme = config.themes[navItem.tone];
+      root.style.setProperty("--accent", theme.accent);
+      root.style.setProperty("--wash", theme.wash);
+      root.style.setProperty("--accent-shadow", theme.shadow);
+    }
+
+    function showView(viewId) {
+      state.activeView = viewId;
+      applyTheme(viewId);
+
+      document.querySelectorAll(".nav-link").forEach((button) => {
+        const isCurrent = button.dataset.target === viewId;
+        button.classList.toggle("is-active", isCurrent);
+        button.setAttribute("aria-current", isCurrent ? "page" : "false");
+      });
+
+      document.querySelectorAll(".view").forEach((view) => {
+        const isCurrent = view.dataset.view === viewId;
+        view.classList.toggle("is-active", isCurrent);
+        view.hidden = !isCurrent;
+      });
+    }
+
+    function bindEvents() {
+      document.querySelectorAll(".nav-link").forEach((button) => {
+        button.addEventListener("click", () => showView(button.dataset.target));
+      });
+
+      document.querySelectorAll('[data-disabled="true"]').forEach((link) => {
+        link.addEventListener("click", (event) => event.preventDefault());
+      });
+
+      document.querySelectorAll(".filter-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.activeNoteFilter = button.dataset.filter;
+          document.querySelectorAll(".filter-button").forEach((item) => item.classList.remove("is-active"));
+          button.classList.add("is-active");
+        });
+      });
+    }
+
+    function renderApp() {
+      renderNav();
+      app.innerHTML = [
+        renderHomeView(config.pages.home),
+        renderProjectsView(config.pages.projects),
+        renderNotesView(config.pages.notes),
+        renderLinksView(config.pages.links)
+      ].join("");
+      bindEvents();
+      showView(state.activeView);
+    }
+
+    renderApp();
+  </script>
+</body>
+</html>
