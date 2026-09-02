@@ -8,10 +8,10 @@
     window.CONFIG = {
       initialView: "home",
       nav: [
-        { id: "home", label: "首页", tone: "home" },
-        { id: "projects", label: "项目", tone: "projects" },
-        { id: "notes", label: "笔记", tone: "notes" },
-        { id: "links", label: "链接", tone: "links" }
+        { id: "home", label: "首页", tone: "home", iconSrc: "" },
+        { id: "projects", label: "项目", tone: "projects", iconSrc: "" },
+        //{ id: "notes", label: "笔记", tone: "notes", iconSrc: "" },
+        { id: "links", label: "链接", tone: "links", iconSrc: "" }
       ],
       themes: {
         home: {
@@ -20,9 +20,9 @@
           shadow: "rgba(5, 176, 255, 0.12)"
         },
         projects: {
-          accent: "#ff8405",
-          wash: "#fff5ea",
-          shadow: "rgba(255, 132, 5, 0.12)"
+          accent: "#4aa08f",
+          wash: "#edf8f4",
+          shadow: "rgba(74, 160, 143, 0.12)"
         },
         notes: {
           accent: "#4fa949",
@@ -30,15 +30,16 @@
           shadow: "rgba(79, 169, 73, 0.12)"
         },
         links: {
-          accent: "#4e687b",
-          wash: "#f1f4f7",
-          shadow: "rgba(78, 104, 123, 0.12)"
+          accent: "#d7a24c",
+          wash: "#fff7e6",
+          shadow: "rgba(215, 162, 76, 0.12)"
         }
       },
       pages: {
         home: {
-          name: "待填写",
+          name: "Ba",
           role: "待填写",
+          avatarSrc: "",
           summary: [
             { lead: "待填写", text: "这里留给一句个人定位或当前状态。" },
             { lead: "待填写", text: "这里留给经历、兴趣方向、正在做的事，以及希望别人如何认识你。" },
@@ -49,26 +50,26 @@
           title: "项目",
           subtitle: "内容待填写",
           featured: [
-            { title: "待填写", description: "内容待填写" },
-            { title: "待填写", description: "内容待填写" },
-            { title: "待填写", description: "内容待填写" },
-            { title: "待填写", description: "内容待填写" }
+            { title: "待填写", description: "内容待填写", imageSrc: "" },
+            { title: "待填写", description: "内容待填写", imageSrc: "" },
+            { title: "待填写", description: "内容待填写", imageSrc: "" },
+            { title: "待填写", description: "内容待填写", imageSrc: "" }
           ],
           sections: [
             {
               title: "参与项目",
               items: [
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" }
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" }
               ]
             },
             {
               title: "开源项目",
               items: [
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" }
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" }
               ]
             }
           ]
@@ -89,15 +90,15 @@
             {
               title: "朋友们",
               items: [
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" },
-                { title: "待填写", description: "内容待填写" }
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" },
+                { title: "待填写", description: "内容待填写", imageSrc: "" }
               ]
             },
             {
               title: "组织",
               items: [
-                { title: "待填写", description: "内容待填写" }
+                { title: "待填写", description: "内容待填写", imageSrc: "" }
               ]
             }
           ]
@@ -183,26 +184,44 @@
       transition: color 180ms ease, background 180ms ease;
     }
 
-    .nav-link::before {
-      content: "";
+    .nav-visual {
+      position: relative;
       width: 1.05em;
       height: 1.05em;
+      flex: 0 0 auto;
+    }
+
+    .nav-geometry,
+    .nav-icon {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .nav-geometry {
       border-radius: 999px;
       background: color-mix(in srgb, var(--tone-color), #fff 38%);
       box-shadow: inset 0 0 0 0.18em rgba(255, 255, 255, 0.75);
     }
 
-    .nav-link[data-tone="projects"]::before {
+    .nav-icon {
+      object-fit: cover;
+      border-radius: 0.2em;
+    }
+
+    .nav-link[data-tone="projects"] .nav-geometry {
       border-radius: 0.28em;
       transform: rotate(8deg);
     }
 
-    .nav-link[data-tone="notes"]::before {
+    .nav-link[data-tone="notes"] .nav-geometry {
       border-radius: 0.12em;
       clip-path: polygon(0 0, 86% 0, 100% 20%, 100% 100%, 0 100%);
     }
 
-    .nav-link[data-tone="links"]::before {
+    .nav-link[data-tone="links"] .nav-geometry {
       border-radius: 0.16em;
       background:
         linear-gradient(90deg, transparent 36%, rgba(255, 255, 255, 0.8) 36%, rgba(255, 255, 255, 0.8) 64%, transparent 64%),
@@ -252,6 +271,10 @@
     }
 
     .avatar-mark {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
       width: 15em;
       height: 15em;
       margin: 0 auto;
@@ -260,6 +283,14 @@
         radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.96) 0 18%, transparent 19%),
         linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 30%), color-mix(in srgb, var(--accent), #fff 72%));
       box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .avatar-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: inherit;
     }
 
     .hero h1 {
@@ -286,6 +317,38 @@
       line-height: 1.45;
     }
 
+    .wave-divider {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 6.5em;
+      margin-top: -3.25em;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .wave-divider svg {
+      display: block;
+      width: calc(100% + 48px);
+      height: 100%;
+      margin-left: -24px;
+      overflow: visible;
+    }
+
+    .wave-soften {
+      filter: url(#wave-soften);
+    }
+
+    .wave-fill-back {
+      fill: color-mix(in srgb, var(--accent), #fff 88%);
+      opacity: 0.9;
+    }
+
+    .wave-fill-front {
+      fill: color-mix(in srgb, var(--accent), #fff 95%);
+      opacity: 0.92;
+    }
+
     .summary p {
       margin: 0;
       padding: 0.8em 0;
@@ -296,6 +359,12 @@
     .summary b {
       color: #333;
       font-weight: 400;
+    }
+
+    .summary-shell {
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent), #fff 95%) 0%, color-mix(in srgb, var(--accent), #fff 97%) 100%);
+      margin-top: -14px;
+      padding-top: 14px;
     }
 
     .page-head {
@@ -341,6 +410,10 @@
     }
 
     .project-icon {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
       width: 7em;
       height: 7em;
       margin: 0 auto 1em;
@@ -348,6 +421,15 @@
       background:
         linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 22%), color-mix(in srgb, var(--accent), #fff 72%));
       box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .project-image,
+    .plain-item-image,
+    .link-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .project-card h2,
@@ -388,11 +470,29 @@
     }
 
     .plain-list a {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 1.1em;
       padding: 0.85em 1.6em 0.8em;
       border-radius: 5px;
       color: var(--accent);
       transition: background 180ms ease;
+    }
+
+    .plain-item-visual {
+      position: relative;
+      flex: 0 0 4.5em;
+      width: 4.5em;
+      height: 4.5em;
+      overflow: hidden;
+      border-radius: 1em;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 28%), color-mix(in srgb, var(--accent), #fff 76%));
+      box-shadow: 0 0.4em 1.4em var(--accent-shadow);
+    }
+
+    .plain-item-copy {
+      min-width: 0;
     }
 
     .plain-list a:hover {
@@ -499,6 +599,9 @@
 
     .link-avatar {
       position: absolute;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
       left: 1em;
       top: 1em;
       width: 4.8em;
@@ -507,6 +610,10 @@
       background:
         linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 30%), color-mix(in srgb, var(--accent), #fff 78%));
       box-shadow: 0 0.5em 2em var(--accent-shadow);
+    }
+
+    .link-image {
+      border-radius: inherit;
     }
 
     .link-card h2 {
@@ -553,6 +660,11 @@
         height: 10em;
       }
 
+      .wave-divider {
+        height: 5em;
+        margin-top: -2.2em;
+      }
+
       .hero p {
         font-size: 1.35em;
       }
@@ -575,6 +687,12 @@
         padding-right: 1em;
       }
 
+      .plain-item-visual {
+        flex-basis: 3.8em;
+        width: 3.8em;
+        height: 3.8em;
+      }
+
       .filter-bar {
         padding: 3em 0 1.8em;
       }
@@ -585,6 +703,7 @@
       *::before,
       *::after {
         animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
         scroll-behavior: auto !important;
         transition-duration: 1ms !important;
       }
@@ -607,6 +726,7 @@
       activeView: config.initialView,
       activeNoteFilter: config.pages.notes.activeFilter
     };
+    let waveAnimationFrame = 0;
 
     function escapeHTML(value) {
       return String(value)
@@ -621,10 +741,16 @@
       return `<a class="${className}" href="#" data-disabled="true" aria-disabled="true">${content}</a>`;
     }
 
+    function renderOptionalImage(src, className, alt, loading = "lazy") {
+      if (!src) return "";
+      return `<img class="${className}" src="${escapeHTML(src)}" alt="${escapeHTML(alt)}" loading="${loading}" decoding="async" data-fallback>`;
+    }
+
     function renderNav() {
       nav.innerHTML = config.nav.map((item) => {
         const theme = config.themes[item.tone];
         const isActive = item.id === state.activeView;
+        const icon = renderOptionalImage(item.iconSrc, "nav-icon", "", "eager");
         return `
           <button
             class="nav-link${isActive ? " is-active" : ""}"
@@ -635,6 +761,10 @@
             aria-current="${isActive ? "page" : "false"}"
             style="--tone-color: ${escapeHTML(theme.accent)}; --tone-wash: ${escapeHTML(theme.wash)};"
           >
+            <span class="nav-visual">
+              <span class="nav-geometry" aria-hidden="true"></span>
+              ${icon}
+            </span>
             <span class="nav-text">${escapeHTML(item.label)}</span>
           </button>
         `;
@@ -650,25 +780,50 @@
       return `
         <section class="view" data-view="home" aria-labelledby="home-title" hidden>
           <div class="hero">
-            <div class="avatar-mark" aria-hidden="true"></div>
+            <div class="avatar-mark">
+              ${renderOptionalImage(page.avatarSrc, "avatar-image", `${page.name}的头像`, "eager")}
+            </div>
             <h1 id="home-title">${escapeHTML(page.name)}</h1>
             <p>${escapeHTML(page.role)}</p>
           </div>
-          <div class="summary layout">${summary}</div>
+          <div class="wave-divider" aria-hidden="true">
+            <svg viewBox="0 0 1200 100" preserveAspectRatio="none" role="presentation">
+              <defs>
+                <filter id="wave-soften" x="-10%" y="-30%" width="120%" height="160%">
+                  <feGaussianBlur stdDeviation="0.55"></feGaussianBlur>
+                </filter>
+              </defs>
+              <path class="wave-fill-back wave-soften" data-wave="back" d=""></path>
+              <path class="wave-fill-front wave-soften" data-wave="front" d=""></path>
+            </svg>
+          </div>
+          <div class="summary-shell">
+            <div class="summary layout">${summary}</div>
+          </div>
         </section>
       `;
     }
 
     function renderProjectCard(item) {
       return disabledLink(`
-        <div class="project-icon" aria-hidden="true"></div>
+        <div class="project-icon">
+          ${renderOptionalImage(item.imageSrc, "project-image", item.title)}
+        </div>
         <h2>${escapeHTML(item.title)}</h2>
         <p>${escapeHTML(item.description)}</p>
       `, "project-card");
     }
 
     function renderPlainItem(item) {
-      return disabledLink(`<h3>${escapeHTML(item.title)}</h3><p>${escapeHTML(item.description)}</p>`, "");
+      return disabledLink(`
+        <span class="plain-item-visual">
+          ${renderOptionalImage(item.imageSrc, "plain-item-image", item.title)}
+        </span>
+        <span class="plain-item-copy">
+          <h3>${escapeHTML(item.title)}</h3>
+          <p>${escapeHTML(item.description)}</p>
+        </span>
+      `, "");
     }
 
     function renderProjectsView(page) {
@@ -711,7 +866,9 @@
 
     function renderLinkCard(item) {
       return disabledLink(`
-        <span class="link-avatar" aria-hidden="true"></span>
+        <span class="link-avatar">
+          ${renderOptionalImage(item.imageSrc, "link-image", item.title)}
+        </span>
         <h2>${escapeHTML(item.title)}</h2>
         <p>${escapeHTML(item.description)}</p>
       `, "link-card");
@@ -777,6 +934,83 @@
       });
     }
 
+    function bindImageFallbacks() {
+      document.querySelectorAll("img[data-fallback]").forEach((image) => {
+        image.addEventListener("error", () => {
+          image.hidden = true;
+        });
+      });
+    }
+
+    function buildWavePath(width, height, baseY, amplitude, frequency, phase, drift, sampleCount = 36) {
+      const points = [];
+
+      for (let index = 0; index <= sampleCount; index += 1) {
+        const x = (width / sampleCount) * index;
+        const progress = index / sampleCount;
+        const main = Math.sin((progress * Math.PI * 2 * frequency) + phase);
+        const micro = Math.sin((progress * Math.PI * 4.2) + phase * 1.35 + drift);
+        const pulse = Math.sin((progress * Math.PI * 1.2) + phase * 0.45);
+        const y = baseY + main * amplitude + micro * (amplitude * 0.25) + pulse * (amplitude * 0.14);
+        points.push([x, y]);
+      }
+
+      let path = `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}`;
+
+      for (let index = 1; index < points.length; index += 1) {
+        const previous = points[index - 1];
+        const current = points[index];
+        const midX = ((previous[0] + current[0]) / 2).toFixed(2);
+        const midY = ((previous[1] + current[1]) / 2).toFixed(2);
+        path += ` Q ${previous[0].toFixed(2)} ${previous[1].toFixed(2)} ${midX} ${midY}`;
+      }
+
+      path += ` T ${points[points.length - 1][0].toFixed(2)} ${points[points.length - 1][1].toFixed(2)}`;
+      path += ` L ${width} ${height} L 0 ${height} Z`;
+      return path;
+    }
+
+    function updateWavePaths(timeMs = 0) {
+      const waveRoot = document.querySelector(".wave-divider");
+      if (!waveRoot) return;
+
+      const width = 1200;
+      const height = 100;
+      const time = timeMs / 1000;
+      const backFill = waveRoot.querySelector('[data-wave="back"]');
+      const frontFill = waveRoot.querySelector('[data-wave="front"]');
+
+      const backPhase = time * 1.05;
+      const frontPhase = time * 1.34 + 1.2;
+
+      const backPath = buildWavePath(width, height, 55.5, 5.0, 1.2, backPhase, time * 0.34);
+      const frontPath = buildWavePath(width, height, 60.5, 3.4, 1.5, frontPhase, time * 0.42);
+
+      if (backFill) backFill.setAttribute("d", backPath);
+      if (frontFill) frontFill.setAttribute("d", frontPath);
+    }
+
+    function startWaveAnimation() {
+      if (waveAnimationFrame) {
+        window.cancelAnimationFrame(waveAnimationFrame);
+        waveAnimationFrame = 0;
+      }
+
+      updateWavePaths(0);
+
+      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+      if (mediaQuery.matches) {
+        return;
+      }
+
+      const tick = (timeMs) => {
+        updateWavePaths(timeMs);
+        waveAnimationFrame = window.requestAnimationFrame(tick);
+      };
+
+      waveAnimationFrame = window.requestAnimationFrame(tick);
+    }
+
     function renderApp() {
       renderNav();
       app.innerHTML = [
@@ -785,8 +1019,10 @@
         renderNotesView(config.pages.notes),
         renderLinksView(config.pages.links)
       ].join("");
+      bindImageFallbacks();
       bindEvents();
       showView(state.activeView);
+      startWaveAnimation();
     }
 
     renderApp();

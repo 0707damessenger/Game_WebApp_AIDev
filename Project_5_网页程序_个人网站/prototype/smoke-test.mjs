@@ -30,6 +30,15 @@ assert(html.includes('id: "notes"'), "notes config should exist");
 assert(html.includes('id: "links"'), "links config should exist");
 assert(html.includes("function renderApp"), "prototype should render from CONFIG");
 assert(html.includes("待填写"), "template should leave content blank with placeholders");
-assert(!/<img\s/i.test(html), "prototype should use geometric placeholders instead of image assets");
+assert(html.includes('iconSrc: ""'), "navigation icon paths should be configurable");
+assert(html.includes('avatarSrc: ""'), "home avatar path should be configurable");
+assert(html.includes('imageSrc: ""'), "content image paths should be configurable");
+assert(html.includes("wave-divider"), "home view should include a water wave divider");
+assert(html.includes('renderOptionalImage(item.iconSrc, "nav-icon"'), "navigation should render configured images");
+assert(html.includes('renderOptionalImage(page.avatarSrc, "avatar-image"'), "home should render a configured avatar");
+assert(html.includes('renderOptionalImage(item.imageSrc, "project-image"'), "projects should render configured images");
+assert(html.includes('renderOptionalImage(item.imageSrc, "plain-item-image"'), "project lists should render configured images");
+assert(html.includes('renderOptionalImage(item.imageSrc, "link-image"'), "links should render configured images");
+assert(html.includes("bindImageFallbacks"), "configured images should fall back when loading fails");
 
 console.log("smoke checks passed");
