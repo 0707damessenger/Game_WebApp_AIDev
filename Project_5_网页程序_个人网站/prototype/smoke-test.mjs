@@ -92,6 +92,7 @@ async function runBrowserChecks() {
 
     const featuredCarousel = featuredProject.locator("[data-project-carousel]");
     assert(await featuredCarousel.count() === 1, "featured project should expose its detail carousel");
+    assert(await featuredProject.locator("[data-project-visit]").count() === 0, "projects without a website should hide the visit link");
     const nextImageButton = featuredCarousel.locator('[data-project-image="next"]');
     const imageCounter = featuredCarousel.locator("[data-image-counter]");
     const imageCaption = featuredCarousel.locator("[data-image-caption]");
@@ -124,6 +125,19 @@ async function runBrowserChecks() {
       };
     });
     assert(stickyPosition.summaryTop >= stickyPosition.headerBottom - 1, "sticky project summary should stay below the tab bar");
+
+    const websiteUrl = "https://example.com/project-01";
+    const configuredPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await configuredPage.setContent(html.replace('websiteUrl: ""', `websiteUrl: "${websiteUrl}"`), { waitUntil: "networkidle" });
+    await configuredPage.locator('.nav-link[data-target="projects"]').click();
+    const configuredFeaturedTarget = await configuredPage.locator("[data-featured-target]").first().getAttribute("data-featured-target");
+    const configuredProject = configuredPage.locator(`.project-item[data-project-id="${configuredFeaturedTarget}"]`);
+    await configuredPage.locator("[data-featured-target]").first().click();
+    const visitLink = configuredProject.locator("[data-project-visit]");
+    assert(await visitLink.count() === 1, "projects with a website should show the visit link");
+    assert(await visitLink.getAttribute("href") === websiteUrl, "visit link should use the configured website");
+    assert(await visitLink.getAttribute("target") === "_blank", "visit link should open in a new tab");
+    await configuredPage.close();
 
     await page.locator('.nav-link[data-target="home"]').click();
     await page.waitForSelector('[data-view="home"].is-active');
