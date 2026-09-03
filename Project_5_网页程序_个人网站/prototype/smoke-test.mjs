@@ -47,6 +47,12 @@ assert(html.includes('linkTarget: "projects"'), "home summary should configure t
 assert(html.includes("data-view-link"), "home summary should render internal view links");
 assert(html.includes("showView(link.dataset.viewLink)"), "internal view links should switch views");
 assert(html.includes("function scrollToPageTop"), "prototype should provide a scroll-to-top helper");
+assert(html.includes("isFeatured: true"), "projects should support representative work markers");
+assert(html.includes("detail: {"), "projects should configure detail content");
+assert(html.includes("images: ["), "project details should support multiple images");
+assert(html.includes("data-featured-target"), "featured projects should render quick-jump targets");
+assert(html.includes("data-project-toggle"), "vertical projects should render expandable summaries");
+assert(html.includes("data-project-carousel"), "project details should render an image carousel");
 
 async function assertViewChangeScrollsToTop(page, triggerSelector, expectedView) {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -67,6 +73,69 @@ async function runBrowserChecks() {
   try {
     await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" });
     await page.waitForSelector('[data-view="home"].is-active');
+
+    await page.locator('.nav-link[data-target="projects"]').click();
+    await page.waitForSelector('[data-view="projects"].is-active');
+
+    const featuredProjects = page.locator("[data-featured-target]");
+    assert(await featuredProjects.count() >= 1, "projects should render at least one representative work");
+    assert(await page.locator(".project-item[data-project-id]").count() >= 2, "projects should render at least two vertical projects");
+
+    const featuredTarget = await featuredProjects.first().getAttribute("data-featured-target");
+    assert(featuredTarget, "featured project should point to a vertical project");
+    const featuredProject = page.locator(`.project-item[data-project-id="${featuredTarget}"]`);
+    assert(await featuredProject.count() === 1, "featured target should match one vertical project");
+
+    await featuredProjects.first().click();
+    await page.waitForSelector(`.project-item[data-project-id="${featuredTarget}"].is-expanded`);
+
+    const featuredCarousel = featuredProject.locator("[data-project-carousel]");
+    assert(await featuredCarousel.count() === 1, "featured project should expose its detail carousel");
+    const nextImageButton = featuredCarousel.locator('[data-project-image="next"]');
+    const imageCounter = featuredCarousel.locator("[data-image-counter]");
+    const imageCaption = featuredCarousel.locator("[data-image-caption]");
+    const initialCounter = await imageCounter.textContent();
+    const initialCaption = await imageCaption.textContent();
+    await nextImageButton.click();
+    const nextCounter = await imageCounter.textContent();
+    const nextCaption = await imageCaption.textContent();
+    assert(initialCounter !== nextCounter, "next image should update the image counter");
+    assert(initialCaption !== nextCaption, "next image should update the image description");
+    await nextImageButton.click();
+    assert((await imageCounter.textContent()) === initialCounter, "next image should wrap to the first image");
+    assert((await imageCaption.textContent()) === initialCaption, "wrapped image should restore its description");
+
+    const secondProject = page.locator(".project-item[data-project-id]").nth(1);
+    await secondProject.locator("[data-project-toggle]").click();
+    assert(await featuredProject.evaluate((element) => !element.classList.contains("is-expanded")), "opening a project should close the previous project");
+    assert(await secondProject.evaluate((element) => element.classList.contains("is-expanded")), "clicked project should expand");
+
+    const secondSummary = secondProject.locator("[data-project-toggle]");
+    assert(await secondSummary.evaluate((element) => getComputedStyle(element).position === "sticky"), "expanded project summary should be sticky");
+    await secondProject.locator("[data-project-detail]").evaluate((element) => {
+      window.scrollTo(0, element.getBoundingClientRect().top + window.scrollY + element.offsetHeight / 3);
+    });
+    const stickyPosition = await secondSummary.evaluate((element) => {
+      const header = document.querySelector(".site-header");
+      return {
+        summaryTop: Math.round(element.getBoundingClientRect().top),
+        headerBottom: Math.round(header.getBoundingClientRect().bottom)
+      };
+    });
+    assert(stickyPosition.summaryTop >= stickyPosition.headerBottom - 1, "sticky project summary should stay below the tab bar");
+
+    await page.locator('.nav-link[data-target="home"]').click();
+    await page.waitForSelector('[data-view="home"].is-active');
+    await page.locator('.nav-link[data-target="links"]').click();
+    await page.waitForSelector('[data-view="links"].is-active');
+    assert(html.includes("myHomepages: ["), "links should configure my homepages separately");
+    assert(html.includes("contacts: ["), "links should configure contacts separately");
+    assert(html.includes("friends: ["), "links should configure friends separately");
+    assert(html.includes("data-link-group"), "link groups should expose their category");
+    assert(await page.locator('[data-link-group="my-homepages"]').count() === 1, "my homepages group should render");
+    assert(await page.locator('[data-link-group="contacts"]').count() === 1, "contacts group should render");
+    assert(await page.locator('[data-link-group="friends"]').count() === 1, "friends group should render");
+    assert(await page.locator('[data-contact-row]').count() >= 1, "contacts should render compact rows");
 
     await assertViewChangeScrollsToTop(page, '.nav-link[data-target="projects"]', "projects");
 

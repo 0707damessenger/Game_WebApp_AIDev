@@ -51,29 +51,71 @@
         projects: {
           title: "项目",
           subtitle: "内容待填写",
-          featured: [
-            { title: "待填写", description: "内容待填写", imageSrc: "" },
-            { title: "待填写", description: "内容待填写", imageSrc: "" },
-            { title: "待填写", description: "内容待填写", imageSrc: "" },
-            { title: "待填写", description: "内容待填写", imageSrc: "" }
-          ],
-          sections: [
+          items: [
             {
-              title: "游戏项目",
-              items: [
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" }
-              ]
+              id: "project-01",
+              category: "participating",
+              isFeatured: true,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: {
+                description: "内容待填写",
+                images: [
+                  { src: "", alt: "项目图片一", description: "图片说明待填写一" },
+                  { src: "", alt: "项目图片二", description: "图片说明待填写二" }
+                ]
+              }
             },
             {
-              title: "开源项目",
-              items: [
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" }
-              ]
+              id: "project-02",
+              category: "participating",
+              isFeatured: true,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: { description: "内容待填写", images: [] }
+            },
+            {
+              id: "project-03",
+              category: "participating",
+              isFeatured: false,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: { description: "内容待填写", images: [] }
+            },
+            {
+              id: "project-04",
+              category: "open-source",
+              isFeatured: true,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: { description: "内容待填写", images: [] }
+            },
+            {
+              id: "project-05",
+              category: "open-source",
+              isFeatured: false,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: { description: "内容待填写", images: [] }
+            },
+            {
+              id: "project-06",
+              category: "open-source",
+              isFeatured: false,
+              title: "待填写",
+              description: "内容待填写",
+              imageSrc: "",
+              detail: { description: "内容待填写", images: [] }
             }
+          ],
+          sections: [
+            { id: "participating", title: "参与项目" },
+            { id: "open-source", title: "开源项目" }
           ]
         },
         links: {
@@ -391,10 +433,15 @@
 
     .project-card {
       display: block;
+      width: 100%;
       min-height: 13em;
       padding: 1.8em 0.8em;
+      border: 0;
+      background: transparent;
       border-radius: 8px;
       color: var(--accent);
+      font: inherit;
+      text-align: center;
       transition: background 180ms ease, transform 180ms ease;
     }
 
@@ -442,6 +489,174 @@
       margin: 0.4em 0 0;
       color: var(--muted);
       font-weight: 200;
+    }
+
+    .project-section {
+      padding: 2.5em 0;
+    }
+
+    .project-section h2 {
+      margin: 0;
+      padding: 0 1.3em 0.8em;
+      color: #222;
+      font-size: 2em;
+      font-weight: 200;
+      text-align: center;
+    }
+
+    .project-list {
+      display: grid;
+      gap: 0.15em;
+    }
+
+    .project-item {
+      min-width: 0;
+    }
+
+    .project-summary {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      gap: 1.1em;
+      padding: 0.85em 1.6em 0.8em;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--accent);
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: background 180ms ease, box-shadow 180ms ease;
+    }
+
+    .project-summary:hover,
+    .project-summary:focus-visible {
+      background: color-mix(in srgb, var(--wash), #fff 48%);
+    }
+
+    .project-summary-visual {
+      position: relative;
+      flex: 0 0 4.5em;
+      width: 4.5em;
+      height: 4.5em;
+      overflow: hidden;
+      border-radius: 1em;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 28%), color-mix(in srgb, var(--accent), #fff 76%));
+      box-shadow: 0 0.4em 1.4em var(--accent-shadow);
+    }
+
+    .project-summary-copy {
+      min-width: 0;
+    }
+
+    .project-summary-title,
+    .project-summary-description {
+      display: block;
+    }
+
+    .project-summary-title {
+      font-size: 1.55em;
+      font-weight: 300;
+      line-height: 1.25;
+    }
+
+    .project-summary-description {
+      margin-top: 0.25em;
+      color: var(--muted);
+      font-weight: 200;
+    }
+
+    .project-item.is-expanded .project-summary {
+      position: sticky;
+      top: var(--nav-height);
+      z-index: 3;
+      background: color-mix(in srgb, var(--wash), #fff 20%);
+      box-shadow: 0 0.45em 1.2em rgba(34, 34, 34, 0.08);
+    }
+
+    .project-detail {
+      padding: 1.2em 1.6em 2.8em 7.2em;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .project-detail-inner {
+      display: grid;
+      gap: 1.2em;
+    }
+
+    .project-detail-copy p {
+      margin: 0;
+      color: #666;
+      font-size: 1.15em;
+      font-weight: 200;
+      line-height: 1.55;
+      text-wrap: pretty;
+    }
+
+    .project-detail-carousel {
+      display: grid;
+      gap: 0.7em;
+    }
+
+    .project-detail-media {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--accent), #fff 26%), color-mix(in srgb, var(--accent), #fff 76%));
+      box-shadow: 0 0.45em 1.6em var(--accent-shadow);
+    }
+
+    .project-detail-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .project-carousel-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 2.8em;
+      color: var(--muted);
+      font-size: 0.95em;
+      font-weight: 300;
+    }
+
+    .project-carousel-button {
+      display: grid;
+      place-items: center;
+      width: 2.8em;
+      height: 2.8em;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--wash), #fff 25%);
+      color: var(--accent);
+      font-size: 1em;
+      line-height: 1;
+      transition: background 180ms ease, transform 180ms ease;
+    }
+
+    .project-carousel-button:hover {
+      background: color-mix(in srgb, var(--accent), #fff 84%);
+      transform: translateY(-1px);
+    }
+
+    .project-image-caption {
+      min-height: 1.45em;
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95em;
+      font-weight: 200;
+      line-height: 1.45;
+      text-align: center;
+      text-wrap: pretty;
+    }
+
+    .project-image-caption.is-empty {
+      visibility: hidden;
     }
 
     .link-section {
@@ -621,6 +836,22 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .project-summary {
+        padding-left: 1em;
+        padding-right: 1em;
+      }
+
+      .project-summary-visual {
+        flex-basis: 3.8em;
+        width: 3.8em;
+        height: 3.8em;
+      }
+
+      .project-detail {
+        padding-left: 1em;
+        padding-right: 1em;
+      }
+
       .plain-list a {
         padding-left: 1em;
         padding-right: 1em;
@@ -659,7 +890,9 @@
     const app = document.querySelector("#app");
     const nav = document.querySelector("#site-nav");
     const state = {
-      activeView: config.initialView
+      activeView: config.initialView,
+      expandedProjectId: null,
+      projectImageIndexes: {}
     };
     let waveAnimationFrame = 0;
 
@@ -743,35 +976,88 @@
     }
 
     function renderProjectCard(item) {
-      return disabledLink(`
+      return `
+        <button class="project-card" type="button" data-featured-target="${escapeHTML(item.id)}" aria-label="${escapeHTML(item.title)}">
         <div class="project-icon">
           ${renderOptionalImage(item.imageSrc, "project-image", item.title)}
         </div>
         <h2>${escapeHTML(item.title)}</h2>
         <p>${escapeHTML(item.description)}</p>
-      `, "project-card");
+        </button>
+      `;
+    }
+
+    function getProjectImages(item) {
+      return Array.isArray(item?.detail?.images) ? item.detail.images : [];
+    }
+
+    function renderProjectDetail(item) {
+      const images = getProjectImages(item);
+      const imageIndex = images.length ? getWrappedImageIndex(state.projectImageIndexes[item.id] || 0, images.length) : 0;
+      const image = images[imageIndex];
+      const hasMultipleImages = images.length > 1;
+      const imageCaption = image?.description || "";
+      const controls = hasMultipleImages
+        ? `
+            <div class="project-carousel-controls">
+              <button class="project-carousel-button" type="button" data-project-image="prev" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="上一张图片" title="上一张图片">←</button>
+              <span class="project-image-counter" data-image-counter>第 ${imageIndex + 1} / ${images.length} 张</span>
+              <button class="project-carousel-button" type="button" data-project-image="next" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="下一张图片" title="下一张图片">→</button>
+            </div>
+          `
+        : images.length
+          ? `<div class="project-carousel-controls"><span class="project-image-counter" data-image-counter>第 1 / 1 张</span></div>`
+          : "";
+
+      return `
+        <div class="project-detail-inner">
+          <div class="project-detail-copy">
+            <p>${escapeHTML(item.detail?.description || "")}</p>
+          </div>
+          <div class="project-detail-carousel" data-project-carousel>
+            <div class="project-detail-media" data-project-media>
+              ${images.length && image ? renderOptionalImage(image.src, "project-detail-image", image.alt || item.title) : ""}
+            </div>
+            ${controls}
+            <p class="project-image-caption${imageCaption ? "" : " is-empty"}" data-image-caption>${escapeHTML(imageCaption)}</p>
+          </div>
+        </div>
+      `;
     }
 
     function renderPlainItem(item) {
-      return disabledLink(`
-        <span class="plain-item-visual">
-          ${renderOptionalImage(item.imageSrc, "plain-item-image", item.title)}
-        </span>
-        <span class="plain-item-copy">
-          <h3>${escapeHTML(item.title)}</h3>
-          <p>${escapeHTML(item.description)}</p>
-        </span>
-      `, "");
+      return `
+        <article class="project-item" data-project-id="${escapeHTML(item.id)}">
+          <button class="project-summary" type="button" data-project-toggle="${escapeHTML(item.id)}" aria-expanded="false">
+            <span class="project-summary-visual">
+              ${renderOptionalImage(item.imageSrc, "plain-item-image", item.title)}
+            </span>
+            <span class="project-summary-copy">
+              <span class="project-summary-title">${escapeHTML(item.title)}</span>
+              <span class="project-summary-description">${escapeHTML(item.description)}</span>
+            </span>
+          </button>
+          <div class="project-detail" data-project-detail hidden>
+            ${renderProjectDetail(item)}
+          </div>
+        </article>
+      `;
     }
 
     function renderProjectsView(page) {
-      const featured = page.featured.map(renderProjectCard).join("");
-      const sections = page.sections.map((section) => `
-        <section class="link-section layout" aria-label="${escapeHTML(section.title)}">
+      const items = Array.isArray(page.items) ? page.items : [];
+      const featured = items.filter((item) => item.isFeatured).map(renderProjectCard).join("");
+      const sections = page.sections.map((section) => {
+        const sectionItems = items.filter((item) => item.category === section.id);
+        if (!sectionItems.length) return "";
+
+        return `
+        <section class="project-section layout" aria-label="${escapeHTML(section.title)}">
           <h2>${escapeHTML(section.title)}</h2>
-          <div class="plain-list">${section.items.map(renderPlainItem).join("")}</div>
+          <div class="project-list">${sectionItems.map(renderPlainItem).join("")}</div>
         </section>
-      `).join("");
+        `;
+      }).join("");
 
       return `
         <section class="view" data-view="projects" aria-labelledby="projects-title" hidden>
@@ -779,7 +1065,7 @@
             <h1 id="projects-title">${escapeHTML(page.title)}</h1>
             <p>${escapeHTML(page.subtitle)}</p>
           </div>
-          <div class="project-grid layout" aria-label="个人项目">${featured}</div>
+          <div class="project-grid layout" aria-label="代表作">${featured}</div>
           ${sections}
         </section>
       `;
@@ -820,6 +1106,62 @@
       root.style.setProperty("--accent-shadow", theme.shadow);
     }
 
+    function getWrappedImageIndex(index, imageCount) {
+      return (index + imageCount) % imageCount;
+    }
+
+    function getProjectById(projectId) {
+      return config.pages.projects.items.find((item) => item.id === projectId) || null;
+    }
+
+    function getProjectElement(projectId) {
+      return Array.from(document.querySelectorAll(".project-item[data-project-id]"))
+        .find((projectElement) => projectElement.dataset.projectId === projectId) || null;
+    }
+
+    function setExpandedProject(projectId) {
+      const nextId = state.expandedProjectId === projectId ? null : projectId;
+      state.expandedProjectId = nextId;
+
+      document.querySelectorAll(".project-item[data-project-id]").forEach((projectElement) => {
+        const isExpanded = projectElement.dataset.projectId === nextId;
+        projectElement.classList.toggle("is-expanded", isExpanded);
+        projectElement.querySelector("[data-project-toggle]")?.setAttribute("aria-expanded", String(isExpanded));
+        const detail = projectElement.querySelector("[data-project-detail]");
+        if (detail) detail.hidden = !isExpanded;
+      });
+    }
+
+    function focusProject(projectId) {
+      const project = getProjectById(projectId);
+      const projectElement = getProjectElement(projectId);
+      if (!project || !projectElement) return;
+
+      setExpandedProject(projectId);
+      const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height || 0;
+      const targetTop = projectElement.getBoundingClientRect().top + window.scrollY - headerHeight;
+      window.scrollTo({
+        top: Math.max(0, targetTop),
+        left: 0,
+        behavior: "smooth"
+      });
+    }
+
+    function setProjectImage(projectId, direction) {
+      const project = getProjectById(projectId);
+      const images = getProjectImages(project);
+      const projectElement = getProjectElement(projectId);
+      if (!project || !images.length || !projectElement) return;
+
+      const currentIndex = getWrappedImageIndex(state.projectImageIndexes[projectId] || 0, images.length);
+      state.projectImageIndexes[projectId] = getWrappedImageIndex(currentIndex + direction, images.length);
+      const detail = projectElement.querySelector("[data-project-detail]");
+      if (!detail) return;
+
+      detail.innerHTML = renderProjectDetail(project);
+      bindImageFallbacks(detail);
+    }
+
     function scrollToPageTop() {
       window.scrollTo({
         top: 0,
@@ -858,13 +1200,33 @@
         });
       });
 
+      const projectsView = document.querySelector('[data-view="projects"]');
+      projectsView?.addEventListener("click", (event) => {
+        const imageButton = event.target.closest("[data-project-image]");
+        if (imageButton) {
+          setProjectImage(imageButton.dataset.carouselProjectId, imageButton.dataset.projectImage === "next" ? 1 : -1);
+          return;
+        }
+
+        const featuredButton = event.target.closest("[data-featured-target]");
+        if (featuredButton) {
+          focusProject(featuredButton.dataset.featuredTarget);
+          return;
+        }
+
+        const summaryButton = event.target.closest("[data-project-toggle]");
+        if (summaryButton) {
+          setExpandedProject(summaryButton.dataset.projectToggle);
+        }
+      });
+
       document.querySelectorAll('[data-disabled="true"]').forEach((link) => {
         link.addEventListener("click", (event) => event.preventDefault());
       });
     }
 
-    function bindImageFallbacks() {
-      document.querySelectorAll("img[data-fallback]").forEach((image) => {
+    function bindImageFallbacks(scope = document) {
+      scope.querySelectorAll("img[data-fallback]").forEach((image) => {
         image.addEventListener("error", () => {
           image.hidden = true;
         });
