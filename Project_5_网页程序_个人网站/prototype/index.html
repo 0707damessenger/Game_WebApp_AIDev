@@ -121,21 +121,14 @@
         links: {
           title: "链接",
           subtitle: "内容待填写",
-          groups: [
-            {
-              title: "朋友们",
-              items: [
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" },
-                { title: "待填写", description: "内容待填写", imageSrc: "" }
-              ]
-            },
-            {
-              title: "组织",
-              items: [
-                { title: "待填写", description: "内容待填写", imageSrc: "" }
-              ]
-            }
+          myHomepages: [
+            { title: "待填写", description: "内容待填写", imageSrc: "", url: "" }
+          ],
+          contacts: [
+            { kind: "email", label: "邮箱", value: "待填写", href: "" }
+          ],
+          friends: [
+            { title: "待填写", description: "内容待填写", imageSrc: "", url: "" }
           ]
         }
       }
@@ -722,24 +715,35 @@
 
     .links-list {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-      gap: 1em;
+      gap: 3.2em;
       padding: 1em 0 9em;
     }
 
+    .link-group {
+      display: grid;
+      gap: 0.9em;
+    }
+
     .link-group-title {
-      grid-column: 1 / -1;
       margin: 0;
-      padding: 1.8em 0 0.2em;
+      padding: 0 0 0.6em;
+      border-bottom: 1px solid var(--line);
       color: #222;
-      font-size: 2.4em;
+      font-size: 1.7em;
       font-weight: 200;
-      text-align: center;
+      text-align: left;
+    }
+
+    .link-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 0.9em;
     }
 
     .link-card {
       position: relative;
-      display: block;
+      display: flex;
+      align-items: center;
       min-height: 7em;
       padding: 1em 1em 1em 6.5em;
       border-radius: 8px;
@@ -749,6 +753,10 @@
 
     .link-card:hover {
       background: color-mix(in srgb, var(--wash), #fff 42%);
+    }
+
+    .link-card.is-disabled {
+      cursor: default;
     }
 
     .link-avatar {
@@ -770,10 +778,92 @@
       border-radius: inherit;
     }
 
-    .link-card h2 {
-      padding-top: 0.25em;
+    .link-card-copy {
+      display: block;
+      min-width: 0;
+    }
+
+    .link-card-title,
+    .link-card-description {
+      display: block;
+    }
+
+    .link-card-title {
       font-size: 1.45em;
+      font-weight: 300;
       line-height: 1.2;
+    }
+
+    .link-card-description {
+      margin-top: 0.35em;
+      color: var(--muted);
+      font-weight: 200;
+      text-wrap: pretty;
+    }
+
+    .contact-list {
+      display: grid;
+      border-top: 1px solid var(--line);
+    }
+
+    .contact-row {
+      display: flex;
+      align-items: center;
+      gap: 0.9em;
+      min-height: 3.4em;
+      padding: 0.55em 0.2em;
+      border-bottom: 1px solid var(--line);
+      color: var(--accent);
+      transition: background 180ms ease, padding 180ms ease;
+    }
+
+    .contact-row:hover {
+      padding-left: 0.55em;
+      padding-right: 0.55em;
+      background: color-mix(in srgb, var(--wash), #fff 48%);
+    }
+
+    .contact-icon {
+      position: relative;
+      flex: 0 0 1.35em;
+      width: 1.35em;
+      height: 1.35em;
+      border: 0.12em solid currentColor;
+      border-radius: 0.28em;
+      opacity: 0.85;
+    }
+
+    .contact-icon[data-kind="email"]::after {
+      position: absolute;
+      left: 0.16em;
+      top: 0.17em;
+      width: 0.72em;
+      height: 0.72em;
+      border-right: 0.11em solid currentColor;
+      border-bottom: 0.11em solid currentColor;
+      transform: rotate(45deg) skew(-8deg, -8deg);
+      content: "";
+    }
+
+    .contact-copy {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0.8em;
+      min-width: 0;
+    }
+
+    .contact-label {
+      flex: 0 0 auto;
+      color: #333;
+      font-weight: 300;
+    }
+
+    .contact-value {
+      min-width: 0;
+      color: var(--muted);
+      font-weight: 200;
+      overflow-wrap: anywhere;
     }
 
     @keyframes view-in {
@@ -1072,20 +1162,56 @@
     }
 
     function renderLinkCard(item) {
-      return disabledLink(`
+      const content = `
         <span class="link-avatar">
           ${renderOptionalImage(item.imageSrc, "link-image", item.title)}
         </span>
-        <h2>${escapeHTML(item.title)}</h2>
-        <p>${escapeHTML(item.description)}</p>
-      `, "link-card");
+        <span class="link-card-copy">
+          <span class="link-card-title">${escapeHTML(item.title)}</span>
+          <span class="link-card-description">${escapeHTML(item.description)}</span>
+        </span>
+      `;
+
+      if (!item.url) {
+        return `<div class="link-card is-disabled" aria-disabled="true">${content}</div>`;
+      }
+
+      return `<a class="link-card" data-external-link href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer">${content}</a>`;
+    }
+
+    function renderContactRow(item) {
+      const content = `
+        <span class="contact-icon" data-kind="${escapeHTML(item.kind || "default")}" aria-hidden="true"></span>
+        <span class="contact-copy">
+          <span class="contact-label">${escapeHTML(item.label)}</span>
+          <span class="contact-value">${escapeHTML(item.value)}</span>
+        </span>
+      `;
+
+      if (!item.href) {
+        return `<div class="contact-row" data-contact-row aria-disabled="true">${content}</div>`;
+      }
+
+      return `<a class="contact-row" data-contact-row href="${escapeHTML(item.href)}">${content}</a>`;
+    }
+
+    function renderLinkGroup(id, title, items, contentClass, renderer) {
+      if (!Array.isArray(items) || !items.length) return "";
+
+      return `
+        <section class="link-group" data-link-group="${escapeHTML(id)}" aria-labelledby="${escapeHTML(id)}-title">
+          <h2 class="link-group-title" id="${escapeHTML(id)}-title">${escapeHTML(title)}</h2>
+          <div class="${contentClass}">${items.map(renderer).join("")}</div>
+        </section>
+      `;
     }
 
     function renderLinksView(page) {
-      const groups = page.groups.map((group) => `
-        <h2 class="link-group-title">${escapeHTML(group.title)}</h2>
-        ${group.items.map(renderLinkCard).join("")}
-      `).join("");
+      const groups = [
+        renderLinkGroup("my-homepages", "我的主页", page.myHomepages, "link-card-grid", renderLinkCard),
+        renderLinkGroup("contacts", "联系方式", page.contacts, "contact-list", renderContactRow),
+        renderLinkGroup("friends", "朋友们", page.friends, "link-card-grid", renderLinkCard)
+      ].join("");
 
       return `
         <section class="view" data-view="links" aria-labelledby="links-title" hidden>

@@ -16,7 +16,8 @@ assert(existsSync(htmlPath), "index.html should exist");
 
 const html = readFileSync(htmlPath, "utf8");
 const requiredNavItems = ["首页", "项目", "链接"];
-const navLabelMatches = html.match(/label: "/g) ?? [];
+const navConfig = html.match(/nav: \[(.*?)\n\s+\],\n\s+themes:/s)?.[1] ?? "";
+const navLabelMatches = navConfig.match(/label: "/g) ?? [];
 
 for (const item of requiredNavItems) {
   assert(html.includes(`label: "${item}"`), `missing nav item: ${item}`);
@@ -132,6 +133,8 @@ async function runBrowserChecks() {
     assert(html.includes("contacts: ["), "links should configure contacts separately");
     assert(html.includes("friends: ["), "links should configure friends separately");
     assert(html.includes("data-link-group"), "link groups should expose their category");
+    assert(html.includes('target="_blank"'), "external homepage links should open in a new tab");
+    assert(html.includes('rel="noopener noreferrer"'), "external homepage links should protect the opener");
     assert(await page.locator('[data-link-group="my-homepages"]').count() === 1, "my homepages group should render");
     assert(await page.locator('[data-link-group="contacts"]').count() === 1, "contacts group should render");
     assert(await page.locator('[data-link-group="friends"]').count() === 1, "friends group should render");
