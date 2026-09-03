@@ -10,7 +10,6 @@
       nav: [
         { id: "home", label: "首页", tone: "home", iconSrc: "" },
         { id: "projects", label: "项目", tone: "projects", iconSrc: "" },
-        //{ id: "notes", label: "笔记", tone: "notes", iconSrc: "" },
         { id: "links", label: "链接", tone: "links", iconSrc: "" }
       ],
       themes: {
@@ -24,11 +23,6 @@
           wash: "#edf8f4",
           shadow: "rgba(74, 160, 143, 0.12)"
         },
-        notes: {
-          accent: "#4fa949",
-          wash: "#e9ffed",
-          shadow: "rgba(79, 169, 73, 0.12)"
-        },
         links: {
           accent: "#d7a24c",
           wash: "#fff7e6",
@@ -38,12 +32,15 @@
       pages: {
         home: {
           name: "Ba",
-          role: "待填写",
+          role: "游戏设计 / 游戏玩家",
           avatarSrc: "",
           summary: [
-            { lead: "待填写", text: "这里留给一句个人定位或当前状态。" },
-            { lead: "待填写", text: "这里留给经历、兴趣方向、正在做的事，以及希望别人如何认识你。" },
-            { lead: "", text: "联系方式、社交账号和其他说明可以先放在这里，后续再替换为真实内容。" }
+            { lead: "baso3", text: "茄子、小八、大王……马甲很多。" },
+            { lead: "", text: "" },
+            { lead: "", text: "游戏爱好者，大学毕业后从事游戏设计工作，至今。看看项目" },
+            { lead: "", text: "游戏、番剧、观鸟、缝纫，多少都能聊上点儿。" },
+            { lead: "", text: "" },
+            { lead: "", text: "希望你玩得开心！" }
           ]
         },
         projects: {
@@ -57,7 +54,7 @@
           ],
           sections: [
             {
-              title: "参与项目",
+              title: "游戏项目",
               items: [
                 { title: "待填写", description: "内容待填写", imageSrc: "" },
                 { title: "待填写", description: "内容待填写", imageSrc: "" },
@@ -72,15 +69,6 @@
                 { title: "待填写", description: "内容待填写", imageSrc: "" }
               ]
             }
-          ]
-        },
-        notes: {
-          filters: ["全部", "日常", "代码", "后感"],
-          activeFilter: "全部",
-          items: [
-            { title: "待填写", category: "笔记", date: "日期待填写" },
-            { title: "待填写", category: "笔记", date: "日期待填写" },
-            { title: "待填写", category: "笔记", date: "日期待填写" }
           ]
         },
         links: {
@@ -214,11 +202,6 @@
     .nav-link[data-tone="projects"] .nav-geometry {
       border-radius: 0.28em;
       transform: rotate(8deg);
-    }
-
-    .nav-link[data-tone="notes"] .nav-geometry {
-      border-radius: 0.12em;
-      clip-path: polygon(0 0, 86% 0, 100% 20%, 100% 100%, 0 100%);
     }
 
     .nav-link[data-tone="links"] .nav-geometry {
@@ -433,7 +416,6 @@
     }
 
     .project-card h2,
-    .note-item h2,
     .link-card h2 {
       margin: 0;
       font-weight: 300;
@@ -510,60 +492,6 @@
       margin: 0.25em 0 0;
       color: var(--muted);
       font-weight: 200;
-    }
-
-    .filter-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 0.5em;
-      padding: 5.6em 0 3em;
-      font-size: 1.15em;
-    }
-
-    .filter-button {
-      min-height: 32px;
-      padding: 0 0.8em;
-      border-radius: 4px;
-      color: var(--accent);
-      font-weight: 200;
-      transition: background 180ms ease;
-    }
-
-    .filter-button.is-active,
-    .filter-button:hover {
-      background: #fff;
-      font-weight: 400;
-    }
-
-    .notes-list {
-      padding: 1em 0 9em;
-    }
-
-    .note-item {
-      display: block;
-      margin: 0 0 2.4em;
-      color: var(--accent);
-    }
-
-    .note-item h2 {
-      font-size: clamp(28px, 6vw, 44px);
-      font-weight: 200;
-      line-height: 1.12;
-    }
-
-    .note-meta {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1em;
-      margin-top: 0.35em;
-      color: var(--muted);
-      font-weight: 200;
-      line-height: 1.8;
-    }
-
-    .tag {
-      color: var(--accent);
     }
 
     .links-list {
@@ -693,9 +621,6 @@
         height: 3.8em;
       }
 
-      .filter-bar {
-        padding: 3em 0 1.8em;
-      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -723,8 +648,7 @@
     const app = document.querySelector("#app");
     const nav = document.querySelector("#site-nav");
     const state = {
-      activeView: config.initialView,
-      activeNoteFilter: config.pages.notes.activeFilter
+      activeView: config.initialView
     };
     let waveAnimationFrame = 0;
 
@@ -847,23 +771,6 @@
       `;
     }
 
-    function renderNotesView(page) {
-      const filters = page.filters.map((filter) => `
-        <button class="filter-button${filter === state.activeNoteFilter ? " is-active" : ""}" type="button" data-filter="${escapeHTML(filter)}">${escapeHTML(filter)}</button>
-      `).join("");
-      const items = page.items.map((item, index) => disabledLink(`
-        <h2${index === 0 ? ' id="notes-title"' : ""}>${escapeHTML(item.title)}</h2>
-        <p class="note-meta"><span class="tag">${escapeHTML(item.category)}</span><time>${escapeHTML(item.date)}</time></p>
-      `, "note-item")).join("");
-
-      return `
-        <section class="view" data-view="notes" aria-labelledby="notes-title" hidden>
-          <div class="filter-bar" aria-label="笔记分类">${filters}</div>
-          <div class="notes-list layout">${items}</div>
-        </section>
-      `;
-    }
-
     function renderLinkCard(item) {
       return disabledLink(`
         <span class="link-avatar">
@@ -923,14 +830,6 @@
 
       document.querySelectorAll('[data-disabled="true"]').forEach((link) => {
         link.addEventListener("click", (event) => event.preventDefault());
-      });
-
-      document.querySelectorAll(".filter-button").forEach((button) => {
-        button.addEventListener("click", () => {
-          state.activeNoteFilter = button.dataset.filter;
-          document.querySelectorAll(".filter-button").forEach((item) => item.classList.remove("is-active"));
-          button.classList.add("is-active");
-        });
       });
     }
 
@@ -1016,7 +915,6 @@
       app.innerHTML = [
         renderHomeView(config.pages.home),
         renderProjectsView(config.pages.projects),
-        renderNotesView(config.pages.notes),
         renderLinksView(config.pages.links)
       ].join("");
       bindImageFallbacks();

@@ -15,7 +15,6 @@ assets/
 ├── links/
 │   ├── friends/                    # 朋友或友链
 │   └── organizations/              # 组织、社区或平台
-└── notes/                          # 后续启用笔记页时使用
 ```
 
 ## 建议命名
