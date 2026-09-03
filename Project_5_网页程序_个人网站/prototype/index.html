@@ -801,26 +801,29 @@
       text-wrap: pretty;
     }
 
-    .contact-list {
-      display: grid;
-      border-top: 1px solid var(--line);
+    .links-contact-strip {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45em 1.3em;
+      margin-top: 1.35em;
+      padding-top: 0.9em;
+      border-top: 1px solid color-mix(in srgb, var(--line), transparent 30%);
     }
 
     .contact-row {
       display: flex;
       align-items: center;
-      gap: 0.9em;
-      min-height: 3.4em;
-      padding: 0.55em 0.2em;
-      border-bottom: 1px solid var(--line);
-      color: var(--accent);
-      transition: background 180ms ease, padding 180ms ease;
+      gap: 0.55em;
+      min-height: 2.2em;
+      padding: 0.1em 0;
+      color: var(--muted);
+      font-size: 0.9em;
+      transition: color 180ms ease;
     }
 
     .contact-row:hover {
-      padding-left: 0.55em;
-      padding-right: 0.55em;
-      background: color-mix(in srgb, var(--wash), #fff 48%);
+      color: var(--accent);
     }
 
     .contact-icon {
@@ -849,7 +852,7 @@
       display: flex;
       flex-wrap: wrap;
       align-items: baseline;
-      gap: 0.8em;
+      gap: 0.4em;
       min-width: 0;
     }
 
@@ -1207,9 +1210,11 @@
     }
 
     function renderLinksView(page) {
+      const contacts = Array.isArray(page.contacts) && page.contacts.length
+        ? `<div class="links-contact-strip" data-links-contacts aria-label="联系方式">${page.contacts.map(renderContactRow).join("")}</div>`
+        : "";
       const groups = [
         renderLinkGroup("my-homepages", "我的主页", page.myHomepages, "link-card-grid", renderLinkCard),
-        renderLinkGroup("contacts", "联系方式", page.contacts, "contact-list", renderContactRow),
         renderLinkGroup("friends", "朋友们", page.friends, "link-card-grid", renderLinkCard)
       ].join("");
 
@@ -1218,6 +1223,7 @@
           <div class="page-head layout">
             <h1 id="links-title">${escapeHTML(page.title)}</h1>
             <p>${escapeHTML(page.subtitle)}</p>
+            ${contacts}
           </div>
           <div class="links-list layout">${groups}</div>
         </section>

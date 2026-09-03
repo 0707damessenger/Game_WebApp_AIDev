@@ -136,8 +136,9 @@ async function runBrowserChecks() {
     assert(html.includes('target="_blank"'), "external homepage links should open in a new tab");
     assert(html.includes('rel="noopener noreferrer"'), "external homepage links should protect the opener");
     assert(await page.locator('[data-link-group="my-homepages"]').count() === 1, "my homepages group should render");
-    assert(await page.locator('[data-link-group="contacts"]').count() === 1, "contacts group should render");
+    assert(await page.locator('[data-link-group="contacts"]').count() === 0, "contacts should not render as an independent group");
     assert(await page.locator('[data-link-group="friends"]').count() === 1, "friends group should render");
+    assert(await page.locator('[data-view="links"] .page-head [data-links-contacts]').count() === 1, "contacts should render beneath the links title");
     assert(await page.locator('[data-contact-row]').count() >= 1, "contacts should render compact rows");
 
     await assertViewChangeScrollsToTop(page, '.nav-link[data-target="projects"]', "projects");
