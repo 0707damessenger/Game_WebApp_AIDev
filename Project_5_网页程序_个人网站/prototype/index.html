@@ -37,7 +37,12 @@
           summary: [
             { lead: "baso3", text: "茄子、小八、大王……马甲很多。" },
             { lead: "", text: "" },
-            { lead: "", text: "游戏爱好者，大学毕业后从事游戏设计工作，至今。看看项目" },
+            {
+              lead: "",
+              text: "游戏爱好者，大学毕业后从事游戏设计工作，至今。",
+              linkText: "看看项目",
+              linkTarget: "projects"
+            },
             { lead: "", text: "游戏、番剧、观鸟、缝纫，多少都能聊上点儿。" },
             { lead: "", text: "" },
             { lead: "", text: "希望你玩得开心！" }
@@ -342,6 +347,12 @@
     .summary b {
       color: #333;
       font-weight: 400;
+    }
+
+    .summary-link {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 0.15em;
     }
 
     .summary-shell {
@@ -698,7 +709,10 @@
     function renderHomeView(page) {
       const summary = page.summary.map((item) => {
         const lead = item.lead ? `<strong>${escapeHTML(item.lead)}</strong> ` : "";
-        return `<p>${lead}${escapeHTML(item.text)}</p>`;
+        const link = item.linkText
+          ? ` <a href="#${escapeHTML(item.linkTarget)}" class="summary-link" data-view-link="${escapeHTML(item.linkTarget)}">${escapeHTML(item.linkText)}</a>`
+          : "";
+        return `<p>${lead}${escapeHTML(item.text)}${link}</p>`;
       }).join("");
 
       return `
@@ -806,6 +820,13 @@
       root.style.setProperty("--accent-shadow", theme.shadow);
     }
 
+    function scrollToPageTop() {
+      window.scrollTo({
+        top: 0,
+        left: 0
+      });
+    }
+
     function showView(viewId) {
       state.activeView = viewId;
       applyTheme(viewId);
@@ -821,11 +842,20 @@
         view.classList.toggle("is-active", isCurrent);
         view.hidden = !isCurrent;
       });
+
+      scrollToPageTop();
     }
 
     function bindEvents() {
       document.querySelectorAll(".nav-link").forEach((button) => {
         button.addEventListener("click", () => showView(button.dataset.target));
+      });
+
+      document.querySelectorAll("[data-view-link]").forEach((link) => {
+        link.addEventListener("click", (event) => {
+          event.preventDefault();
+          showView(link.dataset.viewLink);
+        });
       });
 
       document.querySelectorAll('[data-disabled="true"]').forEach((link) => {
