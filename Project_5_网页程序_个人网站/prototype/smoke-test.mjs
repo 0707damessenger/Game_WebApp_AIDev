@@ -80,6 +80,8 @@ async function runBrowserChecks() {
 
     const featuredProjects = page.locator("[data-featured-target]");
     assert(await featuredProjects.count() >= 1, "projects should render at least one representative work");
+    assert(await page.locator("[data-featured-target] h2").count() === await featuredProjects.count(), "featured projects should render their titles");
+    assert(await page.locator("[data-featured-target] p").count() === 0, "featured projects should hide their descriptions");
     assert(await page.locator(".project-item[data-project-id]").count() >= 2, "projects should render at least two vertical projects");
 
     const featuredTarget = await featuredProjects.first().getAttribute("data-featured-target");

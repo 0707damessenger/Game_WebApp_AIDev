@@ -35,7 +35,7 @@
           role: "游戏设计 / 游戏玩家",
           avatarSrc: "",
           summary: [
-            { lead: "baso3", text: "茄子、小八、大王……马甲很多。" },
+            { lead: "hi! i'm baso3", text: "茄子、小八、大王……马甲很多。" },
             { lead: "", text: "" },
             {
               lead: "",
@@ -50,14 +50,14 @@
         },
         projects: {
           title: "项目",
-          subtitle: "内容待填写",
+          subtitle: "我都做些什么",
           items: [
             {
               id: "project-01",
               category: "participating",
               isFeatured: true,
-              title: "待填写",
-              description: "内容待填写",
+              title: "镭鸣闪击",
+              description: "轻科幻策略卡牌手游 / unity / 2026",
               imageSrc: "",
               websiteUrl: "",
               detail: {
@@ -71,9 +71,9 @@
             {
               id: "project-02",
               category: "participating",
-              isFeatured: true,
-              title: "待填写",
-              description: "内容待填写",
+              isFeatured: false,
+              title: "镭鸣闪击",
+              description: "轻科幻策略卡牌手游 / unity / 2026",
               imageSrc: "",
               websiteUrl: "",
               detail: { description: "内容待填写", images: [] }
@@ -91,7 +91,7 @@
             {
               id: "project-04",
               category: "open-source",
-              isFeatured: true,
+              isFeatured: false,
               title: "待填写",
               description: "内容待填写",
               imageSrc: "",
@@ -483,7 +483,6 @@
       font-size: 1.7em;
     }
 
-    .project-card p,
     .link-card p {
       margin: 0.4em 0 0;
       color: var(--muted);
@@ -1098,7 +1097,6 @@
           ${renderOptionalImage(item.imageSrc, "project-image", item.title)}
         </div>
         <h2>${escapeHTML(item.title)}</h2>
-        <p>${escapeHTML(item.description)}</p>
         </button>
       `;
     }
