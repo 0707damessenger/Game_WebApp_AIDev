@@ -134,6 +134,36 @@ export function getLineCandidates(state, deployedCell, direction, config = DEFAU
   return candidates;
 }
 
+export function getPreviewTargets(state, cell, config = DEFAULT_CONFIG) {
+  if (!isInsideBoard(cell.row, cell.col, config)) return [];
+  const targets = [];
+  for (const candidate of state.board) {
+    if (!candidate.card || (candidate.row === cell.row && candidate.col === cell.col)) continue;
+    const sameRow = candidate.row === cell.row;
+    const sameColumn = candidate.col === cell.col;
+    if (!sameRow && !sameColumn) continue;
+    const distance = sameRow
+      ? Math.abs(candidate.col - cell.col)
+      : Math.abs(candidate.row - cell.row);
+    if (distance <= config.preview.lineRange) {
+      targets.push({
+        cell: { row: candidate.row, col: candidate.col },
+        card: structuredClone(candidate.card),
+        distance,
+      });
+    }
+  }
+  return targets.sort((left, right) => left.distance - right.distance);
+}
+
+export function lockPreviewCell(state, cell, config = DEFAULT_CONFIG) {
+  if (!isInsideBoard(cell.row, cell.col, config)) return invalid('outside-board');
+  const target = boardCellAt(state, cell.row, cell.col);
+  if (!target) return invalid('outside-board');
+  if (target.card) return invalid('occupied-cell');
+  return { ok: true, previewCell: { row: cell.row, col: cell.col } };
+}
+
 export function buildEffectPath(startCell, endCell) {
   if (startCell.row !== endCell.row && startCell.col !== endCell.col) return [];
   const path = [];
@@ -209,6 +239,44 @@ export function resolveDeploymentEffects(state, deployedCell, deployingPlayerId,
     if (cell.card && removedCardIds.has(cell.card.id)) cell.card = null;
   }
   return { state: nextState, effects };
+}
+
+export function simulatePreview(state, targetCardCell, config = DEFAULT_CONFIG) {
+  const previewCell = state.previewCell || state.lockedPreviewCell;
+  const target = boardCellAt(state, targetCardCell.row, targetCardCell.col);
+  const previewPlayerId = state.previewPlayerId || state.activePlayerId;
+  if (!previewCell) return invalid('preview-cell-required');
+  if (!isInsideBoard(previewCell.row, previewCell.col, config)) return invalid('outside-board');
+  if (!target?.card) return invalid('preview-card-not-found');
+  const previewTarget = boardCellAt(state, previewCell.row, previewCell.col);
+  if (!previewTarget || previewTarget.card) return invalid('occupied-cell');
+  if (!playerById(state, previewPlayerId)) return invalid('player-not-found');
+
+  const previewState = cloneState(state);
+  const hypotheticalCell = boardCellAt(previewState, previewCell.row, previewCell.col);
+  hypotheticalCell.ownerId = previewPlayerId;
+  hypotheticalCell.card = {
+    id: 'preview-card',
+    value: target.card.value,
+    ownerId: previewPlayerId,
+  };
+  const resolved = resolveDeploymentEffects(
+    previewState,
+    previewCell,
+    previewPlayerId,
+    config,
+  );
+  return {
+    ok: true,
+    previewCell: { ...previewCell },
+    targetCard: structuredClone(target.card),
+    assumedCard: {
+      value: target.card.value,
+      ownerId: previewPlayerId,
+    },
+    effects: resolved.effects,
+    scoreDelta: resolved.effects.reduce((total, effect) => total + effect.scoreDelta, 0),
+  };
 }
 
 export function getReachableCells(state, playerId, cardId, config = DEFAULT_CONFIG) {

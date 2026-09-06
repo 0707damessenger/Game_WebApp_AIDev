@@ -26,18 +26,59 @@ function effectLabel(effect) {
   return `${type} · ${direction} · ${effect.path.length}格 · +${effect.scoreDelta}分`;
 }
 
+function previewEffectsAtCell(selection, cell) {
+  return (selection.previewResult?.effects || []).filter((effect) => (
+    effect.path.some((pathCell) => pathCell.row === cell.row && pathCell.col === cell.col)
+  ));
+}
+
+function previewMessage(selection) {
+  if (selection.previewNotice) return selection.previewNotice;
+  if (selection.previewResult?.ok) {
+    const assumedValue = selection.previewResult.assumedCard.value;
+    if (!selection.previewResult.effects.length) {
+      return `预览数字 ${assumedValue}：不会触发连锁或吞噬`;
+    }
+    return `预览数字 ${assumedValue}：${selection.previewResult.effects.map(effectLabel).join(' · ')}`;
+  }
+  if (selection.previewCell) {
+    return `已锁定空格 ${selection.previewCell.row + 1},${selection.previewCell.col + 1} · 高亮 ${selection.previewTargets.length} 张卡牌`;
+  }
+  if (selection.previewHoverCell) {
+    return `预览范围内有 ${selection.previewTargets.length} 张卡牌`;
+  }
+  return '悬停棋盘空格开始预览';
+}
+
 function renderBoard(boardElement, state, selection) {
-  boardElement.replaceChildren();
-  for (const cell of state.board) {
-    const element = document.createElement('div');
+  const existingCells = [...boardElement.children];
+  for (const [index, cell] of state.board.entries()) {
+    const element = existingCells[index] || document.createElement('div');
+    const existingCharacter = element.querySelector('.character');
+    const existingCard = element.querySelector('.cell-card');
     const player = cell.ownerId ? playerById(state, cell.ownerId) : null;
     const characterPlayer = getPlayerAtCell(state, cell);
     const effects = effectsAtCell(state, cell);
+    const previewEffects = previewEffectsAtCell(selection, cell);
     element.className = 'cell coordinate';
+    element.removeAttribute('title');
+    delete element.dataset.card;
+    delete element.dataset.pathIndex;
+    delete element.dataset.effect;
+    delete element.dataset.previewEffect;
     element.dataset.coordinate = `${cell.row + 1},${cell.col + 1}`;
     element.dataset.row = cell.row;
     element.dataset.col = cell.col;
     if (hasCell(selection.reachable, cell.row, cell.col)) element.classList.add('reachable-cell');
+    if (selection.previewTargets.some((target) => target.cell.row === cell.row && target.cell.col === cell.col)) {
+      element.classList.add('preview-target');
+    }
+    if (selection.previewCell?.row === cell.row && selection.previewCell?.col === cell.col) {
+      element.classList.add('preview-locked');
+    }
+    if (selection.previewHoverCell?.row === cell.row && selection.previewHoverCell?.col === cell.col) {
+      element.classList.add('preview-hover');
+    }
     const pathIndex = selection.path.findIndex((pathCell) => (
       pathCell.row === cell.row && pathCell.col === cell.col
     ));
@@ -51,6 +92,12 @@ function renderBoard(boardElement, state, selection) {
       element.dataset.effect = effects.map(effectLabel).join(' | ');
       element.title = effects.map(effectLabel).join(' | ');
     }
+    if (previewEffects.length) {
+      element.classList.add('preview-effect-cell');
+      for (const effect of previewEffects) element.classList.add(`preview-${effect.type}-cell`);
+      element.dataset.previewEffect = previewEffects.map(effectLabel).join(' | ');
+      element.title = previewEffects.map(effectLabel).join(' | ');
+    }
     if (characterPlayer) element.classList.add('character-cell');
     if (selection.mode === 'deploy' && characterPlayer?.id === selection.localPlayerId) {
       element.classList.add('deploy-target');
@@ -60,24 +107,29 @@ function renderBoard(boardElement, state, selection) {
       element.style.setProperty('--owner-color', player.color);
     }
     if (characterPlayer) {
-      const character = document.createElement('div');
+      const character = existingCharacter || document.createElement('div');
       character.className = 'character';
       character.title = characterPlayer.label;
       character.dataset.playerId = characterPlayer.id;
       character.style.setProperty('--player-color', characterPlayer.color);
       element.append(character);
+    } else {
+      existingCharacter?.remove();
     }
     if (cell.card) {
       element.dataset.card = cell.card.value;
-      const card = document.createElement('div');
+      const card = existingCard || document.createElement('div');
       card.className = 'cell-card';
       card.textContent = cell.card.value;
       const cardOwner = playerById(state, cell.card.ownerId);
       card.style.setProperty('--card-owner-color', cardOwner?.color || 'var(--ink)');
       element.append(card);
+    } else {
+      existingCard?.remove();
     }
     boardElement.append(element);
   }
+  for (const staleCell of existingCells.slice(state.board.length)) staleCell.remove();
 }
 
 function renderPlayers(listElement, state, localPlayerId) {
@@ -114,6 +166,11 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
     mode: null,
     path: [],
     reachable: [],
+    previewCell: null,
+    previewHoverCell: null,
+    previewTargets: [],
+    previewResult: null,
+    previewNotice: '',
     localPlayerId,
     ...selection,
   };
@@ -132,6 +189,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.handCount.textContent = `${localPlayer.hand.length} / ${CONFIG.cards.handLimit} 张`;
   const effectDetails = (state.lastEvent.effects || []).map(effectLabel);
   elements.eventMessage.textContent = [state.lastEvent.message, ...effectDetails].join(' · ');
+  elements.previewMessage.textContent = previewMessage(currentSelection);
   elements.eventMessage.dataset.tone = currentSelection.feedbackTone || 'neutral';
   elements.moveMode.classList.toggle('selected-action', currentSelection.mode === 'move');
   elements.deployMode.classList.toggle('selected-action', currentSelection.mode === 'deploy');

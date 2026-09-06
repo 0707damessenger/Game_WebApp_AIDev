@@ -9,8 +9,11 @@ import {
   endTurn,
   getFinalResult,
   getReachableCells,
+  getPreviewTargets,
+  lockPreviewCell,
   performDeploy,
   performMove,
+  simulatePreview,
 } from '../js/rules.mjs';
 import { getPlayerAtCell, stateToText } from '../js/render.mjs';
 
@@ -413,4 +416,54 @@ test('returns a draw when final scores are equal', () => {
   assert.equal(result.type, 'draw');
   assert.equal(result.winnerId, null);
   assert.deepEqual(result.scores, { p1: 12, p2: 12 });
+});
+
+test('returns only row and column preview cards within the configured range', () => {
+  const state = boardWithCards([
+    { row: 2, col: 0, value: 2, ownerId: 'p1' },
+    { row: 2, col: 5, value: 3, ownerId: 'p2' },
+    { row: 0, col: 2, value: 4, ownerId: 'p1' },
+    { row: 5, col: 2, value: 5, ownerId: 'p2' },
+    { row: 1, col: 1, value: 1, ownerId: 'p1' },
+  ]);
+
+  const targets = getPreviewTargets(state, { row: 2, col: 2 }, CONFIG);
+
+  assert.equal(targets.length, 4);
+  assert.ok(targets.every((target) => target.cell.row === 2 || target.cell.col === 2));
+  assert.ok(targets.every((target) => target.distance <= CONFIG.preview.lineRange));
+});
+
+test('locks only an empty cell and simulates a same-owner chain without changing real state', () => {
+  const state = boardWithCards([
+    { row: 2, col: 3, value: 3, ownerId: 'p1' },
+  ]);
+  const previewState = { ...state, previewCell: { row: 2, col: 1 }, previewPlayerId: 'p1' };
+  const before = structuredClone(state);
+
+  assert.equal(lockPreviewCell(state, { row: 2, col: 1 }, CONFIG).ok, true);
+  assert.equal(lockPreviewCell(state, { row: 2, col: 3 }, CONFIG).ok, false);
+  const preview = simulatePreview(previewState, { row: 2, col: 3 }, CONFIG);
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.effects[0].type, 'chain');
+  assert.equal(preview.scoreDelta, 9);
+  assert.deepEqual(state, before);
+});
+
+test('simulates an opponent card as consume and removes the full hypothetical path', () => {
+  const state = boardWithCards([
+    { row: 1, col: 4, value: 2, ownerId: 'p2' },
+    { row: 1, col: 3, value: 5, ownerId: 'p1', id: 'path-card' },
+  ]);
+  const previewState = { ...state, previewCell: { row: 1, col: 2 }, previewPlayerId: 'p1' };
+
+  const preview = simulatePreview(previewState, { row: 1, col: 4 }, CONFIG);
+
+  assert.equal(preview.ok, true);
+  assert.equal(preview.effects[0].type, 'consume');
+  assert.deepEqual(preview.effects[0].removedCardIds.sort(), ['path-card', 'board-card-1-4', 'preview-card'].sort());
+  assert.equal(preview.scoreDelta, 6);
+  assert.equal(boardCell(state, 1, 3).card.id, 'path-card');
+  assert.equal(boardCell(state, 1, 4).card.id, 'board-card-1-4');
 });

@@ -87,3 +87,53 @@ test('ends the local turn, switches the active player, and disables local action
     await browser.close();
   }
 });
+
+test('previews an empty-cell chain while waiting without changing the real state', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#board');
+    await page.locator('#hand [data-card-id]').first().click();
+    await page.locator('[data-mode="deploy"]').click();
+    await page.locator('[data-row="0"][data-col="0"]').click();
+    await page.locator('#end-turn').click();
+
+    const before = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+    await page.locator('[data-row="0"][data-col="1"]').hover();
+    assert.equal(await page.locator('[data-row="0"][data-col="0"].preview-target').count(), 1);
+    await page.locator('[data-row="0"][data-col="1"]').click();
+    assert.match(await page.locator('#preview-message').textContent(), /已锁定/);
+    await page.locator('[data-row="0"][data-col="0"]').hover();
+    assert.match(await page.locator('#preview-message').textContent(), /连锁/);
+
+    const after = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+    assert.deepEqual(after.board, before.board);
+    assert.deepEqual(after.ownHand, before.ownHand);
+    assert.deepEqual(after.players, before.players);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('does not lock a card cell as a preview position', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#board');
+    await page.locator('#hand [data-card-id]').first().click();
+    await page.locator('[data-mode="deploy"]').click();
+    await page.locator('[data-row="0"][data-col="0"]').click();
+    await page.locator('#end-turn').click();
+    const before = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+
+    await page.locator('[data-row="0"][data-col="0"]').click();
+
+    const after = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+    assert.deepEqual(after.board, before.board);
+    assert.match(await page.locator('#preview-message').textContent(), /不能锁定/);
+  } finally {
+    await browser.close();
+  }
+});

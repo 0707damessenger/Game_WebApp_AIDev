@@ -1,8 +1,11 @@
 import {
   getReachableCells,
   endTurn,
+  getPreviewTargets,
+  lockPreviewCell,
   performDeploy,
   performMove,
+  simulatePreview,
 } from './rules.mjs';
 
 function playerById(state, playerId) {
@@ -22,6 +25,11 @@ function resetSelection(selection) {
   selection.mode = null;
   selection.path = [];
   selection.reachable = [];
+  selection.previewCell = null;
+  selection.previewHoverCell = null;
+  selection.previewTargets = [];
+  selection.previewResult = null;
+  selection.previewNotice = '';
 }
 
 export function createInputController({
@@ -55,6 +63,70 @@ export function createInputController({
     selection.reachable = selection.mode === 'move' && selection.selectedCardId
       ? getReachableCells(state, localPlayerId, selection.selectedCardId, config)
       : [];
+  }
+
+  function cellFromElement(cellElement) {
+    return {
+      row: Number(cellElement.dataset.row),
+      col: Number(cellElement.dataset.col),
+    };
+  }
+
+  function boardCellAt(cell) {
+    return getState().board.find((candidate) => sameCell(candidate, cell));
+  }
+
+  function isPreviewTarget(cell) {
+    return selection.previewTargets.some((target) => sameCell(target.cell, cell));
+  }
+
+  function clearPreview() {
+    selection.previewCell = null;
+    selection.previewHoverCell = null;
+    selection.previewTargets = [];
+    selection.previewResult = null;
+    selection.previewNotice = '';
+  }
+
+  function handlePreviewHover(cell) {
+    selection.previewHoverCell = cell;
+    selection.previewNotice = '';
+    if (selection.previewCell && boardCellAt(cell)?.card && isPreviewTarget(cell)) {
+      const preview = simulatePreview({
+        ...getState(),
+        previewCell: selection.previewCell,
+        previewPlayerId: localPlayerId,
+      }, cell, config);
+      selection.previewResult = preview.ok ? preview : null;
+    } else if (selection.previewCell) {
+      selection.previewResult = null;
+    } else {
+      selection.previewResult = null;
+      selection.previewTargets = getPreviewTargets(getState(), cell, config);
+    }
+    render();
+  }
+
+  function handlePreviewLeave() {
+    clearPreview();
+    render();
+  }
+
+  function lockPreview(cell) {
+    const result = lockPreviewCell(getState(), cell, config);
+    selection.previewHoverCell = cell;
+    selection.previewResult = null;
+    if (!result.ok) {
+      selection.previewNotice = result.reason === 'occupied-cell'
+        ? '卡牌格不能锁定，只能悬停查看效果'
+        : '棋盘外位置不能预览';
+      render();
+      return;
+    }
+    selection.previewCell = result.previewCell;
+    selection.previewTargets = getPreviewTargets(getState(), cell, config);
+    selection.previewNotice = `已锁定空格 ${cell.row + 1},${cell.col + 1}，悬停高亮卡牌查看效果`;
+    render();
   }
 
   function selectCard(cardId) {
@@ -98,9 +170,17 @@ export function createInputController({
     const cellElement = event.target.closest('.cell');
     if (!cellElement || !elements.board.contains(cellElement)) return;
 
-    const row = Number(cellElement.dataset.row);
-    const col = Number(cellElement.dataset.col);
-    const target = { row, col };
+    const target = cellFromElement(cellElement);
+    if (!selection.mode) {
+      if (boardCellAt(target)?.card) {
+        selection.previewNotice = '卡牌格不能锁定，只能悬停查看效果';
+        selection.previewResult = null;
+        render();
+      } else {
+        lockPreview(target);
+      }
+      return;
+    }
     const player = activeLocalPlayer();
     const card = selectedCard();
 
@@ -203,11 +283,20 @@ export function createInputController({
     if (cardElement) selectCard(cardElement.dataset.cardId);
   });
   elements.board.addEventListener('click', handleBoardClick);
+  elements.board.addEventListener('pointerover', (event) => {
+    if (selection.mode) return;
+    const cellElement = event.target.closest('.cell');
+    if (!cellElement || !elements.board.contains(cellElement)) return;
+    const previousCell = event.relatedTarget?.closest?.('.cell');
+    if (previousCell === cellElement) return;
+    handlePreviewHover(cellFromElement(cellElement));
+  });
+  elements.board.addEventListener('mouseleave', handlePreviewLeave);
   elements.moveMode.addEventListener('click', () => selectMode('move'));
   elements.deployMode.addEventListener('click', () => selectMode('deploy'));
   elements.confirmAction.addEventListener('click', confirmAction);
   elements.clearSelection.addEventListener('click', clearSelection);
   elements.endTurn.addEventListener('click', endCurrentTurn);
 
-  return { selectCard, selectMode, confirmAction, clearSelection, endCurrentTurn };
+  return { selectCard, selectMode, confirmAction, clearSelection, endCurrentTurn, clearPreview };
 }
