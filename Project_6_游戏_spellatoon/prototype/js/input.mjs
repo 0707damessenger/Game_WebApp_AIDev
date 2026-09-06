@@ -80,6 +80,18 @@ export function createInputController({
     return state.ownHand || player?.hand || [];
   }
 
+  function stateForLocalRules() {
+    const state = getState();
+    const playerId = currentLocalPlayerId();
+    const localHand = ownHand();
+    return {
+      ...state,
+      players: state.players.map((player) => player.id === playerId
+        ? { ...player, hand: structuredClone(localHand) }
+        : player),
+    };
+  }
+
   function selectedCard() {
     return ownHand().find((card) => card.id === selection.selectedCardId) || null;
   }
@@ -104,7 +116,7 @@ export function createInputController({
 
   function refreshReachable() {
     selection.reachable = selection.selectedCardId
-      ? getReachableCells(getState(), currentLocalPlayerId(), selection.selectedCardId, config)
+      ? getReachableCells(stateForLocalRules(), currentLocalPlayerId(), selection.selectedCardId, config)
       : [];
   }
 

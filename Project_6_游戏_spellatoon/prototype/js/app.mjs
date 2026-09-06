@@ -132,11 +132,14 @@ function restoreSession() {
 }
 
 function applyView(view) {
+  const isSameView = state && JSON.stringify(state) === JSON.stringify(view);
   state = view;
   localPlayerId = view.localPlayerId;
-  clearSelectionState();
-  selection.feedback = '';
-  selection.feedbackTone = 'neutral';
+  if (!isSameView) {
+    clearSelectionState();
+    selection.feedback = '';
+    selection.feedbackTone = 'neutral';
+  }
   render();
 }
 
