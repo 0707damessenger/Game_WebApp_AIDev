@@ -104,6 +104,7 @@ test('starts with available action flags, empty scores, and synchronized starter
   const state = createInitialState({ random: fixedRandom, config: CONFIG });
   const playerIds = new Set(CONFIG.players.map((player) => player.id));
 
+  assert.equal(CONFIG.turns.turnsPerPlayer, 20);
   assert.deepEqual(state.players.map((player) => player.id), ['p1', 'p2']);
   assert.ok(state.players.every((player) => player.actions.moved === false));
   assert.ok(state.players.every((player) => player.actions.deployed === false));

@@ -11,7 +11,7 @@ export const CONFIG = Object.freeze({
     drawPerTurn: 1,
   }),
   turns: Object.freeze({
-    turnsPerPlayer: 10,
+    turnsPerPlayer: 20,
   }),
   timer: Object.freeze({
     actionTimeMs: 45000,
