@@ -6,7 +6,7 @@ test('exposes action controls and commits a turning move from the local hand', a
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     assert.equal(await page.locator('#board .cell').count(), 36);
     assert.equal(await page.locator('#action-controls').count(), 1);
@@ -31,7 +31,7 @@ test('deploys the selected card on the character cell and paints it', async () =
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     await page.locator('#hand [data-card-id]').first().click();
     await page.locator('[data-mode="deploy"]').click();
@@ -54,7 +54,7 @@ test('shows feedback and keeps the state unchanged after an invalid move click',
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     const before = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
     await page.locator('#hand [data-card-id]').first().click();
@@ -74,7 +74,7 @@ test('ends the local turn, switches the active player, and disables local action
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     await page.locator('#end-turn').click();
 
@@ -92,7 +92,7 @@ test('previews an empty-cell chain while waiting without changing the real state
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     await page.locator('#hand [data-card-id]').first().click();
     await page.locator('[data-mode="deploy"]').click();
@@ -120,7 +120,7 @@ test('does not lock a card cell as a preview position', async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   try {
-    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:51359/?demo=1', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#board');
     await page.locator('#hand [data-card-id]').first().click();
     await page.locator('[data-mode="deploy"]').click();

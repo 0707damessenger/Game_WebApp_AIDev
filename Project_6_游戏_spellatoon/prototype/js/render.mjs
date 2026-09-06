@@ -144,7 +144,8 @@ function renderPlayers(listElement, state, localPlayerId) {
 
 function renderHand(handElement, player, state, localPlayerId, selection) {
   handElement.replaceChildren();
-  for (const card of player.hand) {
+  const hand = state.ownHand || player.hand || [];
+  for (const card of hand) {
     const element = document.createElement('button');
     element.type = 'button';
     element.className = 'card';
@@ -186,7 +187,14 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.starterName.textContent = starter.label;
   elements.localPlayerName.textContent = localPlayer.label;
   elements.statusMessage.textContent = currentSelection.feedback || (active.id === localPlayerId ? '轮到你行动' : `等待${active.label}行动`);
-  elements.handCount.textContent = `${localPlayer.hand.length} / ${CONFIG.cards.handLimit} 张`;
+  const ownHand = state.ownHand || localPlayer.hand || [];
+  elements.handCount.textContent = `${ownHand.length} / ${CONFIG.cards.handLimit} 张`;
+  if (elements.connectionStatus) {
+    const connectedCount = state.connection?.connectedPlayers?.length || 0;
+    elements.connectionStatus.textContent = state.connection
+      ? `局域网 ${connectedCount} / ${CONFIG.players.length}`
+      : '本地演示';
+  }
   const effectDetails = (state.lastEvent.effects || []).map(effectLabel);
   elements.eventMessage.textContent = [state.lastEvent.message, ...effectDetails].join(' · ');
   elements.previewMessage.textContent = previewMessage(currentSelection);
@@ -207,6 +215,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
 
 export function stateToText(state, localPlayerId) {
   const localPlayer = playerById(state, localPlayerId);
+  const ownHand = state.ownHand || localPlayer?.hand || [];
   return JSON.stringify({
     coordinateSystem: 'row 0 to size-1 top-to-bottom; col 0 to size-1 left-to-right',
     phase: state.phase,
@@ -215,8 +224,8 @@ export function stateToText(state, localPlayerId) {
     turnNumber: state.turnNumber,
     board: state.board.map(({ row, col, ownerId, card }) => ({ row, col, ownerId, card })),
     players: state.players.map(({ id, label, position, score, completedTurns }) => ({ id, label, position, score, completedTurns })),
-    localHand: localPlayer.hand,
-    ownHand: localPlayer.hand,
+    localHand: ownHand,
+    ownHand,
     lastEvent: state.lastEvent,
     result: state.result,
   });

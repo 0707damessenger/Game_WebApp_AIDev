@@ -39,9 +39,15 @@ export function createInputController({
   setState,
   render,
   localPlayerId,
+  getLocalPlayerId = null,
   config,
+  submitAction = null,
 }) {
   const selection = getSelection();
+
+  function currentLocalPlayerId() {
+    return getLocalPlayerId ? getLocalPlayerId() : localPlayerId;
+  }
 
   function setFeedback(message, tone = 'neutral') {
     selection.feedback = message;
@@ -50,18 +56,43 @@ export function createInputController({
 
   function activeLocalPlayer() {
     const state = getState();
-    const player = playerById(state, localPlayerId);
-    return state.phase === 'playing' && state.activePlayerId === localPlayerId ? player : null;
+    const playerId = currentLocalPlayerId();
+    const player = playerById(state, playerId);
+    return state.phase === 'playing' && state.activePlayerId === playerId ? player : null;
+  }
+
+  function ownHand() {
+    const state = getState();
+    const player = playerById(state, currentLocalPlayerId());
+    return state.ownHand || player?.hand || [];
   }
 
   function selectedCard() {
-    return activeLocalPlayer()?.hand.find((card) => card.id === selection.selectedCardId) || null;
+    return ownHand().find((card) => card.id === selection.selectedCardId) || null;
+  }
+
+  async function submitRemoteAction(action) {
+    try {
+      const result = await submitAction(action);
+      if (!result?.ok) {
+        setFeedback('操作未同步，请稍后重试', 'error');
+        render();
+        return;
+      }
+      if (result.state) setState(result.state);
+      resetSelection(selection);
+      setFeedback(result.event?.message || '操作已同步', 'success');
+      render();
+    } catch {
+      setFeedback('连接中断，操作未同步', 'error');
+      render();
+    }
   }
 
   function refreshReachable() {
     const state = getState();
     selection.reachable = selection.mode === 'move' && selection.selectedCardId
-      ? getReachableCells(state, localPlayerId, selection.selectedCardId, config)
+      ? getReachableCells(state, currentLocalPlayerId(), selection.selectedCardId, config)
       : [];
   }
 
@@ -95,7 +126,7 @@ export function createInputController({
       const preview = simulatePreview({
         ...getState(),
         previewCell: selection.previewCell,
-        previewPlayerId: localPlayerId,
+        previewPlayerId: currentLocalPlayerId(),
       }, cell, config);
       selection.previewResult = preview.ok ? preview : null;
     } else if (selection.previewCell) {
@@ -166,7 +197,7 @@ export function createInputController({
     render();
   }
 
-  function handleBoardClick(event) {
+  async function handleBoardClick(event) {
     const cellElement = event.target.closest('.cell');
     if (!cellElement || !elements.board.contains(cellElement)) return;
 
@@ -196,7 +227,11 @@ export function createInputController({
         render();
         return;
       }
-      const result = performDeploy(getState(), localPlayerId, card.id, config);
+      if (submitAction) {
+        await submitRemoteAction({ type: 'deploy', cardId: card.id });
+        return;
+      }
+      const result = performDeploy(getState(), currentLocalPlayerId(), card.id, config);
       if (!result.ok) {
         setFeedback('这格已有卡牌，无法部署', 'error');
         render();
@@ -242,7 +277,15 @@ export function createInputController({
       render();
       return;
     }
-    const result = performMove(getState(), localPlayerId, card.id, selection.path, config);
+    if (submitAction) {
+      void submitRemoteAction({
+        type: 'move',
+        cardId: card.id,
+        path: structuredClone(selection.path),
+      });
+      return;
+    }
+    const result = performMove(getState(), currentLocalPlayerId(), card.id, selection.path, config);
     if (!result.ok) {
       setFeedback('请选择至少一格有效的移动路径', 'error');
       render();
@@ -266,7 +309,11 @@ export function createInputController({
       render();
       return;
     }
-    const result = endTurn(getState(), localPlayerId, config);
+    if (submitAction) {
+      void submitRemoteAction({ type: 'end-turn' });
+      return;
+    }
+    const result = endTurn(getState(), currentLocalPlayerId(), config);
     if (!result.ok) {
       setFeedback('无法结束当前回合', 'error');
       render();
