@@ -1,14 +1,14 @@
 export const CONFIG = Object.freeze({
   board: Object.freeze({
     size: 8,
-    maxMoveDistance: 5,
+    maxMoveDistance: 3,
     maxLineGap: 4,
   }),
   cards: Object.freeze({
     values: Object.freeze([1, 2, 3, 4, 5]),
     openingHand: 5,
     handLimit: 5,
-    drawPerTurn: 2,
+    drawPerTurn: 1,
   }),
   turns: Object.freeze({
     turnsPerPlayer: 10,

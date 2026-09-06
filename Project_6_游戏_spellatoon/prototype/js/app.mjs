@@ -39,6 +39,9 @@ const elements = {
   gameView: document.querySelector('#game-view'),
   startToast: document.querySelector('#start-toast'),
   startToastMessage: document.querySelector('#start-toast-message'),
+  guideButton: document.querySelector('#guide-button'),
+  guideDialog: document.querySelector('#guide-dialog'),
+  guideClose: document.querySelector('#guide-close'),
   gameToast: document.querySelector('#game-toast'),
 };
 const selection = {
@@ -330,6 +333,22 @@ async function submitAction(action) {
 elements.createRoom.addEventListener('click', createRoom);
 elements.joinRoom.addEventListener('click', joinRoom);
 elements.startGame.addEventListener('click', startGame);
+elements.guideButton.addEventListener('click', () => {
+  elements.guideDialog.hidden = false;
+  elements.guideClose.focus();
+});
+elements.guideClose.addEventListener('click', () => {
+  elements.guideDialog.hidden = true;
+  elements.guideButton.focus();
+});
+elements.guideDialog.addEventListener('click', (event) => {
+  if (event.target === elements.guideDialog) elements.guideClose.click();
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || elements.guideDialog.hidden) return;
+  event.stopImmediatePropagation();
+  elements.guideClose.click();
+}, true);
 
 inputController = createInputController({
   elements,

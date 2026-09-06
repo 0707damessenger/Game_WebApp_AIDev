@@ -53,6 +53,24 @@ test('keeps the pre-game lobby limited to room controls', async () => {
   }
 });
 
+test('opens and closes the player guide from the header help button', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    assert.equal(await page.locator('#guide-dialog').isHidden(), true);
+    await page.locator('#guide-button').click();
+
+    assert.equal(await page.locator('#guide-dialog').isVisible(), true);
+    assert.match(await page.locator('#guide-dialog').textContent(), /游玩指南/);
+    assert.match(await page.locator('#guide-dialog').textContent(), /连锁/);
+    assert.match(await page.locator('#guide-dialog').textContent(), /吞噬/);
+
+    await page.locator('#guide-close').click();
+    assert.equal(await page.locator('#guide-dialog').isHidden(), true);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('emphasizes the turn timer during the final configured warning window', async () => {
   const { browser, page } = await openDemo();
   try {

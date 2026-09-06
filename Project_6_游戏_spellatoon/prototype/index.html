@@ -15,9 +15,10 @@
     </div>
     <main class="game-shell">
       <header class="game-header">
-        <div>
+        <div class="brand-lockup">
           <p class="eyebrow">LOCAL DUEL / PUBLIC BOARD</p>
           <h1>Spellatoon</h1>
+          <button class="guide-button" type="button" id="guide-button" aria-label="打开游玩指南" title="游玩指南">?</button>
         </div>
         <div class="header-stats" id="header-stats" aria-label="对局信息">
           <div class="turn-chip" id="turn-chip" aria-live="polite">第 1 回合</div>
@@ -67,6 +68,20 @@
       </section>
       </div>
     </main>
+    <div class="guide-dialog" id="guide-dialog" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
+      <section class="guide-card">
+        <div class="guide-heading">
+          <div><span class="guide-kicker">HOW TO PLAY</span><h2 id="guide-title">游玩指南</h2></div>
+          <button class="guide-close" type="button" id="guide-close" aria-label="关闭游玩指南" title="关闭">×</button>
+        </div>
+        <div class="guide-content">
+          <section><h3>回合行动</h3><p>每回合补 1 张牌。选中手牌后，点击角色当前位置部署，点击蓝色格移动；再次点击同一目标确认。</p></section>
+          <section><h3>移动与部署</h3><p>数字决定移动距离，但 4、5 只能移动最多 3 格。部署会占领角色所在格，并将它染成我方颜色。</p></section>
+          <section><h3>连锁与吞噬</h3><p>同一直线上，相同数字会产生效果：同色触发连锁，异色触发吞噬。效果路径会染色，参与卡牌会被收走。</p></section>
+          <section><h3>得分与胜负</h3><p>每条效果按卡牌数字乘以路径格数得分。双方完成规定回合后立即结算，分数更高者获胜。</p></section>
+        </div>
+      </section>
+    </div>
     <div class="game-toast" id="game-toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="./js/app.mjs"></script>
   </body>

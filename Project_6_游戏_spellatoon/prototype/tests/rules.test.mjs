@@ -164,6 +164,22 @@ test('allows movement through an occupied card cell and exposes reachable cells'
   assert.equal(result.ok, true);
 });
 
+test('caps high-value card movement at the configured movement limit', () => {
+  const state = stateWithPlayerHandAt({ cardValue: 5 });
+  const cardId = state.players[0].hand[0].id;
+  const reachable = getReachableCells(state, 'p1', cardId, CONFIG);
+  const overlongPath = [
+    { row: 0, col: 1 },
+    { row: 0, col: 2 },
+    { row: 0, col: 3 },
+    { row: 0, col: 4 },
+  ];
+
+  assert.equal(CONFIG.board.maxMoveDistance, 3);
+  assert.equal(reachable.some((cell) => cell.row === 0 && cell.col === 4), false);
+  assert.equal(performMove(state, 'p1', cardId, overlongPath, CONFIG).reason, 'move-distance');
+});
+
 test('rejects an overlong or out-of-board path without changing state', () => {
   const state = stateWithPlayerHandAt({ cardValue: 2 });
   const result = performMove(state, 'p1', state.players[0].hand[0].id, [
@@ -333,7 +349,7 @@ test('uses the coin result to choose either player as the starter', () => {
   assert.equal(secondPlayer.activePlayerId, secondPlayer.starterId);
 });
 
-test('draws two cards at turn start without exceeding the hand limit', () => {
+test('draws configured cards at turn start without exceeding the hand limit', () => {
   const state = createInitialState({ random: fixedRandom, config: CONFIG });
   state.players[0].hand = state.players[0].hand.slice(0, CONFIG.cards.handLimit - 1);
   state.players[0].actions = { moved: true, deployed: true };
@@ -345,6 +361,17 @@ test('draws two cards at turn start without exceeding the hand limit', () => {
   assert.deepEqual(result.state.players[0].actions, { moved: false, deployed: false });
   assert.equal(result.event.drawnCount, 1);
   assert.equal(state.players[0].hand.length, CONFIG.cards.handLimit - 1);
+});
+
+test('draws one configured card when a turn begins', () => {
+  const state = createInitialState({ random: fixedRandom, config: CONFIG });
+  state.players[0].hand = state.players[0].hand.slice(0, 2);
+
+  const result = beginTurn(state, 'p1', CONFIG);
+
+  assert.equal(CONFIG.cards.drawPerTurn, 1);
+  assert.equal(result.event.drawnCount, 1);
+  assert.equal(result.state.players[0].hand.length, 3);
 });
 
 test('drawCards is capped at the hand limit and can refill an empty hand', () => {

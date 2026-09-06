@@ -39,11 +39,16 @@ button, input { font: inherit; }
 
 .game-header, .section-heading, .hand-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .game-header { flex: 0 0 auto; margin-bottom: 12px; }
+.brand-lockup { position: relative; display: grid; grid-template-columns: auto auto; align-items: end; column-gap: 10px; }
+.brand-lockup .eyebrow { grid-column: 1 / -1; }
 .header-stats { display: flex; align-items: center; justify-content: center; gap: 8px; margin-left: auto; }
 .eyebrow, .section-kicker, .panel-label, .event-mark { margin: 0; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: 0.14em; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 40px; line-height: 1; letter-spacing: 0.02em; }
 h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
+.guide-button, .guide-close { display: grid; place-items: center; border: 2px solid var(--ink); background: var(--yellow); color: var(--ink); font-weight: 900; cursor: pointer; }
+.guide-button { width: 28px; height: 28px; border-radius: 50%; font-size: 17px; line-height: 1; }
+.guide-button:hover { background: #fff2a4; transform: translateY(-1px); }
 .turn-chip, .status-pill {
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -284,6 +289,21 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
 .game-toast[hidden] { display: none; }
 .game-toast[data-tone="warning"] { border-color: var(--yellow); background: #7a5e12; }
 
+.guide-dialog { position: fixed; z-index: 40; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(25, 35, 56, 0.48); }
+.guide-dialog[hidden] { display: none; }
+.guide-card { width: min(520px, 100%); max-height: min(680px, calc(100dvh - 40px)); overflow: auto; border: 3px solid var(--ink); border-radius: 8px; background: var(--white); box-shadow: 10px 10px 0 rgba(25, 35, 56, 0.24); }
+.guide-heading { position: sticky; top: 0; display: flex; align-items: start; justify-content: space-between; gap: 16px; padding: 18px 20px 14px; border-bottom: 1px solid var(--line); background: var(--white); }
+.guide-kicker { color: var(--purple); font-size: 10px; font-weight: 900; letter-spacing: 0.14em; }
+.guide-close { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 5px; background: var(--white); font-size: 23px; line-height: 1; }
+.guide-close:hover { border-color: var(--red); color: var(--red); }
+.guide-content { display: grid; gap: 14px; padding: 18px 20px 22px; }
+.guide-content section { padding-left: 12px; border-left: 4px solid var(--blue); }
+.guide-content section:nth-child(2) { border-color: var(--green); }
+.guide-content section:nth-child(3) { border-color: var(--purple); }
+.guide-content section:nth-child(4) { border-color: var(--yellow); }
+.guide-content h3 { margin: 0 0 4px; font-size: 14px; }
+.guide-content p { margin: 0; color: #40506a; font-size: 13px; font-weight: 700; line-height: 1.55; }
+
 .lobby-panel { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 8px; padding: 18px; background: var(--white); box-shadow: var(--shadow); }
 .lobby-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
 .room-input-label { color: var(--muted); font-size: 12px; font-weight: 800; }
@@ -302,6 +322,9 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
   .score-strip .player-name, .score-strip .player-score { font-size: 10px; }
   .status-pill { padding: 7px; }
   h1 { font-size: 32px; }
+  .guide-dialog { padding: 12px; }
+  .guide-heading { padding: 15px 16px 12px; }
+  .guide-content { gap: 12px; padding: 15px 16px 18px; }
   .turn-chip { max-width: 150px; padding: 7px 8px; text-align: center; }
   .timer-chip { padding-left: 7px; padding-right: 7px; }
   .score-strip { height: 34px; min-height: 34px; padding: 0 7px; }
