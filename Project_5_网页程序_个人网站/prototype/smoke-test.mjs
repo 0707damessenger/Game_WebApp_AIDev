@@ -34,7 +34,7 @@ assert(html.includes('id: "links"'), "links config should exist");
 assert(html.includes("function renderApp"), "prototype should render from CONFIG");
 assert(html.includes("待填写"), "template should leave content blank with placeholders");
 assert(html.includes('iconSrc: ""'), "navigation icon paths should be configurable");
-assert(html.includes('avatarSrc: ""'), "home avatar path should be configurable");
+assert(html.includes("avatarSrc:"), "home avatar path should be configurable");
 assert(html.includes('imageSrc: ""'), "content image paths should be configurable");
 assert(html.includes("wave-divider"), "home view should include a water wave divider");
 assert(html.includes('renderOptionalImage(item.iconSrc, "nav-icon"'), "navigation should render configured images");
@@ -54,6 +54,7 @@ assert(html.includes("images: ["), "project details should support multiple imag
 assert(html.includes("data-featured-target"), "featured projects should render quick-jump targets");
 assert(html.includes("data-project-toggle"), "vertical projects should render expandable summaries");
 assert(html.includes("data-project-carousel"), "project details should render an image carousel");
+assert(html.includes("等工作。\\n从零到一"), "project detail descriptions should support configured line breaks");
 
 async function assertViewChangeScrollsToTop(page, triggerSelector, expectedView) {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -91,6 +92,18 @@ async function runBrowserChecks() {
 
     await featuredProjects.first().click();
     await page.waitForSelector(`.project-item[data-project-id="${featuredTarget}"].is-expanded`);
+
+    await featuredProjects.first().scrollIntoViewIfNeeded();
+    await featuredProjects.first().click();
+    await page.waitForFunction(({ target }) => {
+      const project = document.querySelector(`.project-item[data-project-id="${target}"]`);
+      const header = document.querySelector(".site-header");
+      return project?.classList.contains("is-expanded") && Math.abs(project.getBoundingClientRect().top - header.getBoundingClientRect().bottom) <= 1;
+    }, { target: featuredTarget });
+
+    const projectDescription = featuredProject.locator("[data-project-detail] .project-detail-copy p");
+    assert((await projectDescription.textContent()).includes("\n"), "project detail description should render a configured line break");
+    assert(await projectDescription.evaluate((element) => getComputedStyle(element).whiteSpace === "pre-line"), "project detail description should preserve configured line breaks");
 
     const featuredCarousel = featuredProject.locator("[data-project-carousel]");
     assert(await featuredCarousel.count() === 1, "featured project should expose its detail carousel");

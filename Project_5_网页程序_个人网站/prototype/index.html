@@ -33,7 +33,7 @@
         home: {
           name: "Ba",
           role: "游戏设计 / 游戏玩家",
-          avatarSrc: "",
+          avatarSrc: "assets/avatar/101.png",
           summary: [
             { lead: "hi! i'm baso3", text: "茄子、小八、大王……马甲很多。" },
             { lead: "", text: "" },
@@ -58,10 +58,10 @@
               isFeatured: true,
               title: "镭鸣闪击",
               description: "轻科幻策略卡牌手游 / unity / 2026",
-              imageSrc: "",
+              imageSrc: "assets/avatar/201.png",
               websiteUrl: "",
               detail: {
-                description: "内容待填写",
+                description: "负责项目内常驻与活动玩法设计、玩法配套关卡设计、数值规划，及项目后期AI内容生产管线搭建等工作。\n从零到一深度参与游戏的整体策划与制作。",
                 images: [
                   { src: "", alt: "项目图片一", description: "图片说明待填写一" },
                   { src: "", alt: "项目图片二", description: "图片说明待填写二" }
@@ -72,8 +72,8 @@
               id: "project-02",
               category: "participating",
               isFeatured: false,
-              title: "镭鸣闪击",
-              description: "轻科幻策略卡牌手游 / unity / 2026",
+              title: "内容待填写",
+              description: "内容待填写",
               imageSrc: "",
               websiteUrl: "",
               detail: { description: "内容待填写", images: [] }
@@ -589,6 +589,7 @@
       font-size: 1.15em;
       font-weight: 200;
       line-height: 1.55;
+      white-space: pre-line;
       text-wrap: pretty;
     }
 
@@ -1294,7 +1295,9 @@
       const projectElement = getProjectElement(projectId);
       if (!project || !projectElement) return;
 
-      setExpandedProject(projectId);
+      if (state.expandedProjectId !== projectId) {
+        setExpandedProject(projectId);
+      }
       const headerHeight = document.querySelector(".site-header")?.getBoundingClientRect().height || 0;
       const targetTop = projectElement.getBoundingClientRect().top + window.scrollY - headerHeight;
       window.scrollTo({
