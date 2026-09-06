@@ -134,6 +134,25 @@ export function createInputController({
     };
   }
 
+  function cellElementFromBoardClick(event) {
+    const directCell = event.target.closest('.cell');
+    if (directCell && elements.board.contains(directCell)) return directCell;
+
+    const cells = [...elements.board.querySelectorAll('.cell')];
+    const bounds = (elements.board.closest('.board-frame') || elements.board).getBoundingClientRect();
+    if (
+      event.clientX < bounds.left || event.clientX > bounds.right
+      || event.clientY < bounds.top || event.clientY > bounds.bottom
+    ) return null;
+
+    return cells.reduce((nearest, cell) => {
+      const rect = cell.getBoundingClientRect();
+      const distance = (event.clientX - (rect.left + rect.width / 2)) ** 2
+        + (event.clientY - (rect.top + rect.height / 2)) ** 2;
+      return !nearest || distance < nearest.distance ? { cell, distance } : nearest;
+    }, null)?.cell || null;
+  }
+
   function boardCellAt(cell) {
     return getState().board.find((candidate) => sameCell(candidate, cell));
   }
@@ -171,11 +190,22 @@ export function createInputController({
 
   function handlePreviewLeave() {
     if (selection.selectedCardId) return;
+    if (selection.previewCell) {
+      selection.previewHoverCell = null;
+      selection.previewResult = null;
+      render();
+      return;
+    }
     clearPreview();
     render();
   }
 
   function lockPreview(cell) {
+    if (sameCell(selection.previewCell, cell)) {
+      clearPreview();
+      render();
+      return;
+    }
     const result = lockPreviewCell(getState(), cell, config);
     selection.previewHoverCell = cell;
     selection.previewResult = null;
@@ -292,8 +322,8 @@ export function createInputController({
   }
 
   function handleBoardClick(event) {
-    const cellElement = event.target.closest('.cell');
-    if (!cellElement || !elements.board.contains(cellElement)) return;
+    const cellElement = cellElementFromBoardClick(event);
+    if (!cellElement) return;
 
     const target = cellFromElement(cellElement);
     const card = selectedCard();
@@ -352,7 +382,10 @@ export function createInputController({
     const cardElement = event.target.closest('[data-card-id]');
     if (cardElement) selectCard(cardElement.dataset.cardId);
   });
-  elements.board.addEventListener('click', handleBoardClick);
+  (elements.board.closest('.board-frame') || elements.board).addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    handleBoardClick(event);
+  });
   elements.board.addEventListener('pointerover', (event) => {
     if (selection.selectedCardId) return;
     const cellElement = event.target.closest('.cell');

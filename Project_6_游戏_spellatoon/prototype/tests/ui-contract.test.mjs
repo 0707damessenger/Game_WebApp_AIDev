@@ -268,3 +268,154 @@ test('does not lock a card cell as a preview position', async () => {
     await browser.close();
   }
 });
+
+test('locks an empty preview cell while the local player is active and no card is selected', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.locator('[data-row="0"][data-col="1"]').click();
+
+    assert.equal(await page.locator('[data-row="0"][data-col="1"].preview-locked').count(), 1);
+    assert.match(await page.locator('#preview-message').textContent(), /已锁定空格 1,2/);
+    await page.waitForTimeout(CONFIG.timer.tickMs * 2);
+    assert.equal(await page.locator('[data-row="0"][data-col="1"].preview-locked').count(), 1);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks the nearest preview cell when clicking an inter-cell gap', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const leftCell = await page.locator('[data-row="0"][data-col="1"]').boundingBox();
+    const rightCell = await page.locator('[data-row="0"][data-col="2"]').boundingBox();
+    await page.mouse.click((leftCell.x + leftCell.width + rightCell.x) / 2, leftCell.y + leftCell.height / 2);
+
+    assert.equal(await page.locator('.preview-locked').count(), 1);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('clicking a locked preview cell again cancels its lock', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const cell = page.locator('[data-row="0"][data-col="1"]');
+    await cell.click();
+    await cell.click();
+
+    assert.equal(await page.locator('.preview-locked').count(), 0);
+    assert.match(await page.locator('#preview-message').textContent(), /悬停或点击空格开始预览/);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('clicking a different empty preview cell switches the lock', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.locator('[data-row="0"][data-col="1"]').click();
+    await page.locator('[data-row="0"][data-col="2"]').click();
+
+    assert.equal(await page.locator('[data-row="0"][data-col="1"].preview-locked').count(), 0);
+    assert.equal(await page.locator('[data-row="0"][data-col="2"].preview-locked').count(), 1);
+    assert.match(await page.locator('#preview-message').textContent(), /已锁定空格 1,3/);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('keeps a preview cell in place while it is hovered', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const cell = page.locator('[data-row="0"][data-col="1"]');
+    const before = await cell.boundingBox();
+    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    await page.waitForTimeout(180);
+    const after = await cell.boundingBox();
+
+    assert.equal(after.y, before.y);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('keeps a locked preview cell after the pointer leaves the board', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.locator('[data-row="0"][data-col="1"]').click();
+    await page.locator('#preview-message').hover();
+
+    assert.equal(await page.locator('[data-row="0"][data-col="1"].preview-locked').count(), 1);
+    assert.match(await page.locator('#preview-message').textContent(), /已锁定空格 1,2/);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks the nearest preview cell when clicking the board-frame edge', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const frame = await page.locator('.board-frame').boundingBox();
+    await page.mouse.click(frame.x + 2, frame.y + 2);
+
+    assert.equal(await page.locator('[data-row="0"][data-col="0"].preview-locked').count(), 1);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks a preview cell from every inner tile edge', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const cell = page.locator('[data-row="1"][data-col="1"]');
+    const rect = await cell.boundingBox();
+    const edgePoints = [
+      [rect.x + 2, rect.y + rect.height / 2],
+      [rect.x + rect.width - 2, rect.y + rect.height / 2],
+      [rect.x + rect.width / 2, rect.y + 2],
+      [rect.x + rect.width / 2, rect.y + rect.height - 2],
+    ];
+
+    for (const [x, y] of edgePoints) {
+      await page.mouse.click(x, y);
+      assert.equal(await cell.evaluate((element) => element.classList.contains('preview-locked')), true);
+      await page.mouse.click(x, y);
+      assert.equal(await cell.evaluate((element) => element.classList.contains('preview-locked')), false);
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks a preview cell from its edge after a hover pause', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const cell = page.locator('[data-row="1"][data-col="1"]');
+    const rect = await cell.boundingBox();
+    const x = rect.x + 2;
+    const y = rect.y + rect.height / 2;
+
+    await page.mouse.move(x, y);
+    await page.waitForTimeout(180);
+    await page.mouse.click(x, y);
+
+    assert.equal(await cell.evaluate((element) => element.classList.contains('preview-locked')), true);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks a preview cell on pointer press at its edge', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    const cell = page.locator('[data-row="1"][data-col="1"]');
+    const rect = await cell.boundingBox();
+    await page.mouse.move(rect.x + 2, rect.y + rect.height / 2);
+    await page.mouse.down();
+
+    assert.equal(await cell.evaluate((element) => element.classList.contains('preview-locked')), true);
+    await page.mouse.up();
+  } finally {
+    await browser.close();
+  }
+});

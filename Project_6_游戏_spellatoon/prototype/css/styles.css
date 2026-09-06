@@ -146,7 +146,7 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
   cursor: pointer;
   transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
-.cell:hover { transform: translateY(-1px); border-color: #7d91ad; }
+.cell:hover { border-color: #7d91ad; }
 .cell.reachable-cell { border: 2px solid var(--blue); background: #eef8ff; box-shadow: inset 0 0 0 2px rgba(35, 137, 232, 0.12); }
 .cell.deploy-target { border: 2px solid var(--green); background: #effbf5; box-shadow: inset 0 0 0 2px rgba(36, 173, 114, 0.14); }
 .cell.deploy-blocked { border-color: #aebdcb; background: #f4f6f8; cursor: not-allowed; }
@@ -155,7 +155,7 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
 .cell.path-cell::after { background: var(--yellow); }
 .cell.preview-target { border-style: dashed; border-color: var(--purple); background: #faf7ff; box-shadow: inset 0 0 0 2px rgba(143, 90, 217, 0.12); }
 .cell.preview-locked { border-color: var(--purple); background: #f4eeff; box-shadow: inset 0 0 0 3px rgba(143, 90, 217, 0.24); }
-.cell.preview-hover { transform: translateY(-2px); }
+.cell.preview-hover { box-shadow: inset 0 0 0 2px rgba(143, 90, 217, 0.28); }
 .cell.preview-effect-cell { box-shadow: inset 0 0 0 3px rgba(143, 90, 217, 0.26); }
 .cell.preview-chain-cell { border-color: var(--yellow); background: #fff7cf; }
 .cell.preview-consume-cell { border-color: var(--red); background: #fff0f2; }
