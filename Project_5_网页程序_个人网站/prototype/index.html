@@ -192,9 +192,17 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      background: rgba(255, 255, 255, 0.82);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+      margin-bottom: calc(-1 * var(--nav-height));
+      border-bottom: 1px solid transparent;
+      background: transparent;
+      transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
+    }
+
+    .site-header.is-scrolled {
+      border-bottom-color: rgba(255, 255, 255, 0.38);
+      background: rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0.45em 1.2em rgba(34, 34, 34, 0.06);
     }
 
     .site-nav {
@@ -277,7 +285,7 @@
 
     .view {
       display: none;
-      min-height: calc(100vh - var(--nav-height));
+      min-height: 100vh;
       background: linear-gradient(var(--wash), #fff) repeat-x top left;
       background-size: 100% 300px;
       opacity: 0;
@@ -1005,6 +1013,10 @@
     const root = document.documentElement;
     const app = document.querySelector("#app");
     const nav = document.querySelector("#site-nav");
+    const header = document.querySelector(".site-header");
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
     const state = {
       activeView: config.initialView,
       expandedProjectId: null,
@@ -1327,6 +1339,11 @@
         top: 0,
         left: 0
       });
+      syncHeaderScrollState();
+    }
+
+    function syncHeaderScrollState() {
+      header?.classList.toggle("is-scrolled", window.scrollY > 8);
     }
 
     function showView(viewId) {
@@ -1349,6 +1366,9 @@
     }
 
     function bindEvents() {
+      window.addEventListener("scroll", syncHeaderScrollState, { passive: true });
+      window.addEventListener("pageshow", scrollToPageTop);
+
       document.querySelectorAll(".nav-link").forEach((button) => {
         button.addEventListener("click", () => showView(button.dataset.target));
       });
@@ -1472,6 +1492,7 @@
       bindImageFallbacks();
       bindEvents();
       showView(state.activeView);
+      syncHeaderScrollState();
       startWaveAnimation();
     }
 

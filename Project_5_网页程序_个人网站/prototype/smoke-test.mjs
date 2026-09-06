@@ -48,6 +48,10 @@ assert(html.includes('linkTarget: "projects"'), "home summary should configure t
 assert(html.includes("data-view-link"), "home summary should render internal view links");
 assert(html.includes("showView(link.dataset.viewLink)"), "internal view links should switch views");
 assert(html.includes("function scrollToPageTop"), "prototype should provide a scroll-to-top helper");
+assert(html.includes("function syncHeaderScrollState"), "prototype should synchronize the header appearance with scroll position");
+assert(html.includes("site-header.is-scrolled"), "header should define a scrolled transparent-glass state");
+assert(html.includes('history.scrollRestoration = "manual"'), "prototype should disable browser scroll restoration on refresh");
+assert(html.includes("margin-bottom: calc(-1 * var(--nav-height))"), "transparent header should overlay page content instead of reserving white space");
 assert(html.includes("isFeatured: true"), "projects should support representative work markers");
 assert(html.includes("detail: {"), "projects should configure detail content");
 assert(html.includes("images: ["), "project details should support multiple images");
@@ -75,6 +79,21 @@ async function runBrowserChecks() {
   try {
     await page.goto(pathToFileURL(htmlPath).href, { waitUntil: "networkidle" });
     await page.waitForSelector('[data-view="home"].is-active');
+
+    const header = page.locator(".site-header");
+    const appTop = await page.locator("#app").evaluate((element) => Math.round(element.getBoundingClientRect().top));
+    assert(appTop <= 1, "transparent header should overlay the page content at the top");
+    assert(await header.evaluate((element) => !element.classList.contains("is-scrolled")), "header should start transparent before scrolling");
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForFunction(() => document.querySelector(".site-header")?.classList.contains("is-scrolled"));
+    assert(await header.evaluate((element) => getComputedStyle(element).backdropFilter !== "none"), "scrolled header should add blur for readability");
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForFunction(() => !document.querySelector(".site-header")?.classList.contains("is-scrolled"));
+
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForFunction(() => window.scrollY > 0);
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForFunction(() => window.scrollY === 0 && !document.querySelector(".site-header")?.classList.contains("is-scrolled"));
 
     await page.locator('.nav-link[data-target="projects"]').click();
     await page.waitForSelector('[data-view="projects"].is-active');
