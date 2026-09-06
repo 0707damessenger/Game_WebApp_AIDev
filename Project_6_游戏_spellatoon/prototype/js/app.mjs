@@ -16,10 +16,12 @@ const elements = {
   statusMessage: document.querySelector('#status-message'),
   handCount: document.querySelector('#hand-count'),
   eventMessage: document.querySelector('#event-message'),
+  resultMessage: document.querySelector('#result-message'),
   moveMode: document.querySelector('#move-mode'),
   deployMode: document.querySelector('#deploy-mode'),
   confirmAction: document.querySelector('#confirm-action'),
   clearSelection: document.querySelector('#clear-selection'),
+  endTurn: document.querySelector('#end-turn'),
   actionHint: document.querySelector('#action-hint'),
 };
 const selection = {

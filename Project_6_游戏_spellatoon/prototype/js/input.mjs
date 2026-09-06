@@ -1,5 +1,6 @@
 import {
   getReachableCells,
+  endTurn,
   performDeploy,
   performMove,
 } from './rules.mjs';
@@ -179,6 +180,24 @@ export function createInputController({
     render();
   }
 
+  function endCurrentTurn() {
+    if (!activeLocalPlayer()) {
+      setFeedback('当前不是你的行动回合', 'error');
+      render();
+      return;
+    }
+    const result = endTurn(getState(), localPlayerId, config);
+    if (!result.ok) {
+      setFeedback('无法结束当前回合', 'error');
+      render();
+      return;
+    }
+    setState(result.state);
+    resetSelection(selection);
+    setFeedback(result.event.message, 'success');
+    render();
+  }
+
   elements.hand.addEventListener('click', (event) => {
     const cardElement = event.target.closest('[data-card-id]');
     if (cardElement) selectCard(cardElement.dataset.cardId);
@@ -188,6 +207,7 @@ export function createInputController({
   elements.deployMode.addEventListener('click', () => selectMode('deploy'));
   elements.confirmAction.addEventListener('click', confirmAction);
   elements.clearSelection.addEventListener('click', clearSelection);
+  elements.endTurn.addEventListener('click', endCurrentTurn);
 
-  return { selectCard, selectMode, confirmAction, clearSelection };
+  return { selectCard, selectMode, confirmAction, clearSelection, endCurrentTurn };
 }

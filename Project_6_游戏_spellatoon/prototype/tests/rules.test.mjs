@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 
 import { CONFIG } from '../js/config.mjs';
 import {
+  beginTurn,
   createInitialState,
+  drawCards,
+  endTurn,
+  getFinalResult,
   getReachableCells,
   performDeploy,
   performMove,
@@ -310,4 +314,103 @@ test('does not recursively trigger a second effect from cards left on the first 
   assert.equal(result.event.effects[0].type, 'chain');
   assert.equal(boardCell(result.state, 2, 1).card.id, 'leftover-a');
   assert.equal(boardCell(result.state, 2, 3).card.id, 'leftover-b');
+});
+
+test('uses the coin result to choose either player as the starter', () => {
+  const firstPlayer = createInitialState({ random: () => 0, config: CONFIG });
+  const secondPlayer = createInitialState({ random: () => 0.999, config: CONFIG });
+
+  assert.equal(firstPlayer.starterId, 'p1');
+  assert.equal(secondPlayer.starterId, 'p2');
+  assert.equal(firstPlayer.activePlayerId, firstPlayer.starterId);
+  assert.equal(secondPlayer.activePlayerId, secondPlayer.starterId);
+});
+
+test('draws two cards at turn start without exceeding the hand limit', () => {
+  const state = createInitialState({ random: fixedRandom, config: CONFIG });
+  state.players[0].hand = state.players[0].hand.slice(0, CONFIG.cards.handLimit - 1);
+  state.players[0].actions = { moved: true, deployed: true };
+
+  const result = beginTurn(state, 'p1', CONFIG);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.players[0].hand.length, CONFIG.cards.handLimit);
+  assert.deepEqual(result.state.players[0].actions, { moved: false, deployed: false });
+  assert.equal(result.event.drawnCount, 1);
+  assert.equal(state.players[0].hand.length, CONFIG.cards.handLimit - 1);
+});
+
+test('drawCards is capped at the hand limit and can refill an empty hand', () => {
+  const state = createInitialState({ random: fixedRandom, config: CONFIG });
+  state.players[0].hand = [];
+  const result = drawCards(state, 'p1', 2, () => 0.999, CONFIG);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.event.drawnCount, 2);
+  assert.equal(result.state.players[0].hand.length, 2);
+  assert.ok(result.state.players[0].hand.every((card) => card.value === 5));
+
+  const full = drawCards(result.state, 'p1', 2, () => 0, CONFIG);
+  assert.equal(full.state.players[0].hand.length, 4);
+  const capped = drawCards({ ...full.state, players: full.state.players.map((player) => (
+    player.id === 'p1' ? { ...player, hand: Array.from({ length: CONFIG.cards.handLimit }, (_, index) => ({
+      id: `filled-${index}`,
+      value: 1,
+      ownerId: 'p1',
+    })) } : player
+  )) }, 'p1', 2, () => 0, CONFIG);
+  assert.equal(capped.event.drawnCount, 0);
+  assert.equal(capped.state.players[0].hand.length, CONFIG.cards.handLimit);
+});
+
+test('ends the active player turn, switches players, and rejects the waiting player', () => {
+  const state = createInitialState({ random: () => 0, config: CONFIG });
+  const rejected = endTurn(state, 'p2', CONFIG);
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.reason, 'not-active-player');
+
+  state.players[0].actions = { moved: true, deployed: true };
+  const result = endTurn(state, 'p1', CONFIG);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.state.players[0].completedTurns, 1);
+  assert.equal(result.state.activePlayerId, 'p2');
+  assert.equal(result.state.turnNumber, 1);
+  assert.deepEqual(result.state.players[1].actions, { moved: false, deployed: false });
+  assert.equal(result.event.nextPlayerId, 'p2');
+  assert.equal(result.state.players[1].hand.length, CONFIG.cards.handLimit);
+  assert.equal(state.players[0].completedTurns, 0);
+});
+
+test('increments the round after both players act and settles immediately at the turn limit', () => {
+  const state = createInitialState({ random: () => 0, config: CONFIG });
+  state.players[0].completedTurns = CONFIG.turns.turnsPerPlayer - 1;
+  state.players[1].completedTurns = CONFIG.turns.turnsPerPlayer - 1;
+  state.players[0].score = 20;
+  state.players[1].score = 10;
+
+  const lastFirstPlayerTurn = endTurn(state, 'p1', CONFIG);
+  assert.equal(lastFirstPlayerTurn.state.phase, 'playing');
+  assert.equal(lastFirstPlayerTurn.state.players[0].completedTurns, CONFIG.turns.turnsPerPlayer);
+  assert.equal(lastFirstPlayerTurn.state.activePlayerId, 'p2');
+
+  const final = endTurn(lastFirstPlayerTurn.state, 'p2', CONFIG);
+  assert.equal(final.state.phase, 'finished');
+  assert.equal(final.state.result.type, 'win');
+  assert.equal(final.state.result.winnerId, 'p1');
+  assert.equal(final.state.result.scores.p1, 20);
+  assert.equal(final.state.result.scores.p2, 10);
+  assert.equal(final.event.type, 'game-finished');
+});
+
+test('returns a draw when final scores are equal', () => {
+  const state = createInitialState({ random: fixedRandom, config: CONFIG });
+  state.players[0].score = 12;
+  state.players[1].score = 12;
+
+  const result = getFinalResult(state);
+
+  assert.equal(result.type, 'draw');
+  assert.equal(result.winnerId, null);
+  assert.deepEqual(result.scores, { p1: 12, p2: 12 });
 });

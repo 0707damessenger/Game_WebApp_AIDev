@@ -69,3 +69,21 @@ test('shows feedback and keeps the state unchanged after an invalid move click',
     await browser.close();
   }
 });
+
+test('ends the local turn, switches the active player, and disables local actions while waiting', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#board');
+    await page.locator('#end-turn').click();
+
+    const text = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+    assert.equal(text.activePlayerId, 'p2');
+    assert.equal(text.players.find((player) => player.id === 'p1').completedTurns, 1);
+    assert.equal(await page.locator('#end-turn').isDisabled(), true);
+    assert.match(await page.locator('#status-message').textContent(), /结束回合/);
+  } finally {
+    await browser.close();
+  }
+});

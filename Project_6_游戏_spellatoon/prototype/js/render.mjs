@@ -120,8 +120,12 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   renderBoard(elements.board, state, currentSelection);
   renderPlayers(elements.playerList, state, localPlayerId);
   renderHand(elements.hand, localPlayer, state, localPlayerId, currentSelection);
-  elements.turnChip.textContent = `第 ${state.turnNumber} 回合 · ${active.label}行动`;
-  elements.turnNumber.textContent = state.turnNumber;
+  elements.turnChip.textContent = state.phase === 'finished'
+    ? `对局结束 · ${state.result.message}`
+    : `第 ${state.turnNumber} 回合 · ${active.label}行动`;
+  elements.turnNumber.textContent = state.phase === 'finished'
+    ? '已结算'
+    : `${active.completedTurns + 1} / ${CONFIG.turns.turnsPerPlayer}`;
   elements.starterName.textContent = starter.label;
   elements.localPlayerName.textContent = localPlayer.label;
   elements.statusMessage.textContent = currentSelection.feedback || (active.id === localPlayerId ? '轮到你行动' : `等待${active.label}行动`);
@@ -136,7 +140,11 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.confirmAction.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing' || currentSelection.mode !== 'move' || currentSelection.path.length === 0;
   elements.confirmAction.textContent = currentSelection.mode === 'move' ? '确认移动' : '选择移动路径';
   elements.clearSelection.disabled = !currentSelection.selectedCardId && !currentSelection.mode && currentSelection.path.length === 0;
-  elements.actionHint.textContent = currentSelection.feedback || '选择一张手牌开始行动';
+  elements.endTurn.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing';
+  elements.actionHint.textContent = state.phase === 'finished'
+    ? '本局已完成结算'
+    : currentSelection.feedback || '选择一张手牌开始行动';
+  elements.resultMessage.textContent = state.result?.message || '';
 }
 
 export function stateToText(state, localPlayerId) {

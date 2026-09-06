@@ -321,3 +321,162 @@ export function performDeploy(state, playerId, cardId, config = DEFAULT_CONFIG) 
   resolved.state.lastEvent = event;
   return { ok: true, state: resolved.state, event };
 }
+
+function allCardIds(state) {
+  const ids = new Set();
+  for (const player of state.players) {
+    for (const card of player.hand) ids.add(card.id);
+  }
+  for (const cell of state.board) {
+    if (cell.card) ids.add(cell.card.id);
+  }
+  return ids;
+}
+
+function nextDrawnCardId(state, playerId) {
+  const usedIds = allCardIds(state);
+  let sequence = 1;
+  let id = `${playerId}-card-${sequence}`;
+  while (usedIds.has(id)) {
+    sequence += 1;
+    id = `${playerId}-card-${sequence}`;
+  }
+  return id;
+}
+
+function drawCardsInPlace(state, playerId, count, random, config) {
+  const player = playerById(state, playerId);
+  const requested = Math.max(0, Math.floor(Number(count) || 0));
+  const available = Math.max(0, config.cards.handLimit - player.hand.length);
+  const drawnCount = Math.min(requested, available);
+  for (let index = 0; index < drawnCount; index += 1) {
+    player.hand.push({
+      id: nextDrawnCardId(state, playerId),
+      value: config.cards.values[randomIndex(random, config.cards.values.length)],
+      ownerId: playerId,
+    });
+  }
+  return drawnCount;
+}
+
+export function drawCards(
+  state,
+  playerId,
+  count,
+  random = Math.random,
+  config = DEFAULT_CONFIG,
+) {
+  const player = playerById(state, playerId);
+  if (!player || state.phase !== 'playing') return invalid('not-active-player');
+  const nextState = cloneState(state);
+  const drawnCount = drawCardsInPlace(nextState, playerId, count, random, config);
+  nextState.lastEvent = {
+    type: 'cards-drawn',
+    playerId,
+    drawnCount,
+    message: `${player.label} 补充了 ${drawnCount} 张牌`,
+  };
+  return { ok: true, state: nextState, event: nextState.lastEvent };
+}
+
+export function beginTurn(
+  state,
+  playerId,
+  config = DEFAULT_CONFIG,
+  random = Math.random,
+) {
+  const player = playerById(state, playerId);
+  if (!player || state.phase !== 'playing' || state.activePlayerId !== playerId) {
+    return invalid('not-active-player');
+  }
+  const nextState = cloneState(state);
+  const nextPlayer = playerById(nextState, playerId);
+  const drawnCount = drawCardsInPlace(
+    nextState,
+    playerId,
+    config.cards.drawPerTurn,
+    random,
+    config,
+  );
+  nextPlayer.actions = { moved: false, deployed: false };
+  nextState.lastEvent = {
+    type: 'turn-started',
+    playerId,
+    drawnCount,
+    message: `${nextPlayer.label} 开始行动，补充了 ${drawnCount} 张牌`,
+  };
+  return { ok: true, state: nextState, event: nextState.lastEvent };
+}
+
+export function getFinalResult(state) {
+  const scores = Object.fromEntries(state.players.map((player) => [player.id, player.score]));
+  const [first, second] = state.players;
+  if (first.score === second.score) {
+    return {
+      type: 'draw',
+      winnerId: null,
+      loserId: null,
+      scores,
+      message: `平局 · 双方 ${first.score} 分`,
+    };
+  }
+  const winner = first.score > second.score ? first : second;
+  const loser = winner.id === first.id ? second : first;
+  return {
+    type: 'win',
+    winnerId: winner.id,
+    loserId: loser.id,
+    scores,
+    message: `${winner.label} 获胜 · ${winner.score} 分`,
+  };
+}
+
+export function endTurn(
+  state,
+  playerId,
+  config = DEFAULT_CONFIG,
+  random = Math.random,
+) {
+  const player = playerById(state, playerId);
+  if (!player || state.phase !== 'playing' || state.activePlayerId !== playerId) {
+    return invalid('not-active-player');
+  }
+  const nextState = cloneState(state);
+  const endingPlayer = playerById(nextState, playerId);
+  endingPlayer.completedTurns += 1;
+
+  const turnLimit = config.turns.turnsPerPlayer;
+  const everyoneFinished = nextState.players.every((candidate) => (
+    candidate.completedTurns >= turnLimit
+  ));
+  if (everyoneFinished) {
+    nextState.phase = 'finished';
+    nextState.result = getFinalResult(nextState);
+    nextState.lastEvent = {
+      type: 'game-finished',
+      playerId,
+      message: `对局结束 · ${nextState.result.message}`,
+    };
+    return { ok: true, state: nextState, event: nextState.lastEvent };
+  }
+
+  const nextPlayer = nextState.players.find((candidate) => candidate.id !== playerId);
+  nextState.activePlayerId = nextPlayer.id;
+  if (nextState.activePlayerId === nextState.starterId) nextState.turnNumber += 1;
+  const drawnCount = drawCardsInPlace(
+    nextState,
+    nextPlayer.id,
+    config.cards.drawPerTurn,
+    random,
+    config,
+  );
+  nextPlayer.actions = { moved: false, deployed: false };
+  nextState.lastEvent = {
+    type: 'turn-ended',
+    playerId,
+    nextPlayerId: nextPlayer.id,
+    drawnCount,
+    message: `${endingPlayer.label} 结束回合，轮到${nextPlayer.label}，补充了 ${drawnCount} 张牌`,
+  };
+  return { ok: true, state: nextState, event: nextState.lastEvent };
+}
