@@ -107,6 +107,110 @@ function validateActiveAction(state, playerId, action) {
   return null;
 }
 
+const lineDirections = [
+  { name: 'horizontal', rowDelta: 0, colDelta: 1 },
+  { name: 'vertical', rowDelta: 1, colDelta: 0 },
+];
+
+export function getLineCandidates(state, deployedCell, direction, config = DEFAULT_CONFIG) {
+  const deployed = boardCellAt(state, deployedCell.row, deployedCell.col);
+  if (!deployed?.card) return [];
+  const candidates = [];
+  const maxDistance = config.board.maxLineGap + 1;
+  const rowDelta = direction === 'vertical' ? 1 : 0;
+  const colDelta = direction === 'vertical' ? 0 : 1;
+
+  for (const sign of [-1, 1]) {
+    for (let distance = 1; distance <= maxDistance; distance += 1) {
+      const row = deployedCell.row + rowDelta * sign * distance;
+      const col = deployedCell.col + colDelta * sign * distance;
+      if (!isInsideBoard(row, col, config)) break;
+      const cell = boardCellAt(state, row, col);
+      if (cell?.card?.value === deployed.card.value) {
+        candidates.push(cell);
+      }
+    }
+  }
+  return candidates;
+}
+
+export function buildEffectPath(startCell, endCell) {
+  if (startCell.row !== endCell.row && startCell.col !== endCell.col) return [];
+  const path = [];
+  const rowStep = Math.sign(endCell.row - startCell.row);
+  const colStep = Math.sign(endCell.col - startCell.col);
+  const length = Math.max(
+    Math.abs(endCell.row - startCell.row),
+    Math.abs(endCell.col - startCell.col),
+  );
+  for (let index = 0; index <= length; index += 1) {
+    path.push({
+      row: startCell.row + rowStep * index,
+      col: startCell.col + colStep * index,
+    });
+  }
+  return path;
+}
+
+function unique(values) {
+  return [...new Set(values)];
+}
+
+function effectMessage(effects) {
+  if (!effects.length) return '';
+  return effects.map((effect) => (
+    `${effect.type === 'chain' ? '触发连锁' : '发生吞噬'} +${effect.scoreDelta}分`
+  )).join('，');
+}
+
+export function resolveDeploymentEffects(state, deployedCell, deployingPlayerId, config = DEFAULT_CONFIG) {
+  const deployed = boardCellAt(state, deployedCell.row, deployedCell.col);
+  if (!deployed?.card) return { state: cloneState(state), effects: [] };
+
+  const effects = [];
+  for (const direction of lineDirections) {
+    const candidates = getLineCandidates(state, deployedCell, direction.name, config);
+    if (!candidates.length) continue;
+
+    const axis = direction.name === 'vertical' ? 'row' : 'col';
+    const positions = [deployedCell[axis], ...candidates.map((cell) => cell[axis])];
+    const startCell = direction.name === 'vertical'
+      ? { row: Math.min(...positions), col: deployedCell.col }
+      : { row: deployedCell.row, col: Math.min(...positions) };
+    const endCell = direction.name === 'vertical'
+      ? { row: Math.max(...positions), col: deployedCell.col }
+      : { row: deployedCell.row, col: Math.max(...positions) };
+    const path = buildEffectPath(startCell, endCell);
+    const pathCells = path.map((cell) => boardCellAt(state, cell.row, cell.col));
+    const isChain = candidates.every((cell) => cell.card.ownerId === deployingPlayerId);
+    const removedCardIds = isChain
+      ? unique([deployed.card.id, ...candidates.map((cell) => cell.card.id)])
+      : unique(pathCells.filter((cell) => cell?.card).map((cell) => cell.card.id));
+    effects.push({
+      type: isChain ? 'chain' : 'consume',
+      direction: direction.name,
+      path,
+      removedCardIds,
+      paintOwnerId: deployingPlayerId,
+      scoreDelta: deployed.card.value * path.length,
+    });
+  }
+
+  const nextState = cloneState(state);
+  const removedCardIds = new Set(effects.flatMap((effect) => effect.removedCardIds));
+  for (const effect of effects) {
+    for (const cell of effect.path) {
+      const nextCell = boardCellAt(nextState, cell.row, cell.col);
+      nextCell.ownerId = effect.paintOwnerId;
+    }
+    playerById(nextState, deployingPlayerId).score += effect.scoreDelta;
+  }
+  for (const cell of nextState.board) {
+    if (cell.card && removedCardIds.has(cell.card.id)) cell.card = null;
+  }
+  return { state: nextState, effects };
+}
+
 export function getReachableCells(state, playerId, cardId, config = DEFAULT_CONFIG) {
   const player = playerById(state, playerId);
   const card = selectedCard(player, cardId);
@@ -198,13 +302,22 @@ export function performDeploy(state, playerId, cardId, config = DEFAULT_CONFIG) 
   nextTarget.card = { id: card.id, value: card.value, ownerId: playerId };
   nextPlayer.hand = nextPlayer.hand.filter((cardInHand) => cardInHand.id !== cardId);
   nextPlayer.actions.deployed = true;
-  nextState.lastEvent = {
+  const resolved = resolveDeploymentEffects(
+    nextState,
+    { row: nextTarget.row, col: nextTarget.col },
+    playerId,
+    config,
+  );
+  const event = {
     type: 'deploy',
     playerId,
     cardId: card.id,
     cardValue: card.value,
     cell: { row: nextTarget.row, col: nextTarget.col },
-    message: `${nextPlayer.label} 部署了数字 ${card.value}`,
+    effects: resolved.effects,
+    scoreDelta: resolved.effects.reduce((total, effect) => total + effect.scoreDelta, 0),
+    message: `${nextPlayer.label} 部署了数字 ${card.value}${effectMessage(resolved.effects) ? `，${effectMessage(resolved.effects)}` : ''}`,
   };
-  return { ok: true, state: nextState, event: nextState.lastEvent };
+  resolved.state.lastEvent = event;
+  return { ok: true, state: resolved.state, event };
 }

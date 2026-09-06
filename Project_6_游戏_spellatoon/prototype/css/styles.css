@@ -42,6 +42,10 @@ h2 { margin: 3px 0 0; font-size: 22px; }
 .cell.path-cell { background: #fff3c7; border-color: #e4b52b; box-shadow: inset 0 0 0 3px rgba(228, 181, 43, 0.2); }
 .cell.path-cell::after { background: #e4b52b; }
 .cell.deploy-target { border-color: #39b879; box-shadow: inset 0 0 0 3px rgba(57, 184, 121, 0.22); }
+.cell.effect-cell { box-shadow: inset 0 0 0 3px rgba(25, 35, 56, 0.15); }
+.cell.chain-cell { border-color: #e4b52b; background: #fff7cf; }
+.cell.consume-cell { border-color: #ef4f62; background: #fff0f2; }
+.cell.chain-cell.consume-cell { border-color: #8f5ad9; background: #f5efff; }
 .cell::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #dbe4ee; }
 .cell.coordinate::before { content: attr(data-coordinate); position: absolute; left: 7px; top: 5px; color: #a7b4c4; font-size: 10px; }
 .cell.owned-cell { background: color-mix(in srgb, var(--owner-color) 10%, white); border-color: color-mix(in srgb, var(--owner-color) 55%, white); }

@@ -14,12 +14,25 @@ function hasCell(cells, row, col) {
   return cells.some((cell) => cell.row === row && cell.col === col);
 }
 
+function effectsAtCell(state, cell) {
+  return (state.lastEvent?.effects || []).filter((effect) => (
+    effect.path.some((pathCell) => pathCell.row === cell.row && pathCell.col === cell.col)
+  ));
+}
+
+function effectLabel(effect) {
+  const type = effect.type === 'chain' ? '连锁' : '吞噬';
+  const direction = effect.direction === 'horizontal' ? '横向' : '纵向';
+  return `${type} · ${direction} · ${effect.path.length}格 · +${effect.scoreDelta}分`;
+}
+
 function renderBoard(boardElement, state, selection) {
   boardElement.replaceChildren();
   for (const cell of state.board) {
     const element = document.createElement('div');
     const player = cell.ownerId ? playerById(state, cell.ownerId) : null;
     const characterPlayer = getPlayerAtCell(state, cell);
+    const effects = effectsAtCell(state, cell);
     element.className = 'cell coordinate';
     element.dataset.coordinate = `${cell.row + 1},${cell.col + 1}`;
     element.dataset.row = cell.row;
@@ -31,6 +44,12 @@ function renderBoard(boardElement, state, selection) {
     if (pathIndex >= 0) {
       element.classList.add('path-cell');
       element.dataset.pathIndex = pathIndex + 1;
+    }
+    if (effects.length) {
+      element.classList.add('effect-cell');
+      for (const effect of effects) element.classList.add(`${effect.type}-cell`);
+      element.dataset.effect = effects.map(effectLabel).join(' | ');
+      element.title = effects.map(effectLabel).join(' | ');
     }
     if (characterPlayer) element.classList.add('character-cell');
     if (selection.mode === 'deploy' && characterPlayer?.id === selection.localPlayerId) {
@@ -107,7 +126,8 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.localPlayerName.textContent = localPlayer.label;
   elements.statusMessage.textContent = currentSelection.feedback || (active.id === localPlayerId ? '轮到你行动' : `等待${active.label}行动`);
   elements.handCount.textContent = `${localPlayer.hand.length} / ${CONFIG.cards.handLimit} 张`;
-  elements.eventMessage.textContent = state.lastEvent.message;
+  const effectDetails = (state.lastEvent.effects || []).map(effectLabel);
+  elements.eventMessage.textContent = [state.lastEvent.message, ...effectDetails].join(' · ');
   elements.eventMessage.dataset.tone = currentSelection.feedbackTone || 'neutral';
   elements.moveMode.classList.toggle('selected-action', currentSelection.mode === 'move');
   elements.deployMode.classList.toggle('selected-action', currentSelection.mode === 'deploy');

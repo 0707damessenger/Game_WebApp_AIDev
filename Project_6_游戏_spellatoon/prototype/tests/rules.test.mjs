@@ -30,6 +30,36 @@ function boardCell(state, row, col) {
   return state.board.find((cell) => cell.row === row && cell.col === col);
 }
 
+function boardWithCards(cards, {
+  deployingPlayerId = 'p1',
+  deployingPosition = { row: 2, col: 2 },
+  deployingCardValue = 3,
+} = {}) {
+  const state = createInitialState({ random: fixedRandom, config: CONFIG });
+  state.activePlayerId = deployingPlayerId;
+  const deployingPlayer = state.players.find((player) => player.id === deployingPlayerId);
+  deployingPlayer.position = { ...deployingPosition };
+  deployingPlayer.hand = [{
+    id: `${deployingPlayerId}-deploy-card`,
+    value: deployingCardValue,
+    ownerId: deployingPlayerId,
+  }];
+  for (const cardData of cards) {
+    const cell = boardCell(state, cardData.row, cardData.col);
+    cell.ownerId = cardData.ownerId;
+    cell.card = {
+      id: cardData.id || `board-card-${cardData.row}-${cardData.col}`,
+      value: cardData.value,
+      ownerId: cardData.ownerId,
+    };
+  }
+  return state;
+}
+
+function findHandCard(state, playerId, value) {
+  return state.players.find((player) => player.id === playerId).hand.find((card) => card.value === value);
+}
+
 test('creates a row-major board with both diagonal characters', () => {
   const state = createInitialState({ random: fixedRandom, config: CONFIG });
 
@@ -183,4 +213,101 @@ test('rejects deployment on an occupied cell, for a waiting player, or after dep
   const deployed = performDeploy(waiting, 'p2', waiting.players[1].hand[0].id, CONFIG);
   assert.equal(deployed.ok, true);
   assert.equal(performDeploy(deployed.state, 'p2', 'missing-card', CONFIG).reason, 'deploy-used');
+});
+
+test('same-owner equal cards chain across the complete path and keep unrelated cards', () => {
+  const state = boardWithCards([
+    { row: 2, col: 0, value: 3, ownerId: 'p1' },
+    { row: 2, col: 2, value: 5, ownerId: 'p2', id: 'unrelated-card' },
+    { row: 2, col: 4, value: 3, ownerId: 'p1' },
+  ], { deployingPosition: { row: 2, col: 1 }, deployingCardValue: 3 });
+  const deployCard = findHandCard(state, 'p1', 3);
+
+  const result = performDeploy(state, 'p1', deployCard.id, CONFIG);
+  const effect = result.event.effects[0];
+
+  assert.equal(result.ok, true);
+  assert.equal(effect.type, 'chain');
+  assert.deepEqual(effect.path, [
+    { row: 2, col: 0 },
+    { row: 2, col: 1 },
+    { row: 2, col: 2 },
+    { row: 2, col: 3 },
+    { row: 2, col: 4 },
+  ]);
+  assert.equal(effect.scoreDelta, 15);
+  assert.equal(result.state.players[0].score, 15);
+  assert.equal(boardCell(result.state, 2, 0).card, null);
+  assert.equal(boardCell(result.state, 2, 1).card, null);
+  assert.equal(boardCell(result.state, 2, 4).card, null);
+  assert.equal(boardCell(result.state, 2, 2).card.id, 'unrelated-card');
+  assert.ok(result.state.board.slice(12, 17).every((cell) => cell.ownerId === 'p1'));
+});
+
+test('different-owner equal cards consume every card on the path for the later player', () => {
+  const state = boardWithCards([
+    { row: 1, col: 0, value: 2, ownerId: 'p1' },
+    { row: 1, col: 2, value: 2, ownerId: 'p2' },
+    { row: 1, col: 1, value: 5, ownerId: 'p1', id: 'path-card' },
+  ], { deployingPlayerId: 'p2', deployingPosition: { row: 1, col: 3 }, deployingCardValue: 2 });
+  const deployCard = findHandCard(state, 'p2', 2);
+
+  const result = performDeploy(state, 'p2', deployCard.id, CONFIG);
+  const effect = result.event.effects[0];
+
+  assert.equal(result.ok, true);
+  assert.equal(effect.type, 'consume');
+  assert.equal(effect.paintOwnerId, 'p2');
+  assert.equal(effect.scoreDelta, 8);
+  assert.equal(result.state.players[1].score, 8);
+  assert.deepEqual(effect.removedCardIds.sort(), [
+    'board-card-1-0',
+    'board-card-1-2',
+    'p2-deploy-card',
+    'path-card',
+  ].sort());
+  assert.ok(result.state.board.slice(6, 10).every((cell) => cell.card === null && cell.ownerId === 'p2'));
+});
+
+test('accepts the configured four-cell empty gap and rejects a farther card', () => {
+  const state = boardWithCards([
+    { row: 0, col: 5, value: 4, ownerId: 'p1' },
+  ], { deployingPosition: { row: 0, col: 0 }, deployingCardValue: 4 });
+  const result = performDeploy(state, 'p1', findHandCard(state, 'p1', 4).id, CONFIG);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.event.effects[0].scoreDelta, 24);
+  assert.equal(result.event.effects[0].path.length, 6);
+});
+
+test('resolves horizontal and vertical effects from one snapshot and counts crossing paths separately', () => {
+  const state = boardWithCards([
+    { row: 2, col: 1, value: 3, ownerId: 'p1' },
+    { row: 2, col: 3, value: 3, ownerId: 'p1' },
+    { row: 1, col: 2, value: 3, ownerId: 'p1' },
+    { row: 3, col: 2, value: 3, ownerId: 'p1' },
+  ]);
+  const result = performDeploy(state, 'p1', findHandCard(state, 'p1', 3).id, CONFIG);
+
+  assert.equal(result.event.effects.length, 2);
+  assert.ok(result.event.effects.every((effect) => effect.type === 'chain' && effect.scoreDelta === 9));
+  assert.equal(result.state.players[0].score, 18);
+  assert.ok([
+    [1, 2], [2, 1], [2, 2], [2, 3], [3, 2],
+  ].every(([row, col]) => boardCell(result.state, row, col).card === null));
+});
+
+test('does not recursively trigger a second effect from cards left on the first path', () => {
+  const state = boardWithCards([
+    { row: 2, col: 0, value: 3, ownerId: 'p1' },
+    { row: 2, col: 1, value: 5, ownerId: 'p1', id: 'leftover-a' },
+    { row: 2, col: 3, value: 5, ownerId: 'p2', id: 'leftover-b' },
+    { row: 2, col: 4, value: 3, ownerId: 'p1' },
+  ]);
+  const result = performDeploy(state, 'p1', findHandCard(state, 'p1', 3).id, CONFIG);
+
+  assert.equal(result.event.effects.length, 1);
+  assert.equal(result.event.effects[0].type, 'chain');
+  assert.equal(boardCell(result.state, 2, 1).card.id, 'leftover-a');
+  assert.equal(boardCell(result.state, 2, 3).card.id, 'leftover-b');
 });
