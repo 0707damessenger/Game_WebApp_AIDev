@@ -77,6 +77,7 @@ function renderBoard(boardElement, state, selection) {
   for (const [index, cell] of state.board.entries()) {
     const element = existingCells[index] || document.createElement('div');
     const existingCharacter = element.querySelector('.character');
+    const existingCharacterBadge = element.querySelector('.character-badge');
     const existingCard = element.querySelector('.cell-card');
     const existingActionLabel = element.querySelector('.cell-action-label');
     const player = cell.ownerId ? playerById(state, cell.ownerId) : null;
@@ -90,6 +91,7 @@ function renderBoard(boardElement, state, selection) {
     element.className = 'cell coordinate';
     element.removeAttribute('title');
     element.style.removeProperty('--owner-color');
+    element.style.removeProperty('--character-color');
     delete element.dataset.card;
     delete element.dataset.pathIndex;
     delete element.dataset.effect;
@@ -125,6 +127,10 @@ function renderBoard(boardElement, state, selection) {
       element.title = previewEffects.map(effectLabel).join(' | ');
     }
     if (characterPlayer) element.classList.add('character-cell');
+    if (characterPlayer?.id === selection.localPlayerId) {
+      element.classList.add('local-character-cell');
+      element.style.setProperty('--character-color', characterPlayer.color);
+    }
     if (characterPlayer?.id === selection.localPlayerId && selection.selectedCardId) {
       if (characterPlayer.actions.deployed || cell.card) element.classList.add('deploy-blocked');
       else element.classList.add('deploy-target');
@@ -136,12 +142,23 @@ function renderBoard(boardElement, state, selection) {
     if (characterPlayer) {
       const character = existingCharacter || document.createElement('div');
       character.className = 'character';
-      character.title = characterPlayer.label;
+      const isLocalCharacter = characterPlayer.id === selection.localPlayerId;
+      character.classList.toggle('local-character', isLocalCharacter);
+      character.title = `${characterPlayer.label}${isLocalCharacter ? ' · 我方' : ''}`;
       character.dataset.playerId = characterPlayer.id;
       character.style.setProperty('--player-color', characterPlayer.color);
       element.append(character);
+      if (isLocalCharacter) {
+        const badge = existingCharacterBadge || document.createElement('span');
+        badge.className = 'character-badge';
+        badge.textContent = '我方';
+        element.append(badge);
+      } else {
+        existingCharacterBadge?.remove();
+      }
     } else {
       existingCharacter?.remove();
+      existingCharacterBadge?.remove();
     }
     if (cell.card) {
       element.dataset.card = cell.card.value;
@@ -172,7 +189,10 @@ function renderPlayers(listElement, state, localPlayerId) {
   for (const player of state.players) {
     const row = document.createElement('div');
     row.className = 'player-row';
-    row.innerHTML = `<span class="player-swatch" style="background:${player.color}"></span><span><span class="player-name">${player.label}</span><br><span class="player-detail">位置 ${player.position.row + 1}, ${player.position.col + 1}${player.id === localPlayerId ? ' · 本机' : ' · 对手'}</span></span><strong class="player-score">${player.score} 分</strong>`;
+    const isLocalPlayer = player.id === localPlayerId;
+    row.dataset.relation = isLocalPlayer ? 'local' : 'opponent';
+    row.style.setProperty('--player-color', player.color);
+    row.innerHTML = `<span class="player-swatch" style="background:${player.color}"></span><span class="player-name">${isLocalPlayer ? '我方' : '对方'}</span><strong class="player-score">${player.score} 分</strong>`;
     listElement.append(row);
   }
 }
@@ -180,6 +200,7 @@ function renderPlayers(listElement, state, localPlayerId) {
 function renderHand(handElement, player, state, localPlayerId, selection) {
   handElement.replaceChildren();
   const hand = state.ownHand || player.hand || [];
+  const turnComplete = Boolean(player?.actions?.moved && player?.actions?.deployed);
   for (const card of hand) {
     const element = document.createElement('button');
     element.type = 'button';
@@ -188,40 +209,36 @@ function renderHand(handElement, player, state, localPlayerId, selection) {
     element.textContent = card.value;
     element.setAttribute('aria-label', `数字卡牌 ${card.value}`);
     element.classList.toggle('selected-card', selection.selectedCardId === card.id);
-    element.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing';
+    element.disabled = turnComplete || state.activePlayerId !== localPlayerId || state.phase !== 'playing';
     handElement.append(element);
   }
 }
 
+function remainingSeconds(state, now) {
+  if (state.phase !== 'playing' || !Number.isFinite(state.turnDeadlineAt)) return null;
+  return Math.max(0, Math.ceil((state.turnDeadlineAt - now) / 1000));
+}
+
 export function renderApp(elements, state, localPlayerId, selection = {}) {
   const localPlayer = playerById(state, localPlayerId);
-  const starter = playerById(state, state.starterId);
   const active = playerById(state, state.activePlayerId);
   const currentSelection = {
-    selectedCardId: null,
-    pendingAction: null,
-    path: [],
-    reachable: [],
     previewCell: null,
     previewHoverCell: null,
     previewTargets: [],
     previewResult: null,
     previewNotice: '',
+    clockNow: Date.now(),
     localPlayerId,
     ...selection,
   };
   renderBoard(elements.board, state, currentSelection);
   renderPlayers(elements.playerList, state, localPlayerId);
   renderHand(elements.hand, localPlayer, state, localPlayerId, currentSelection);
-  elements.turnChip.textContent = state.phase === 'finished'
-    ? `对局结束 · ${state.result.message}`
-    : `第 ${state.turnNumber} 回合 · ${active.label}行动`;
-  elements.turnNumber.textContent = state.phase === 'finished'
-    ? '已结算'
-    : `${active.completedTurns + 1} / ${CONFIG.turns.turnsPerPlayer}`;
-  elements.starterName.textContent = starter.label;
-  elements.localPlayerName.textContent = localPlayer.label;
-  elements.statusMessage.textContent = currentSelection.feedback || (active.id === localPlayerId ? '轮到你行动' : `等待${active.label}行动`);
+  elements.turnChip.textContent = state.phase === 'finished' ? '已结算' : `第 ${state.turnNumber} 回合`;
+  const seconds = remainingSeconds(state, currentSelection.clockNow);
+  elements.turnTimer.textContent = seconds == null ? '--' : `${seconds}s`;
+  elements.turnTimer.dataset.urgent = seconds != null && seconds <= 5 ? 'true' : 'false';
   const ownHand = state.ownHand || localPlayer.hand || [];
   elements.handCount.textContent = `${ownHand.length} / ${CONFIG.cards.handLimit} 张`;
   if (elements.connectionStatus) {
@@ -230,19 +247,11 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
       ? `局域网 ${connectedCount} / ${CONFIG.players.length}`
       : '本地演示';
   }
-  const effectDetails = (state.lastEvent.effects || []).map(effectLabel);
-  elements.eventMessage.textContent = [state.lastEvent.message, ...effectDetails].join(' · ');
   elements.previewMessage.textContent = previewMessage(currentSelection);
-  elements.eventMessage.dataset.tone = currentSelection.feedbackTone || 'neutral';
+  const waitingForOpponent = state.phase === 'playing' && active.id !== localPlayerId;
+  elements.handPanel.classList.toggle('waiting-hand', waitingForOpponent);
+  elements.handOverlay.hidden = !waitingForOpponent;
   elements.endTurn.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing';
-  elements.actionHint.textContent = state.phase === 'finished'
-    ? '本局已完成结算'
-    : currentSelection.feedback || (currentSelection.pendingAction
-      ? `再次点击确认${currentSelection.pendingAction.type === 'move' ? '移动' : '部署'}`
-      : currentSelection.selectedCardId
-        ? '点击当前位置部署，点击蓝色高亮格移动'
-        : '选择手牌，然后点击绿色部署格或蓝色移动格');
-  elements.resultMessage.textContent = state.result?.message || '';
 }
 
 export function stateToText(state, localPlayerId) {
@@ -254,6 +263,7 @@ export function stateToText(state, localPlayerId) {
     activePlayerId: state.activePlayerId,
     starterId: state.starterId,
     turnNumber: state.turnNumber,
+    turnDeadlineAt: state.turnDeadlineAt,
     board: state.board.map(({ row, col, ownerId, card }) => ({ row, col, ownerId, card })),
     players: state.players.map(({ id, label, position, score, completedTurns }) => ({ id, label, position, score, completedTurns })),
     localHand: ownHand,

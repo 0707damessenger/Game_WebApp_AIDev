@@ -1,6 +1,6 @@
 export const CONFIG = Object.freeze({
   board: Object.freeze({
-    size: 6,
+    size: 8,
     maxMoveDistance: 5,
     maxLineGap: 4,
   }),
@@ -12,6 +12,10 @@ export const CONFIG = Object.freeze({
   }),
   turns: Object.freeze({
     turnsPerPlayer: 10,
+  }),
+  timer: Object.freeze({
+    actionTimeMs: 30000,
+    tickMs: 250,
   }),
   players: Object.freeze([
     Object.freeze({ id: 'p1', label: '赤方', color: '#ef4f62' }),
@@ -27,6 +31,7 @@ export const CONFIG = Object.freeze({
   motion: Object.freeze({
     effectMs: 620,
     turnNoticeMs: 1200,
+    toastMs: 1800,
   }),
   testing: Object.freeze({
     allowFixtures: true,

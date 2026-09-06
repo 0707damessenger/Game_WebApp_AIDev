@@ -130,7 +130,8 @@ test('finds a character on an unpainted cell', () => {
   const state = createInitialState({ random: fixedRandom, config: CONFIG });
 
   assert.equal(getPlayerAtCell(state, { row: 0, col: 0 }).id, 'p1');
-  assert.equal(getPlayerAtCell(state, { row: 5, col: 5 }).id, 'p2');
+  const lastIndex = CONFIG.board.size - 1;
+  assert.equal(getPlayerAtCell(state, { row: lastIndex, col: lastIndex }).id, 'p2');
 });
 
 test('allows a card move to turn and consumes the selected card', () => {
@@ -248,7 +249,7 @@ test('same-owner equal cards chain across the complete path and keep unrelated c
   assert.equal(boardCell(result.state, 2, 1).card, null);
   assert.equal(boardCell(result.state, 2, 4).card, null);
   assert.equal(boardCell(result.state, 2, 2).card.id, 'unrelated-card');
-  assert.ok(result.state.board.slice(12, 17).every((cell) => cell.ownerId === 'p1'));
+  assert.ok([0, 1, 2, 3, 4].every((col) => boardCell(result.state, 2, col).ownerId === 'p1'));
 });
 
 test('different-owner equal cards consume every card on the path for the later player', () => {
@@ -273,7 +274,10 @@ test('different-owner equal cards consume every card on the path for the later p
     'p2-deploy-card',
     'path-card',
   ].sort());
-  assert.ok(result.state.board.slice(6, 10).every((cell) => cell.card === null && cell.ownerId === 'p2'));
+  assert.ok([0, 1, 2, 3].every((col) => {
+    const cell = boardCell(result.state, 1, col);
+    return cell.card === null && cell.ownerId === 'p2';
+  }));
 });
 
 test('accepts the configured four-cell empty gap and rejects a farther card', () => {
@@ -383,6 +387,17 @@ test('ends the active player turn, switches players, and rejects the waiting pla
   assert.equal(result.event.nextPlayerId, 'p2');
   assert.equal(result.state.players[1].hand.length, CONFIG.cards.handLimit);
   assert.equal(state.players[0].completedTurns, 0);
+});
+
+test('starts a fresh action deadline for the next player turn', () => {
+  const state = createInitialState({ random: () => 0, config: CONFIG });
+  state.players[0].actions = { moved: true, deployed: true };
+
+  const result = endTurn(state, 'p1', CONFIG, () => 0, 1000);
+
+  assert.equal(result.ok, true);
+  assert.equal(CONFIG.timer.actionTimeMs, 30000);
+  assert.equal(result.state.turnDeadlineAt, 1000 + CONFIG.timer.actionTimeMs);
 });
 
 test('increments the round after both players act and settles immediately at the turn limit', () => {

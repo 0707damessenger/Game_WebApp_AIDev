@@ -7,6 +7,7 @@ const query = new URLSearchParams(window.location.search);
 const demoMode = query.has('demo');
 let localPlayerId = demoMode ? CONFIG.players[0].id : null;
 let state = demoMode ? createInitialState({ config: CONFIG, random: () => 0 }) : null;
+if (state) state.turnDeadlineAt = Date.now() + CONFIG.timer.actionTimeMs;
 const session = {
   roomId: null,
   playerId: null,
@@ -18,15 +19,12 @@ const elements = {
   board: document.querySelector('#board'),
   playerList: document.querySelector('#player-list'),
   hand: document.querySelector('#hand'),
+  handPanel: document.querySelector('#hand-panel'),
+  handOverlay: document.querySelector('#hand-overlay'),
   turnChip: document.querySelector('#turn-chip'),
-  turnNumber: document.querySelector('#turn-number'),
-  starterName: document.querySelector('#starter-name'),
-  localPlayerName: document.querySelector('#local-player-name'),
-  statusMessage: document.querySelector('#status-message'),
+  turnTimer: document.querySelector('#turn-timer'),
   handCount: document.querySelector('#hand-count'),
-  eventMessage: document.querySelector('#event-message'),
   previewMessage: document.querySelector('#preview-message'),
-  resultMessage: document.querySelector('#result-message'),
   connectionStatus: document.querySelector('#connection-status'),
   endTurn: document.querySelector('#end-turn'),
   actionHint: document.querySelector('#action-hint'),
@@ -38,6 +36,9 @@ const elements = {
   startGame: document.querySelector('#start-game'),
   roomInfo: document.querySelector('#room-info'),
   gameView: document.querySelector('#game-view'),
+  startToast: document.querySelector('#start-toast'),
+  startToastMessage: document.querySelector('#start-toast-message'),
+  gameToast: document.querySelector('#game-toast'),
 };
 const selection = {
   selectedCardId: null,
@@ -53,6 +54,13 @@ const selection = {
   feedbackTone: 'neutral',
 };
 let virtualTime = 0;
+let startToastKey = null;
+let startToastTimer = null;
+let gameToastKey = null;
+let gameToastTimer = null;
+let eventToastKey = null;
+let inputController = null;
+let autoEndInFlight = false;
 
 elements.board.style.setProperty('--board-size', CONFIG.board.size);
 
@@ -90,9 +98,80 @@ function renderLobby() {
   }
 }
 
+function playerPerspectiveName(playerId) {
+  return playerId === localPlayerId ? '我方' : '对方';
+}
+
+function formatPerspectiveMessage(view, message) {
+  return view.players.reduce(
+    (formatted, player) => formatted.replaceAll(player.label, playerPerspectiveName(player.id)),
+    message,
+  );
+}
+
+function showStartToast(view) {
+  const event = view?.lastEvent;
+  if (!event || event.type !== 'game-started' || !elements.startToast) return;
+  const key = `${view.starterId}:${event.message}`;
+  if (startToastKey === key) return;
+  startToastKey = key;
+  const starter = view.players.find((player) => player.id === view.starterId);
+  elements.startToastMessage.textContent = `${playerPerspectiveName(view.starterId)}先手`;
+  elements.startToastMessage.style.color = starter?.color || 'var(--ink)';
+  elements.startToast.hidden = false;
+  if (startToastTimer) window.clearTimeout(startToastTimer);
+  startToastTimer = window.setTimeout(() => {
+    elements.startToast.hidden = true;
+  }, CONFIG.motion.turnNoticeMs);
+}
+
+function showToast(message, tone = 'neutral') {
+  if (!message || !elements.gameToast) return;
+  if (gameToastKey === message && !elements.gameToast.hidden) return;
+  gameToastKey = message;
+  elements.gameToast.textContent = message;
+  elements.gameToast.dataset.tone = tone;
+  elements.gameToast.hidden = false;
+  if (gameToastTimer) window.clearTimeout(gameToastTimer);
+  gameToastTimer = window.setTimeout(() => {
+    elements.gameToast.hidden = true;
+  }, CONFIG.motion.toastMs);
+}
+
+function showEventToast(view) {
+  const event = view?.lastEvent;
+  if (!event || event.type === 'game-started') return;
+  const key = `${view.turnNumber}:${view.activePlayerId}:${event.type}:${event.message}`;
+  if (eventToastKey === key) return;
+  eventToastKey = key;
+  showToast(formatPerspectiveMessage(view, event.message), event.type === 'turn-timeout' ? 'warning' : 'neutral');
+}
+
+function currentTime() {
+  return Date.now() + virtualTime;
+}
+
+function maybeAutoEndTurn() {
+  if (autoEndInFlight || !state || state.phase !== 'playing' || !inputController) return;
+  if (state.activePlayerId !== localPlayerId || !Number.isFinite(state.turnDeadlineAt) || currentTime() < state.turnDeadlineAt) return;
+  autoEndInFlight = true;
+  showToast('行动时间到，本回合自动结束', 'warning');
+  const result = inputController.endCurrentTurn();
+  Promise.resolve(result).then(() => showToast('行动时间到，本回合自动结束', 'warning'));
+  Promise.resolve(result).finally(() => {
+    autoEndInFlight = false;
+  });
+}
+
 function render() {
   renderLobby();
-  if (state && localPlayerId) renderApp(elements, state, localPlayerId, selection);
+  if (state && localPlayerId) {
+    selection.clockNow = currentTime();
+    showStartToast(state);
+    renderApp(elements, state, localPlayerId, selection);
+    showEventToast(state);
+    maybeAutoEndTurn();
+  }
 }
 
 async function postJson(path, body) {
@@ -233,7 +312,7 @@ elements.createRoom.addEventListener('click', createRoom);
 elements.joinRoom.addEventListener('click', joinRoom);
 elements.startGame.addEventListener('click', startGame);
 
-createInputController({
+inputController = createInputController({
   elements,
   getState: () => state,
   getSelection: () => selection,
@@ -243,6 +322,8 @@ createInputController({
   getLocalPlayerId: () => localPlayerId,
   config: CONFIG,
   submitAction: demoMode ? null : submitAction,
+  showToast,
+  now: currentTime,
 });
 
 window.render_game_to_text = () => state
@@ -252,6 +333,7 @@ window.advanceTime = (ms = 0) => {
   virtualTime += Number(ms) || 0;
   render();
 };
+window.setInterval(render, CONFIG.timer.tickMs);
 
 restoreSession();
 if (!demoMode && session.roomId) {

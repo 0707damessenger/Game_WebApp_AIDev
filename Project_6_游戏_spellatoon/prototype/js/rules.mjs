@@ -60,6 +60,7 @@ export function createInitialState({ random = Math.random, config = DEFAULT_CONF
     activePlayerId: players[starterIndex].id,
     starterId: players[starterIndex].id,
     turnNumber: 1,
+    turnDeadlineAt: null,
     lastEvent: {
       type: 'game-started',
       message: `${players[starterIndex].label} 先手`,
@@ -94,6 +95,10 @@ function cloneState(state) {
 
 function invalid(reason) {
   return { ok: false, reason };
+}
+
+function readNow(value) {
+  return typeof value === 'function' ? value() : value;
 }
 
 function validateActiveAction(state, playerId, action) {
@@ -452,6 +457,7 @@ export function beginTurn(
   playerId,
   config = DEFAULT_CONFIG,
   random = Math.random,
+  now = Date.now,
 ) {
   const player = playerById(state, playerId);
   if (!player || state.phase !== 'playing' || state.activePlayerId !== playerId) {
@@ -467,6 +473,7 @@ export function beginTurn(
     config,
   );
   nextPlayer.actions = { moved: false, deployed: false };
+  nextState.turnDeadlineAt = readNow(now) + config.timer.actionTimeMs;
   nextState.lastEvent = {
     type: 'turn-started',
     playerId,
@@ -504,6 +511,7 @@ export function endTurn(
   playerId,
   config = DEFAULT_CONFIG,
   random = Math.random,
+  now = Date.now,
 ) {
   const player = playerById(state, playerId);
   if (!player || state.phase !== 'playing' || state.activePlayerId !== playerId) {
@@ -519,6 +527,7 @@ export function endTurn(
   ));
   if (everyoneFinished) {
     nextState.phase = 'finished';
+    nextState.turnDeadlineAt = null;
     nextState.result = getFinalResult(nextState);
     nextState.lastEvent = {
       type: 'game-finished',
@@ -539,6 +548,7 @@ export function endTurn(
     config,
   );
   nextPlayer.actions = { moved: false, deployed: false };
+  nextState.turnDeadlineAt = readNow(now) + config.timer.actionTimeMs;
   nextState.lastEvent = {
     type: 'turn-ended',
     playerId,

@@ -76,6 +76,7 @@ test('creates a room, allows one join, rejects a third player, and starts for th
     });
     assert.equal(started.response.status, 200);
     assert.equal(started.body.phase, 'playing');
+    assert.equal(typeof started.body.turnDeadlineAt, 'number');
   } finally {
     await stopServer(app);
   }

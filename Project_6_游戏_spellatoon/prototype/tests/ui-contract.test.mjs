@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
+import { CONFIG } from '../js/config.mjs';
 
 async function openDemo() {
   const browser = await chromium.launch({ headless: true });
@@ -13,17 +14,24 @@ async function openDemo() {
 test('selecting a card exposes move targets and the deploy location without mode buttons', async () => {
   const { browser, page } = await openDemo();
   try {
-    assert.equal(await page.locator('#board .cell').count(), 36);
+    assert.equal(CONFIG.board.size, 8);
+    assert.equal(await page.locator('#board .cell').count(), CONFIG.board.size ** 2);
     assert.equal(await page.locator('#hand [data-card-id]').count(), 5);
     assert.equal(await page.locator('[data-mode="move"]').count(), 0);
     assert.equal(await page.locator('[data-mode="deploy"]').count(), 0);
     assert.equal(await page.locator('#confirm-action').count(), 0);
+    assert.equal(await page.locator('#console-heading').count(), 0);
+    assert.equal(await page.locator('#status-message').count(), 0);
+    assert.equal(await page.locator('#action-hint').count(), 0);
+    assert.equal(await page.locator('.scores-panel').count(), 0);
+    assert.equal(await page.locator('#turn-chip').textContent(), '第 1 回合');
+    assert.match(await page.locator('#turn-timer').textContent(), /30s/);
 
     await page.locator('#hand [data-card-id]').first().click();
 
     assert.equal(await page.locator('.cell.reachable-cell').count(), 2);
     assert.equal(await page.locator('[data-row="0"][data-col="0"].deploy-target').count(), 1);
-    assert.match(await page.locator('#action-hint').textContent(), /当前位置.*部署.*高亮.*移动/);
+    assert.equal(await page.locator('#action-hint').count(), 0);
   } finally {
     await browser.close();
   }
@@ -40,7 +48,7 @@ test('the first move target click previews the action and the second click commi
     assert.equal(text.ownHand.length, 5);
     assert.equal(await page.locator('[data-row="0"][data-col="1"].pending-target').count(), 1);
     assert.equal(await page.locator('[data-row="0"][data-col="1"].path-cell').count(), 1);
-    assert.match(await page.locator('#action-hint').textContent(), /再次点击确认移动/);
+    assert.match(await page.locator('#game-toast').textContent(), /再次点击确认移动/);
 
     await page.locator('[data-row="0"][data-col="1"]').click();
 
@@ -61,7 +69,7 @@ test('the first deploy click previews the action and the second click commits it
     let text = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
     assert.equal(text.board.find((cell) => cell.row === 0 && cell.col === 0).card, null);
     assert.equal(text.ownHand.length, 5);
-    assert.match(await page.locator('#action-hint').textContent(), /再次点击确认部署/);
+    assert.match(await page.locator('#game-toast').textContent(), /再次点击确认部署/);
 
     await page.locator('[data-row="0"][data-col="0"]').click();
 
@@ -90,7 +98,7 @@ test('selecting another card switches the action and Esc cancels it', async () =
 
     assert.equal(await page.locator('#hand .selected-card').count(), 0);
     assert.equal(await page.locator('.cell.reachable-cell').count(), 0);
-    assert.match(await page.locator('#action-hint').textContent(), /已取消/);
+    assert.match(await page.locator('#game-toast').textContent(), /已取消/);
   } finally {
     await browser.close();
   }
@@ -106,7 +114,7 @@ test('invalid target feedback leaves the real state unchanged', async () => {
     const after = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
     assert.deepEqual(after.players[0].position, before.players[0].position);
     assert.equal(after.ownHand.length, before.ownHand.length);
-    assert.match(await page.locator('#action-hint').textContent(), /点击当前位置部署.*移动/);
+    assert.match(await page.locator('#game-toast').textContent(), /点击当前位置部署.*移动/);
   } finally {
     await browser.close();
   }
@@ -121,7 +129,94 @@ test('ends the local turn, switches the active player, and disables local action
     assert.equal(text.activePlayerId, 'p2');
     assert.equal(text.players.find((player) => player.id === 'p1').completedTurns, 1);
     assert.equal(await page.locator('#end-turn').isDisabled(), true);
-    assert.match(await page.locator('#status-message').textContent(), /结束回合/);
+    assert.equal(await page.locator('#hand-overlay').isVisible(), true);
+    assert.match(await page.locator('#hand-overlay').textContent(), /对方行动中/);
+    assert.equal(await page.locator('#hand .card:disabled').count(), 5);
+    assert.match(await page.locator('#game-toast').textContent(), /我方.*结束回合.*对方/);
+    assert.doesNotMatch(await page.locator('#game-toast').textContent(), /赤方|蓝方/);
+    await page.waitForTimeout(CONFIG.motion.toastMs + CONFIG.timer.tickMs + 100);
+    assert.equal(await page.locator('#game-toast').isVisible(), false);
+    await page.waitForTimeout(CONFIG.timer.tickMs + 100);
+    assert.equal(await page.locator('#game-toast').isVisible(), false);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('locks the hand and board after both local actions are complete', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.locator('#hand [data-card-id]').first().click();
+    await page.locator('[data-row="0"][data-col="0"]').click();
+    await page.locator('[data-row="0"][data-col="0"]').click();
+    await page.locator('#hand [data-card-id]').first().click();
+    await page.locator('[data-row="0"][data-col="1"]').click();
+    await page.locator('[data-row="0"][data-col="1"]').click();
+
+    assert.equal(await page.locator('#hand .card:disabled').count(), 3);
+    assert.equal(await page.locator('#end-turn').isDisabled(), false);
+    assert.equal(await page.locator('#action-hint').count(), 0);
+
+    await page.locator('[data-row="1"][data-col="1"]').click();
+    assert.equal(await page.locator('.preview-locked').count(), 0);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('shows only the useful score and prompt information during play', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    assert.equal(await page.locator('.board-section > .section-heading').count(), 0);
+    assert.equal(await page.locator('#board-meta').count(), 0);
+    assert.equal(await page.locator('.status-panel').count(), 0);
+    assert.equal(await page.locator('.players-panel').count(), 0);
+    assert.equal(await page.locator('#status-message').count(), 0);
+    assert.equal(await page.locator('.scores-panel').count(), 0);
+    assert.equal(await page.locator('#player-list .player-row').count(), 2);
+    assert.equal(await page.locator('.scores-panel .player-detail').count(), 0);
+    assert.deepEqual(await page.locator('#player-list .player-name').allTextContents(), ['我方', '对方']);
+    assert.equal(await page.locator('#player-list .player-row').first().getAttribute('data-relation'), 'local');
+    assert.equal(await page.locator('#player-list .player-row').last().getAttribute('data-relation'), 'opponent');
+    assert.match(await page.locator('#player-list .player-row').first().getAttribute('style'), /--player-color/);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('automatically ends the local turn when its action timer expires', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.evaluate(() => window.advanceTime(30001));
+    const text = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
+    assert.equal(text.activePlayerId, 'p2');
+    assert.equal(text.players.find((player) => player.id === 'p1').completedTurns, 1);
+    assert.equal(await page.locator('#hand-overlay').isVisible(), true);
+    assert.match(await page.locator('#game-toast').textContent(), /行动时间到/);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('shows a transient start toast with the coin-selected starter', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.locator('#start-toast').waitFor({ state: 'visible' });
+    assert.match(await page.locator('#start-toast-message').textContent(), /我方.*先手/);
+    await page.waitForTimeout(CONFIG.motion.turnNoticeMs + 100);
+    assert.equal(await page.locator('#start-toast').isVisible(), false);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('marks the local character without adding an opponent identity marker', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    assert.equal(await page.locator('[data-row="0"][data-col="0"].local-character-cell').count(), 1);
+    assert.equal(await page.locator('[data-row="0"][data-col="0"] .character-badge').textContent(), '我方');
+    const lastIndex = CONFIG.board.size - 1;
+    assert.equal(await page.locator(`[data-row="${lastIndex}"][data-col="${lastIndex}"] .character-badge`).count(), 0);
   } finally {
     await browser.close();
   }
@@ -137,7 +232,10 @@ test('previews an empty-cell chain while waiting without changing the real state
 
     const before = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
     await page.locator('[data-row="0"][data-col="1"]').hover();
-    assert.equal(await page.locator('[data-row="0"][data-col="0"].preview-target').count(), 1);
+    const previewTarget = page.locator('[data-row="0"][data-col="0"]');
+    assert.equal(await previewTarget.evaluate((element) => getComputedStyle(element).borderStyle), 'dashed');
+    assert.equal(await previewTarget.evaluate((element) => getComputedStyle(element).borderTopColor), 'rgb(143, 90, 217)');
+    assert.equal(await previewTarget.locator('.cell-card').evaluate((element) => getComputedStyle(element).outlineStyle), 'solid');
     await page.locator('[data-row="0"][data-col="1"]').click();
     assert.match(await page.locator('#preview-message').textContent(), /已锁定/);
     await page.locator('[data-row="0"][data-col="0"]').hover();

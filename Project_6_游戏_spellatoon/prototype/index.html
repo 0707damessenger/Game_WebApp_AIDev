@@ -7,13 +7,27 @@
     <link rel="stylesheet" href="./css/styles.css" />
   </head>
   <body>
+    <div class="start-toast" id="start-toast" role="status" aria-live="assertive" hidden>
+      <div class="start-toast-content">
+        <span class="start-toast-kicker">本局先手</span>
+        <strong id="start-toast-message"></strong>
+      </div>
+    </div>
     <main class="game-shell">
       <header class="game-header">
         <div>
           <p class="eyebrow">LOCAL DUEL / PUBLIC BOARD</p>
           <h1>Spellatoon</h1>
         </div>
-        <div class="turn-chip" id="turn-chip" aria-live="polite">准备进入对局</div>
+        <div class="header-stats" aria-label="对局信息">
+          <div class="turn-chip" id="turn-chip" aria-live="polite">第 1 回合</div>
+          <div class="timer-chip" aria-label="行动倒计时"><span id="turn-timer">30s</span></div>
+          <div class="score-strip" aria-label="双方分数">
+            <span class="score-strip-label">比分</span>
+            <div class="player-list" id="player-list"></div>
+          </div>
+          <div class="status-pill"><span class="status-dot"></span><span id="connection-status">本地原型</span></div>
+        </div>
       </header>
 
       <section class="lobby-panel" id="lobby-panel" aria-labelledby="lobby-heading">
@@ -35,16 +49,9 @@
       </section>
 
       <div id="game-view">
-      <section class="board-section" aria-labelledby="board-heading">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">公共区域</p>
-            <h2 id="board-heading">战场棋盘</h2>
-          </div>
-          <p class="board-meta" id="board-meta">6 × 6 · 所有部署信息公开</p>
-        </div>
+      <section class="board-section" aria-label="战场棋盘">
         <div class="board-frame">
-          <div class="board" id="board" aria-label="公共 6x6 棋盘"></div>
+          <div class="board" id="board" aria-label="公共棋盘"></div>
         </div>
         <aside class="preview-panel" aria-live="polite">
           <span class="preview-label">PREVIEW</span>
@@ -52,33 +59,8 @@
         </aside>
       </section>
 
-      <section class="console-section" aria-labelledby="console-heading">
-        <div class="section-heading console-heading">
-          <div>
-            <p class="section-kicker">本地控制台</p>
-            <h2 id="console-heading">当前对局</h2>
-          </div>
-          <div class="status-pill"><span class="status-dot"></span><span id="connection-status">本地原型</span></div>
-        </div>
-
-        <div class="console-grid">
-          <section class="status-panel" aria-label="状态信息">
-            <div class="panel-label">状态</div>
-            <p class="status-message" id="status-message"></p>
-            <div class="status-stats">
-              <div><span>回合</span><strong id="turn-number"></strong></div>
-              <div><span>先手</span><strong id="starter-name"></strong></div>
-              <div><span>玩家</span><strong id="local-player-name"></strong></div>
-            </div>
-            <p class="result-message" id="result-message"></p>
-          </section>
-
-          <section class="players-panel" aria-label="双方公开信息">
-            <div class="panel-label">双方角色</div>
-            <div class="player-list" id="player-list"></div>
-          </section>
-
-          <section class="hand-panel" aria-label="本地手牌">
+      <section class="console-section" aria-label="本地手牌与回合操作">
+        <section class="hand-panel" id="hand-panel" aria-label="本地手牌">
             <div class="hand-heading">
               <div class="panel-label">我的手牌</div>
               <div class="hand-actions">
@@ -87,17 +69,12 @@
               </div>
             </div>
             <div class="hand" id="hand"></div>
-            <p class="action-hint" id="action-hint">选择手牌，然后点击绿色部署格或蓝色移动格</p>
-          </section>
-        </div>
-
-        <aside class="event-panel" aria-live="polite">
-          <span class="event-mark">EVENT</span>
-          <span id="event-message"></span>
-        </aside>
+            <div class="hand-overlay" id="hand-overlay" hidden>对方行动中</div>
+        </section>
       </section>
       </div>
     </main>
+    <div class="game-toast" id="game-toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="./js/app.mjs"></script>
   </body>
 </html>

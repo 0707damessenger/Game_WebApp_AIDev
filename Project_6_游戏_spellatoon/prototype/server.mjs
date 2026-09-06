@@ -103,6 +103,13 @@ function actionResult(room, body, config, random) {
   return { ok: false, reason: 'unknown-action' };
 }
 
+function clearActionTimer(room, actionTimers) {
+  if (!room.actionTimer) return;
+  clearTimeout(room.actionTimer);
+  actionTimers.delete(room.actionTimer);
+  room.actionTimer = null;
+}
+
 async function serveStatic(req, res) {
   const requestUrl = new URL(req.url, 'http://localhost');
   let relativePath = decodeURIComponent(requestUrl.pathname);
@@ -124,6 +131,38 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
   const rooms = new Map();
   const streams = new Set();
   const heartbeatTimers = new Set();
+  const actionTimers = new Set();
+
+  function scheduleActionTimer(room) {
+    clearActionTimer(room, actionTimers);
+    if (room.state.phase !== 'playing' || !Number.isFinite(room.state.turnDeadlineAt)) return;
+    const deadline = room.state.turnDeadlineAt;
+    const timer = setTimeout(() => expireTurn(room, deadline), Math.max(0, deadline - Date.now()) + 1);
+    timer.unref?.();
+    room.actionTimer = timer;
+    actionTimers.add(timer);
+  }
+
+  function expireTurn(room, deadline = room.state.turnDeadlineAt) {
+    if (
+      room.state.phase !== 'playing'
+      || room.state.turnDeadlineAt !== deadline
+      || deadline > Date.now()
+    ) return false;
+    clearActionTimer(room, actionTimers);
+    const playerId = room.state.activePlayerId;
+    const result = endTurn(room.state, playerId, config, random, Date.now);
+    if (!result.ok) return false;
+    result.state.lastEvent = {
+      ...result.event,
+      type: 'turn-timeout',
+      message: `行动时间到，${result.event.message}`,
+    };
+    room.state = result.state;
+    broadcastRoom(room, streams);
+    scheduleActionTimer(room);
+    return true;
+  }
 
   function handleEvents(req, res, room, playerId, token) {
     if (!authenticate(room, playerId, token)) {
@@ -236,14 +275,17 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
       }
       if (room.state.phase === 'lobby') {
         room.state.phase = 'playing';
+        room.state.turnDeadlineAt = Date.now() + config.timer.actionTimeMs;
         room.state.lastEvent = { type: 'game-started', message: `${room.state.players.find((candidate) => candidate.id === room.state.starterId).label} 先手` };
         broadcastRoom(room, streams);
+        scheduleActionTimer(room);
       }
       json(res, 200, createPlayerView(room.state, 'p1', roomConnection(room)));
       return;
     }
 
     if (req.method === 'POST' && parts.length === 4 && parts[3] === 'action') {
+      expireTurn(room);
       if (room.state.phase !== 'playing') {
         errorResponse(res, 409, 'game-not-playing');
         return;
@@ -255,6 +297,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
       }
       room.state = result.state;
       broadcastRoom(room, streams);
+      scheduleActionTimer(room);
       json(res, 200, createPlayerView(room.state, body.playerId, roomConnection(room)));
       return;
     }
@@ -285,6 +328,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
     rooms,
     streams,
     heartbeatTimers,
+    actionTimers,
   };
 }
 

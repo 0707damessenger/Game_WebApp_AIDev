@@ -55,6 +55,8 @@ export function createInputController({
   getLocalPlayerId = null,
   config,
   submitAction = null,
+  showToast = null,
+  now = Date.now,
 }) {
   const selection = getSelection();
 
@@ -65,6 +67,7 @@ export function createInputController({
   function setFeedback(message, tone = 'neutral') {
     selection.feedback = message;
     selection.feedbackTone = tone;
+    showToast?.(message, tone);
   }
 
   function activeLocalPlayer() {
@@ -72,6 +75,10 @@ export function createInputController({
     const playerId = currentLocalPlayerId();
     const player = playerById(state, playerId);
     return state.phase === 'playing' && state.activePlayerId === playerId ? player : null;
+  }
+
+  function actionLocked(player) {
+    return Boolean(player?.actions?.moved && player?.actions?.deployed);
   }
 
   function ownHand() {
@@ -186,8 +193,14 @@ export function createInputController({
   }
 
   function selectCard(cardId) {
-    if (!activeLocalPlayer()) {
+    const player = activeLocalPlayer();
+    if (!player) {
       setFeedback('当前不是你的行动回合', 'error');
+      render();
+      return;
+    }
+    if (actionLocked(player)) {
+      setFeedback('本回合行动已完成，请结束回合');
       render();
       return;
     }
@@ -235,8 +248,7 @@ export function createInputController({
       ...(pending.type === 'move' ? { path: structuredClone(pending.path) } : {}),
     };
     if (submitAction) {
-      void submitRemoteAction(action);
-      return;
+      return submitRemoteAction(action);
     }
     localCommit(action);
   }
@@ -286,6 +298,11 @@ export function createInputController({
     const target = cellFromElement(cellElement);
     const card = selectedCard();
     const player = activeLocalPlayer();
+    if (actionLocked(player)) {
+      setFeedback('本回合行动已完成，请结束回合');
+      render();
+      return;
+    }
     if (!card || !player) {
       if (card) {
         setFeedback('当前不是你的行动回合', 'error');
@@ -318,7 +335,7 @@ export function createInputController({
       void submitRemoteAction({ type: 'end-turn' });
       return;
     }
-    const result = endTurn(getState(), currentLocalPlayerId(), config);
+    const result = endTurn(getState(), currentLocalPlayerId(), config, Math.random, now());
     if (!result.ok) {
       setFeedback('无法结束当前回合', 'error');
       render();
@@ -328,6 +345,7 @@ export function createInputController({
     resetSelection(selection);
     setFeedback(result.event.message, 'success');
     render();
+    return result;
   }
 
   elements.hand.addEventListener('click', (event) => {

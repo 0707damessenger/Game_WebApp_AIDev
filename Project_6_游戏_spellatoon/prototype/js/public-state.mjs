@@ -31,6 +31,7 @@ export function createPublicState(state, connection = {}) {
     activePlayerId: state.activePlayerId,
     starterId: state.starterId,
     turnNumber: state.turnNumber,
+    turnDeadlineAt: state.turnDeadlineAt,
     lastEvent: clone(state.lastEvent),
     result: clone(state.result),
     connection: clone(connection),
