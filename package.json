@@ -6,7 +6,8 @@
   "scripts": {
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"Project_4_网页程序_观鸟路线记录/prototype/tests/*.test.js\"",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:spellatoon": "node --test Project_6_游戏_spellatoon/prototype/tests/rules.test.mjs"
   },
   "repository": {
     "type": "git",

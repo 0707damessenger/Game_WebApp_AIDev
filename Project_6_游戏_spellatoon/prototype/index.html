@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spellatoon | 对局原型</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">LOCAL DUEL / PUBLIC BOARD</p>
+          <h1>Spellatoon</h1>
+        </div>
+        <div class="turn-chip" id="turn-chip" aria-live="polite">准备进入对局</div>
+      </header>
+
+      <section class="board-section" aria-labelledby="board-heading">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">公共区域</p>
+            <h2 id="board-heading">战场棋盘</h2>
+          </div>
+          <p class="board-meta" id="board-meta">6 × 6 · 所有部署信息公开</p>
+        </div>
+        <div class="board-frame">
+          <div class="board" id="board" aria-label="公共 6x6 棋盘"></div>
+        </div>
+      </section>
+
+      <section class="console-section" aria-labelledby="console-heading">
+        <div class="section-heading console-heading">
+          <div>
+            <p class="section-kicker">本地控制台</p>
+            <h2 id="console-heading">当前对局</h2>
+          </div>
+          <div class="status-pill"><span class="status-dot"></span><span id="connection-status">本地原型</span></div>
+        </div>
+
+        <div class="console-grid">
+          <section class="status-panel" aria-label="状态信息">
+            <div class="panel-label">状态</div>
+            <p class="status-message" id="status-message"></p>
+            <div class="status-stats">
+              <div><span>回合</span><strong id="turn-number"></strong></div>
+              <div><span>先手</span><strong id="starter-name"></strong></div>
+              <div><span>玩家</span><strong id="local-player-name"></strong></div>
+            </div>
+          </section>
+
+          <section class="players-panel" aria-label="双方公开信息">
+            <div class="panel-label">双方角色</div>
+            <div class="player-list" id="player-list"></div>
+          </section>
+
+          <section class="hand-panel" aria-label="本地手牌">
+            <div class="hand-heading">
+              <div class="panel-label">我的手牌</div>
+              <span class="hand-count" id="hand-count"></span>
+            </div>
+            <div class="hand" id="hand"></div>
+          </section>
+        </div>
+
+        <aside class="event-panel" aria-live="polite">
+          <span class="event-mark">EVENT</span>
+          <span id="event-message"></span>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="./js/app.mjs"></script>
+  </body>
+</html>
