@@ -40,9 +40,10 @@ test('two browser players create, join, start, and receive a private realtime mo
     assert.equal(JSON.stringify(guestInitial).includes(hostInitial.localHand[0].id), false);
 
     await host.locator('#hand [data-card-id]').first().click();
-    await host.locator('[data-mode="move"]').click();
+    await host.waitForTimeout(100);
+    assert.equal(await host.locator('#hand .selected-card').count(), 1);
     await host.locator('[data-row="0"][data-col="1"]').click();
-    await host.locator('#confirm-action').click();
+    await host.locator('[data-row="0"][data-col="1"]').click();
     await guest.waitForFunction(() => {
       const state = JSON.parse(window.render_game_to_text());
       return state.players.find((player) => player.id === 'p1').position.col === 1;

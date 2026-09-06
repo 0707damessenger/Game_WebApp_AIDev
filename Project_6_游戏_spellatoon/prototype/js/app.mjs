@@ -28,10 +28,6 @@ const elements = {
   previewMessage: document.querySelector('#preview-message'),
   resultMessage: document.querySelector('#result-message'),
   connectionStatus: document.querySelector('#connection-status'),
-  moveMode: document.querySelector('#move-mode'),
-  deployMode: document.querySelector('#deploy-mode'),
-  confirmAction: document.querySelector('#confirm-action'),
-  clearSelection: document.querySelector('#clear-selection'),
   endTurn: document.querySelector('#end-turn'),
   actionHint: document.querySelector('#action-hint'),
   lobbyPanel: document.querySelector('#lobby-panel'),
@@ -45,7 +41,7 @@ const elements = {
 };
 const selection = {
   selectedCardId: null,
-  mode: null,
+  pendingAction: null,
   path: [],
   reachable: [],
   previewCell: null,
@@ -62,7 +58,7 @@ elements.board.style.setProperty('--board-size', CONFIG.board.size);
 
 function clearSelectionState() {
   selection.selectedCardId = null;
-  selection.mode = null;
+  selection.pendingAction = null;
   selection.path = [];
   selection.reachable = [];
   selection.previewCell = null;

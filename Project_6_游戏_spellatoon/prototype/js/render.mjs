@@ -47,7 +47,29 @@ function previewMessage(selection) {
   if (selection.previewHoverCell) {
     return `预览范围内有 ${selection.previewTargets.length} 张卡牌`;
   }
-  return '悬停棋盘空格开始预览';
+  return '悬停或点击空格开始预览';
+}
+
+function actionLabelForCell(state, cell, selection, characterPlayer) {
+  const localPlayer = playerById(state, selection.localPlayerId);
+  const isActive = state.phase === 'playing' && state.activePlayerId === selection.localPlayerId;
+  if (!localPlayer || !characterPlayer || characterPlayer.id !== selection.localPlayerId || !isActive || !selection.selectedCardId) {
+    return null;
+  }
+  if (selection.pendingAction?.target && sameCell(selection.pendingAction.target, cell)) {
+    return '再次确认';
+  }
+  if (sameCell(localPlayer.position, cell)) {
+    return localPlayer.actions.deployed || state.board.find((candidate) => sameCell(candidate, cell))?.card
+      ? '不可部署'
+      : '部署';
+  }
+  if (hasCell(selection.reachable, cell.row, cell.col)) return '移动';
+  return null;
+}
+
+function sameCell(left, right) {
+  return left?.row === right?.row && left?.col === right?.col;
 }
 
 function renderBoard(boardElement, state, selection) {
@@ -56,12 +78,18 @@ function renderBoard(boardElement, state, selection) {
     const element = existingCells[index] || document.createElement('div');
     const existingCharacter = element.querySelector('.character');
     const existingCard = element.querySelector('.cell-card');
+    const existingActionLabel = element.querySelector('.cell-action-label');
     const player = cell.ownerId ? playerById(state, cell.ownerId) : null;
     const characterPlayer = getPlayerAtCell(state, cell);
     const effects = effectsAtCell(state, cell);
     const previewEffects = previewEffectsAtCell(selection, cell);
+    const isReachable = hasCell(selection.reachable, cell.row, cell.col);
+    const isPendingPath = hasCell(selection.path, cell.row, cell.col);
+    const isPendingTarget = selection.pendingAction?.target && sameCell(selection.pendingAction.target, cell);
+    const actionLabel = actionLabelForCell(state, cell, selection, characterPlayer);
     element.className = 'cell coordinate';
     element.removeAttribute('title');
+    element.style.removeProperty('--owner-color');
     delete element.dataset.card;
     delete element.dataset.pathIndex;
     delete element.dataset.effect;
@@ -69,23 +97,21 @@ function renderBoard(boardElement, state, selection) {
     element.dataset.coordinate = `${cell.row + 1},${cell.col + 1}`;
     element.dataset.row = cell.row;
     element.dataset.col = cell.col;
-    if (hasCell(selection.reachable, cell.row, cell.col)) element.classList.add('reachable-cell');
-    if (selection.previewTargets.some((target) => target.cell.row === cell.row && target.cell.col === cell.col)) {
+    if (isReachable) element.classList.add('reachable-cell');
+    if (selection.previewTargets.some((target) => sameCell(target.cell, cell))) {
       element.classList.add('preview-target');
     }
-    if (selection.previewCell?.row === cell.row && selection.previewCell?.col === cell.col) {
+    if (selection.previewCell && sameCell(selection.previewCell, cell)) {
       element.classList.add('preview-locked');
     }
-    if (selection.previewHoverCell?.row === cell.row && selection.previewHoverCell?.col === cell.col) {
+    if (selection.previewHoverCell && sameCell(selection.previewHoverCell, cell)) {
       element.classList.add('preview-hover');
     }
-    const pathIndex = selection.path.findIndex((pathCell) => (
-      pathCell.row === cell.row && pathCell.col === cell.col
-    ));
-    if (pathIndex >= 0) {
+    if (isPendingPath) {
       element.classList.add('path-cell');
-      element.dataset.pathIndex = pathIndex + 1;
+      element.dataset.pathIndex = selection.path.findIndex((pathCell) => sameCell(pathCell, cell)) + 1;
     }
+    if (isPendingTarget) element.classList.add('pending-target');
     if (effects.length) {
       element.classList.add('effect-cell');
       for (const effect of effects) element.classList.add(`${effect.type}-cell`);
@@ -99,8 +125,9 @@ function renderBoard(boardElement, state, selection) {
       element.title = previewEffects.map(effectLabel).join(' | ');
     }
     if (characterPlayer) element.classList.add('character-cell');
-    if (selection.mode === 'deploy' && characterPlayer?.id === selection.localPlayerId) {
-      element.classList.add('deploy-target');
+    if (characterPlayer?.id === selection.localPlayerId && selection.selectedCardId) {
+      if (characterPlayer.actions.deployed || cell.card) element.classList.add('deploy-blocked');
+      else element.classList.add('deploy-target');
     }
     if (player) {
       element.classList.add('owned-cell');
@@ -126,6 +153,14 @@ function renderBoard(boardElement, state, selection) {
       element.append(card);
     } else {
       existingCard?.remove();
+    }
+    if (actionLabel) {
+      const label = existingActionLabel || document.createElement('span');
+      label.className = 'cell-action-label';
+      label.textContent = actionLabel;
+      element.append(label);
+    } else {
+      existingActionLabel?.remove();
     }
     boardElement.append(element);
   }
@@ -164,7 +199,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   const active = playerById(state, state.activePlayerId);
   const currentSelection = {
     selectedCardId: null,
-    mode: null,
+    pendingAction: null,
     path: [],
     reachable: [],
     previewCell: null,
@@ -199,17 +234,14 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.eventMessage.textContent = [state.lastEvent.message, ...effectDetails].join(' · ');
   elements.previewMessage.textContent = previewMessage(currentSelection);
   elements.eventMessage.dataset.tone = currentSelection.feedbackTone || 'neutral';
-  elements.moveMode.classList.toggle('selected-action', currentSelection.mode === 'move');
-  elements.deployMode.classList.toggle('selected-action', currentSelection.mode === 'deploy');
-  elements.moveMode.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing' || localPlayer.actions.moved;
-  elements.deployMode.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing' || localPlayer.actions.deployed;
-  elements.confirmAction.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing' || currentSelection.mode !== 'move' || currentSelection.path.length === 0;
-  elements.confirmAction.textContent = currentSelection.mode === 'move' ? '确认移动' : '选择移动路径';
-  elements.clearSelection.disabled = !currentSelection.selectedCardId && !currentSelection.mode && currentSelection.path.length === 0;
   elements.endTurn.disabled = state.activePlayerId !== localPlayerId || state.phase !== 'playing';
   elements.actionHint.textContent = state.phase === 'finished'
     ? '本局已完成结算'
-    : currentSelection.feedback || '选择一张手牌开始行动';
+    : currentSelection.feedback || (currentSelection.pendingAction
+      ? `再次点击确认${currentSelection.pendingAction.type === 'move' ? '移动' : '部署'}`
+      : currentSelection.selectedCardId
+        ? '点击当前位置部署，点击蓝色高亮格移动'
+        : '选择手牌，然后点击绿色部署格或蓝色移动格');
   elements.resultMessage.textContent = state.result?.message || '';
 }
 
