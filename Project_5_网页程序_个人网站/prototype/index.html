@@ -10,7 +10,7 @@
       nav: [
         { id: "home", label: "首页", tone: "home", iconSrc: "" },
         { id: "projects", label: "项目", tone: "projects", iconSrc: "" },
-        { id: "links", label: "链接", tone: "links", iconSrc: "" }
+        { id: "links", label: "关于", tone: "links", iconSrc: "" }
       ],
       themes: {
         home: {
@@ -125,16 +125,16 @@
           ]
         },
         links: {
-          title: "链接",
-          subtitle: "内容待填写",
+          title: "关于",
+          subtitle: "在哪里找到我",
           myHomepages: [
             { title: "待填写", description: "内容待填写", imageSrc: "", url: "" }
           ],
           contacts: [
-            { kind: "email", label: "邮箱", value: "待填写", href: "" }
-          ],
-          friends: [
-            { title: "待填写", description: "内容待填写", imageSrc: "", url: "" }
+            { kind: "email", label: "邮箱", value: "voilabaso3@qq.com", iconSrc: "assets/links/mail.png", hoverImageSrc: "", hoverImageAlt: "", href: "" },
+            { kind: "wechat", label: "微信", value: "messenger_baso3", iconSrc: "assets/links/wechat.png", hoverImageSrc: "assets/links/wechat1.png", hoverImageAlt: "微信二维码", href: "" },
+            { kind: "feishu", label: "飞书", value: "baso3", iconSrc: "assets/links/feishu.png", hoverImageSrc: "assets/links/feishu1.png", hoverImageAlt: "飞书二维码", href: "" },
+            { kind: "steam", label: "Steam", value: "883518452", iconSrc: "assets/links/steam.png", hoverImageSrc: "", hoverImageAlt: "", href: "" }
           ]
         }
       }
@@ -192,7 +192,7 @@
       position: sticky;
       top: 0;
       z-index: 10;
-      margin-bottom: calc(-1 * var(--nav-height));
+      margin-bottom: calc(-1 * (var(--nav-height) + 1px));
       border-bottom: 1px solid transparent;
       background: transparent;
       transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease, backdrop-filter 180ms ease;
@@ -295,6 +295,12 @@
     .view.is-active {
       display: block;
       animation: view-in 220ms ease forwards;
+    }
+
+    .view.links-view.is-active {
+      display: flex;
+      flex-direction: column;
+      overflow: clip;
     }
 
     .layout {
@@ -747,7 +753,15 @@
     .links-list {
       display: grid;
       gap: 3.2em;
-      padding: 1em 0 9em;
+      padding: 1em 0 3em;
+    }
+
+    .links-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding-bottom: 3em;
     }
 
     .link-group {
@@ -833,11 +847,13 @@
     }
 
     .links-contact-strip {
+      position: relative;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: center;
       gap: 0.45em 1.3em;
-      margin-top: 1.35em;
+      margin: auto auto 0;
       padding-top: 0.9em;
       border-top: 1px solid color-mix(in srgb, var(--line), transparent 30%);
     }
@@ -851,6 +867,33 @@
       color: var(--muted);
       font-size: 0.9em;
       transition: color 180ms ease;
+    }
+
+    .contact-hover-media {
+      position: absolute;
+      z-index: 4;
+      left: var(--contact-preview-x, 50%);
+      bottom: 100%;
+      display: block;
+      width: min(22em, calc(100vw - 40px));
+      padding: 0;
+      border: 1px solid color-mix(in srgb, var(--line), transparent 15%);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 -0.35em 0.9em rgba(34, 34, 34, 0.12);
+      pointer-events: none;
+      transform: translate(-50%, 0);
+    }
+
+    .contact-hover-media[hidden] {
+      display: none;
+    }
+
+    .contact-hover-image {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: inherit;
     }
 
     .contact-row:hover {
@@ -867,6 +910,22 @@
       opacity: 0.85;
     }
 
+    .contact-icon.is-custom {
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 0;
+      border-radius: 0;
+      opacity: 1;
+    }
+
+    .contact-icon-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
     .contact-icon[data-kind="email"]::after {
       position: absolute;
       left: 0.16em;
@@ -876,6 +935,78 @@
       border-right: 0.11em solid currentColor;
       border-bottom: 0.11em solid currentColor;
       transform: rotate(45deg) skew(-8deg, -8deg);
+      content: "";
+    }
+
+    .contact-icon[data-kind="wechat"] {
+      border-radius: 999px;
+    }
+
+    .contact-icon[data-kind="wechat"]::before,
+    .contact-icon[data-kind="wechat"]::after {
+      position: absolute;
+      border: 0.1em solid currentColor;
+      border-radius: 999px;
+      content: "";
+    }
+
+    .contact-icon[data-kind="wechat"]::before {
+      left: 0.12em;
+      top: 0.16em;
+      width: 0.66em;
+      height: 0.52em;
+    }
+
+    .contact-icon[data-kind="wechat"]::after {
+      right: 0.1em;
+      bottom: 0.12em;
+      width: 0.5em;
+      height: 0.4em;
+      background: #fff;
+    }
+
+    .contact-icon[data-kind="feishu"] {
+      border-radius: 0.48em 0.48em 0.48em 0.12em;
+      transform: rotate(-12deg);
+    }
+
+    .contact-icon[data-kind="feishu"]::after {
+      position: absolute;
+      left: 0.28em;
+      top: 0.25em;
+      width: 0.48em;
+      height: 0.48em;
+      border-radius: 999px;
+      background: currentColor;
+      content: "";
+    }
+
+    .contact-icon[data-kind="steam"] {
+      border-radius: 999px;
+    }
+
+    .contact-icon[data-kind="steam"]::before {
+      position: absolute;
+      right: -0.02em;
+      top: 0.16em;
+      width: 0.54em;
+      height: 0.54em;
+      border: 0.1em solid currentColor;
+      border-radius: 999px;
+      background: #fff;
+      content: "";
+    }
+
+    .contact-icon[data-kind="steam"]::after {
+      position: absolute;
+      left: 0.14em;
+      bottom: 0.18em;
+      width: 0.66em;
+      height: 0.12em;
+      border-radius: 999px;
+      background: currentColor;
+      transform: rotate(-34deg);
+      transform-origin: left center;
       content: "";
     }
 
@@ -1221,8 +1352,11 @@
     }
 
     function renderContactRow(item) {
+      const icon = item.iconSrc
+        ? `<span class="contact-icon is-custom" aria-hidden="true">${renderOptionalImage(item.iconSrc, "contact-icon-image", "")}</span>`
+        : `<span class="contact-icon" data-kind="${escapeHTML(item.kind || "default")}" aria-hidden="true"></span>`;
       const content = `
-        <span class="contact-icon" data-kind="${escapeHTML(item.kind || "default")}" aria-hidden="true"></span>
+        ${icon}
         <span class="contact-copy">
           <span class="contact-label">${escapeHTML(item.label)}</span>
           <span class="contact-value">${escapeHTML(item.value)}</span>
@@ -1230,10 +1364,15 @@
       `;
 
       if (!item.href) {
-        return `<div class="contact-row" data-contact-row aria-disabled="true">${content}</div>`;
+        return `<div class="contact-row" data-contact-row data-contact-preview-target="${escapeHTML(item.kind || "default")}" aria-disabled="true">${content}</div>`;
       }
 
-      return `<a class="contact-row" data-contact-row href="${escapeHTML(item.href)}">${content}</a>`;
+      return `<a class="contact-row" data-contact-row data-contact-preview-target="${escapeHTML(item.kind || "default")}" href="${escapeHTML(item.href)}">${content}</a>`;
+    }
+
+    function renderContactHoverPreview(item) {
+      if (!item.hoverImageSrc) return "";
+      return `<span class="contact-hover-media" data-contact-hover data-contact-preview="${escapeHTML(item.kind || "default")}" hidden>${renderOptionalImage(item.hoverImageSrc, "contact-hover-image", item.hoverImageAlt || item.label, "eager")}</span>`;
     }
 
     function renderLinkGroup(id, title, items, contentClass, renderer) {
@@ -1249,21 +1388,22 @@
 
     function renderLinksView(page) {
       const contacts = Array.isArray(page.contacts) && page.contacts.length
-        ? `<div class="links-contact-strip" data-links-contacts aria-label="联系方式">${page.contacts.map(renderContactRow).join("")}</div>`
+        ? `<div class="links-contact-strip" data-links-contacts aria-label="联系方式">${page.contacts.map(renderContactRow).join("")}${page.contacts.map(renderContactHoverPreview).join("")}</div>`
         : "";
       const groups = [
-        renderLinkGroup("my-homepages", "我的主页", page.myHomepages, "link-card-grid", renderLinkCard),
-        renderLinkGroup("friends", "朋友们", page.friends, "link-card-grid", renderLinkCard)
+        renderLinkGroup("my-homepages", "我的主页", page.myHomepages, "link-card-grid", renderLinkCard)
       ].join("");
 
       return `
-        <section class="view" data-view="links" aria-labelledby="links-title" hidden>
+        <section class="view links-view" data-view="links" aria-labelledby="links-title" hidden>
           <div class="page-head layout">
             <h1 id="links-title">${escapeHTML(page.title)}</h1>
             <p>${escapeHTML(page.subtitle)}</p>
+          </div>
+          <div class="links-content layout">
+            <div class="links-list">${groups}</div>
             ${contacts}
           </div>
-          <div class="links-list layout">${groups}</div>
         </section>
       `;
     }
@@ -1342,6 +1482,29 @@
       syncHeaderScrollState();
     }
 
+    function showContactHoverPreview(strip, row) {
+      const previewId = row.dataset.contactPreviewTarget;
+      const preview = Array.from(strip.querySelectorAll("[data-contact-preview]"))
+        .find((item) => item.dataset.contactPreview === previewId);
+      if (!preview) return;
+
+      const stripRect = strip.getBoundingClientRect();
+      const rowRect = row.getBoundingClientRect();
+      preview.style.setProperty("--contact-preview-x", `${rowRect.left - stripRect.left + (rowRect.width / 2)}px`);
+      strip.querySelectorAll("[data-contact-preview]").forEach((item) => {
+        const isCurrent = item === preview;
+        item.classList.toggle("is-visible", isCurrent);
+        item.hidden = !isCurrent;
+      });
+    }
+
+    function hideContactHoverPreviews(strip) {
+      strip.querySelectorAll("[data-contact-preview]").forEach((item) => {
+        item.classList.remove("is-visible");
+        item.hidden = true;
+      });
+    }
+
     function syncHeaderScrollState() {
       header?.classList.toggle("is-scrolled", window.scrollY > 8);
     }
@@ -1398,6 +1561,14 @@
         if (summaryButton) {
           setExpandedProject(summaryButton.dataset.projectToggle);
         }
+      });
+
+      const contactsStrip = document.querySelector("[data-links-contacts]");
+      contactsStrip?.querySelectorAll("[data-contact-row]").forEach((row) => {
+        row.addEventListener("pointerenter", () => showContactHoverPreview(contactsStrip, row));
+        row.addEventListener("pointerleave", () => hideContactHoverPreviews(contactsStrip));
+        row.addEventListener("focusin", () => showContactHoverPreview(contactsStrip, row));
+        row.addEventListener("focusout", () => hideContactHoverPreviews(contactsStrip));
       });
 
       document.querySelectorAll('[data-disabled="true"]').forEach((link) => {

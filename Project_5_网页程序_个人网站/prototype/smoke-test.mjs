@@ -15,12 +15,12 @@ function assert(condition, message) {
 assert(existsSync(htmlPath), "index.html should exist");
 
 const html = readFileSync(htmlPath, "utf8");
-const requiredNavItems = ["首页", "项目", "链接"];
+const requiredNavIds = ["home", "projects", "links"];
 const navConfig = html.match(/nav: \[(.*?)\n\s+\],\n\s+themes:/s)?.[1] ?? "";
 const navLabelMatches = navConfig.match(/label: "/g) ?? [];
 
-for (const item of requiredNavItems) {
-  assert(html.includes(`label: "${item}"`), `missing nav item: ${item}`);
+for (const id of requiredNavIds) {
+  assert(html.includes(`id: "${id}"`), `missing nav item: ${id}`);
 }
 
 assert(navLabelMatches.length === 3, "navigation should contain exactly three items");
@@ -51,7 +51,21 @@ assert(html.includes("function scrollToPageTop"), "prototype should provide a sc
 assert(html.includes("function syncHeaderScrollState"), "prototype should synchronize the header appearance with scroll position");
 assert(html.includes("site-header.is-scrolled"), "header should define a scrolled transparent-glass state");
 assert(html.includes('history.scrollRestoration = "manual"'), "prototype should disable browser scroll restoration on refresh");
-assert(html.includes("margin-bottom: calc(-1 * var(--nav-height))"), "transparent header should overlay page content instead of reserving white space");
+assert(html.includes("margin-bottom: calc(-1 * (var(--nav-height) + 1px))"), "transparent header should overlay page content without adding scroll height");
+assert(!html.includes("friends: ["), "links should not configure a friends group");
+assert(html.includes('kind: "wechat"'), "links should configure a WeChat contact");
+assert(html.includes('kind: "feishu"'), "links should configure a Feishu contact");
+assert(html.includes('kind: "steam"'), "links should configure a Steam contact");
+assert(html.includes('iconSrc: ""'), "contacts should support configurable icon paths");
+assert(html.includes('data-kind="wechat"'), "WeChat should have a flat contact icon");
+assert(html.includes('data-kind="feishu"'), "Feishu should have a flat contact icon");
+assert(html.includes('data-kind="steam"'), "Steam should have a flat contact icon");
+assert(html.includes("contact-icon is-custom"), "configured contact icons should replace the fallback icon");
+assert(html.includes("contact-icon-image"), "configured contact icons should render as images");
+assert(html.includes("hoverImageSrc:"), "contacts should support configurable hover images");
+assert(html.includes("contact-hover-media"), "configured hover images should render a preview surface");
+assert(html.includes("data-contact-preview"), "hover previews should be anchored to the contacts strip");
+assert(html.includes("links-content"), "links should provide a bottom-aligned content layout");
 assert(html.includes("isFeatured: true"), "projects should support representative work markers");
 assert(html.includes("detail: {"), "projects should configure detail content");
 assert(html.includes("images: ["), "project details should support multiple images");
@@ -177,18 +191,111 @@ async function runBrowserChecks() {
     await page.waitForSelector('[data-view="home"].is-active');
     await page.locator('.nav-link[data-target="links"]').click();
     await page.waitForSelector('[data-view="links"].is-active');
+    await page.waitForTimeout(250);
     assert(html.includes("myHomepages: ["), "links should configure my homepages separately");
     assert(html.includes("contacts: ["), "links should configure contacts separately");
-    assert(html.includes("friends: ["), "links should configure friends separately");
     assert(html.includes("data-link-group"), "link groups should expose their category");
     assert(html.includes('target="_blank"'), "external homepage links should open in a new tab");
     assert(html.includes('rel="noopener noreferrer"'), "external homepage links should protect the opener");
     assert(await page.locator('[data-link-group="my-homepages"]').count() === 1, "my homepages group should render");
     assert(await page.locator('[data-link-group="contacts"]').count() === 0, "contacts should not render as an independent group");
-    assert(await page.locator('[data-link-group="friends"]').count() === 1, "friends group should render");
-    assert(await page.locator('[data-view="links"] .page-head [data-links-contacts]').count() === 1, "contacts should render beneath the links title");
-    assert(await page.locator('[data-contact-row]').count() >= 1, "contacts should render compact rows");
+    assert(await page.locator('[data-link-group="friends"]').count() === 0, "friends group should not render");
+    const homepageGroup = page.locator('[data-link-group="my-homepages"]');
+    const contactsStrip = page.locator('[data-view="links"] [data-links-contacts]');
+    const linksContent = page.locator('[data-view="links"] .links-content');
+    assert(await page.locator('[data-view="links"] .page-head [data-links-contacts]').count() === 0, "contacts should not render in the page heading");
+    assert(await contactsStrip.count() === 1, "contacts should render after the homepage cards");
+    assert((await contactsStrip.boundingBox()).y > (await homepageGroup.boundingBox()).y, "contacts should appear below my homepages");
+    assert(await contactsStrip.evaluate((element) => getComputedStyle(element).justifyContent === "center"), "contacts should be centered");
+    assert(await linksContent.evaluate((element) => getComputedStyle(element).display === "flex"), "links content should reserve bottom placement for contacts");
+    const contactsBox = await contactsStrip.boundingBox();
+    const contentBox = await linksContent.boundingBox();
+    const bottomGap = contentBox.y + contentBox.height - (contactsBox.y + contactsBox.height);
+    assert(bottomGap < 75, `contacts should stay near the bottom of the links content: ${bottomGap}`);
+    const linksMetrics = await page.evaluate(() => ({
+      documentHeight: document.documentElement.scrollHeight,
+      viewportHeight: window.innerHeight,
+      headerHeight: document.querySelector('.site-header').getBoundingClientRect().height,
+      linksViewTop: document.querySelector('[data-view="links"]').getBoundingClientRect().top,
+      linksViewHeight: document.querySelector('[data-view="links"]').getBoundingClientRect().height,
+      pageHeadHeight: document.querySelector('[data-view="links"] .page-head').getBoundingClientRect().height,
+      linksContentHeight: document.querySelector('[data-view="links"] .links-content').getBoundingClientRect().height,
+      contactsBottom: document.querySelector('[data-links-contacts]').getBoundingClientRect().bottom,
+      linksContentBottom: document.querySelector('[data-view="links"] .links-content').getBoundingClientRect().bottom
+    }));
+    assert(linksMetrics.documentHeight <= linksMetrics.viewportHeight, `links should not scroll when its content fits within one screen: ${JSON.stringify(linksMetrics)}`);
+    assert(await page.locator('[data-contact-row]').count() === 4, "links should render four compact contact rows");
+    assert(await page.locator('[data-contact-row] .contact-icon.is-custom').count() === 4, "configured contact icons should render at the standard size");
+    assert(await page.locator('[data-contact-hover]').count() === 2, "configured contact hover images should render previews");
+    const initialHoverPreviews = page.locator('[data-contact-hover]');
+    for (let index = 0; index < await initialHoverPreviews.count(); index += 1) {
+      const preview = initialHoverPreviews.nth(index);
+      assert(await preview.evaluate((element) => element.hidden && getComputedStyle(element).display === "none"), "contact hover previews should be fully hidden on entry");
+    }
 
+    const liveWechatRow = page.locator('[data-contact-preview-target="wechat"]');
+    const liveWechatPreview = page.locator('[data-contact-preview="wechat"]');
+    await liveWechatRow.hover();
+    await page.waitForFunction(() => !document.querySelector('[data-contact-preview="wechat"]')?.hidden);
+    const livePreviewBox = await liveWechatPreview.boundingBox();
+    const livePreviewImage = liveWechatPreview.locator('.contact-hover-image');
+    const liveImageMetrics = await livePreviewImage.evaluate((image) => ({
+      naturalWidth: image.naturalWidth,
+      naturalHeight: image.naturalHeight,
+      renderedWidth: image.getBoundingClientRect().width,
+      renderedHeight: image.getBoundingClientRect().height
+    }));
+    const expectedRenderedHeight = liveImageMetrics.renderedWidth * liveImageMetrics.naturalHeight / liveImageMetrics.naturalWidth;
+    assert(Math.abs(liveImageMetrics.renderedHeight - expectedRenderedHeight) <= 1, "hover previews should use each image's natural aspect ratio");
+    const liveContactsBox = await contactsStrip.boundingBox();
+    assert(Math.abs(livePreviewBox.y + livePreviewBox.height - liveContactsBox.y) <= 2, "hover preview bottom should align with the contacts divider");
+    await page.mouse.move(liveContactsBox.x + 2, liveContactsBox.y + 2);
+    await page.waitForFunction(() => document.querySelector('[data-contact-preview="wechat"]')?.hidden);
+    assert(await liveWechatPreview.evaluate((element) => element.hidden), "hover preview should hide immediately after leaving its contact row");
+
+    const customIconDataUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+    const qrCodeDataUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+    const configuredContactsPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await configuredContactsPage.setContent(
+      html
+        .replace('iconSrc: "assets/links/mail.png"', `iconSrc: "${customIconDataUrl}"`)
+        .replace('hoverImageSrc: "assets/links/wechat1.png", hoverImageAlt: "微信二维码"', `hoverImageSrc: "${qrCodeDataUrl}", hoverImageAlt: "微信二维码"`),
+      { waitUntil: "networkidle" }
+    );
+    await configuredContactsPage.locator('.nav-link[data-target="links"]').click();
+    const customIcon = configuredContactsPage.locator('[data-contact-row]').first().locator('.contact-icon.is-custom');
+    const comparisonIcon = configuredContactsPage.locator('[data-contact-row]').nth(1).locator('.contact-icon.is-custom');
+    assert(await customIcon.count() === 1, "configured contact icon should replace the fallback icon");
+    assert(await customIcon.locator('.contact-icon-image').getAttribute("src") === customIconDataUrl, "configured contact icon should use its configured path");
+    assert(await customIcon.evaluate((element) => Math.round(element.getBoundingClientRect().width)) === await comparisonIcon.evaluate((element) => Math.round(element.getBoundingClientRect().width)), "custom contact icons should retain the standard icon width");
+    assert(await customIcon.evaluate((element) => Math.round(element.getBoundingClientRect().height)) === await comparisonIcon.evaluate((element) => Math.round(element.getBoundingClientRect().height)), "custom contact icons should retain the standard icon height");
+    const wechatRow = configuredContactsPage.locator('[data-contact-row]').nth(1);
+    const configuredContactsStrip = configuredContactsPage.locator('[data-links-contacts]');
+    const hoverPreview = configuredContactsStrip.locator('[data-contact-preview="wechat"]');
+    assert(await hoverPreview.count() === 1, "configured hover image should render a preview");
+    assert(await hoverPreview.locator('.contact-hover-image').getAttribute("src") === qrCodeDataUrl, "hover preview should use its configured image path");
+    assert(await hoverPreview.evaluate((element) => element.hidden), "hover preview should start hidden");
+    await wechatRow.hover();
+    await configuredContactsPage.waitForFunction(() => document.querySelector('[data-contact-preview="wechat"]')?.classList.contains("is-visible"));
+    assert(await hoverPreview.evaluate((element) => !element.hidden), "hover preview should appear when its contact is hovered");
+    const previewBox = await hoverPreview.boundingBox();
+    const contactsStripBox = await configuredContactsStrip.boundingBox();
+    assert(Math.abs(previewBox.y + previewBox.height - contactsStripBox.y) <= 2, "hover preview bottom should align with the contacts divider");
+    await configuredContactsPage.close();
+
+    const noHoverImagesPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await noHoverImagesPage.setContent(
+      html
+        .replaceAll('hoverImageSrc: "assets/links/wechat1.png"', 'hoverImageSrc: ""')
+        .replaceAll('hoverImageSrc: "assets/links/feishu1.png"', 'hoverImageSrc: ""'),
+      { waitUntil: "networkidle" }
+    );
+    await noHoverImagesPage.locator('.nav-link[data-target="links"]').click();
+    assert(await noHoverImagesPage.locator('[data-contact-hover]').count() === 0, "contacts without configured hover images should not render previews");
+    await noHoverImagesPage.close();
+
+    await page.locator('.nav-link[data-target="home"]').click();
+    await page.waitForSelector('[data-view="home"].is-active');
     await assertViewChangeScrollsToTop(page, '.nav-link[data-target="projects"]', "projects");
 
     await page.locator('.nav-link[data-target="home"]').click();

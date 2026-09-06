@@ -13,8 +13,6 @@ assets/
 │   ├── participating/              # 参与项目列表
 │   └── open-source/                # 开源项目列表
 ├── links/
-│   ├── friends/                    # 朋友或友链
-│   └── organizations/              # 组织、社区或平台
 ```
 
 ## 建议命名
