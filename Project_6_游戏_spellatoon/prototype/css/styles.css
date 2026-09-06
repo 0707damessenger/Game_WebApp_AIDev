@@ -68,7 +68,8 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
 }
 .timer-chip { color: var(--red); font-size: 14px; font-weight: 900; }
 .timer-chip::before { content: "行动"; margin-right: 5px; color: var(--muted); font-size: 10px; }
-.timer-chip [data-urgent="true"] { color: #b21f3c; }
+.timer-chip [data-urgent="true"] { color: #b21f3c; font-weight: 900; text-shadow: 0 0 8px rgba(239, 79, 98, 0.52); animation: timer-alert 700ms ease-in-out infinite alternate; }
+@keyframes timer-alert { to { filter: brightness(0.72); } }
 .score-strip { gap: 7px; }
 .score-strip-label { color: var(--muted); font-size: 10px; font-weight: 900; }
 .score-strip .player-list { display: flex; align-items: center; gap: 8px; margin: 0; }
@@ -110,6 +111,8 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
   min-height: 0;
   flex: 1;
 }
+#game-view[hidden],
+#header-stats[hidden] { display: none; }
 
 .board-section, .console-section {
   min-height: 0;
@@ -281,7 +284,7 @@ h2 { margin: 2px 0 0; font-size: 20px; line-height: 1.1; }
 .game-toast[hidden] { display: none; }
 .game-toast[data-tone="warning"] { border-color: var(--yellow); background: #7a5e12; }
 
-.lobby-panel { flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 18px; background: var(--white); box-shadow: var(--shadow); }
+.lobby-panel { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 8px; padding: 18px; background: var(--white); box-shadow: var(--shadow); }
 .lobby-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
 .room-input-label { color: var(--muted); font-size: 12px; font-weight: 800; }
 .room-input { min-height: 38px; min-width: 180px; padding: 7px 10px; border: 1px solid #b8c7d9; border-radius: 6px; color: var(--ink); }

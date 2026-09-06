@@ -69,9 +69,9 @@ function sendSse(res, event, payload) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`);
 }
 
-function newRoomId(rooms) {
+function newRoomId(rooms, random) {
   let roomId;
-  do roomId = `spell-${randomUUID().slice(0, 8)}`; while (rooms.has(roomId));
+  do roomId = String(Math.floor(random() * 10000)).padStart(4, '0'); while (rooms.has(roomId));
   return roomId;
 }
 
@@ -132,6 +132,38 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
   const streams = new Set();
   const heartbeatTimers = new Set();
   const actionTimers = new Set();
+  const roomTimers = new Set();
+
+  function clearRoomTimer(room) {
+    if (!room.expiryTimer) return;
+    clearTimeout(room.expiryTimer);
+    roomTimers.delete(room.expiryTimer);
+    room.expiryTimer = null;
+  }
+
+  function destroyRoom(room) {
+    if (rooms.get(room.id) !== room) return;
+    clearActionTimer(room, actionTimers);
+    clearRoomTimer(room);
+    rooms.delete(room.id);
+    for (const player of room.players.values()) {
+      for (const stream of player.streams) {
+        player.streams.delete(stream);
+        streams.delete(stream);
+        stream.end();
+      }
+    }
+  }
+
+  function scheduleRoomExpiry(room) {
+    clearRoomTimer(room);
+    const lifetime = config.network.roomLifetimeMs;
+    if (!Number.isFinite(lifetime) || lifetime <= 0) return;
+    const timer = setTimeout(() => destroyRoom(room), lifetime);
+    timer.unref?.();
+    room.expiryTimer = timer;
+    roomTimers.add(timer);
+  }
 
   function scheduleActionTimer(room) {
     clearActionTimer(room, actionTimers);
@@ -160,7 +192,8 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
     };
     room.state = result.state;
     broadcastRoom(room, streams);
-    scheduleActionTimer(room);
+    if (room.state.phase === 'finished') setTimeout(() => destroyRoom(room), 0);
+    else scheduleActionTimer(room);
     return true;
   }
 
@@ -195,7 +228,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
     const requestUrl = new URL(req.url, 'http://localhost');
     const parts = requestUrl.pathname.split('/').filter(Boolean);
     if (req.method === 'POST' && requestUrl.pathname === '/api/rooms') {
-      const roomId = newRoomId(rooms);
+      const roomId = newRoomId(rooms, random);
       const state = createInitialState({ config, random });
       state.phase = 'lobby';
       state.lastEvent = { type: 'room-created', message: '等待另一名玩家加入' };
@@ -203,6 +236,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
         id: roomId,
         state,
         players: new Map(),
+        expiryTimer: null,
       };
       room.players.set('p1', {
         id: 'p1',
@@ -279,6 +313,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
         room.state.lastEvent = { type: 'game-started', message: `${room.state.players.find((candidate) => candidate.id === room.state.starterId).label} 先手` };
         broadcastRoom(room, streams);
         scheduleActionTimer(room);
+        scheduleRoomExpiry(room);
       }
       json(res, 200, createPlayerView(room.state, 'p1', roomConnection(room)));
       return;
@@ -297,7 +332,8 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
       }
       room.state = result.state;
       broadcastRoom(room, streams);
-      scheduleActionTimer(room);
+      if (room.state.phase === 'finished') setTimeout(() => destroyRoom(room), 0);
+      else scheduleActionTimer(room);
       json(res, 200, createPlayerView(room.state, body.playerId, roomConnection(room)));
       return;
     }
@@ -329,6 +365,7 @@ export function createSpellatoonServer({ config = CONFIG, random = Math.random }
     streams,
     heartbeatTimers,
     actionTimers,
+    roomTimers,
   };
 }
 

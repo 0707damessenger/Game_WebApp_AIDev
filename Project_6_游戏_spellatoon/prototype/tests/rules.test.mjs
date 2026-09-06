@@ -396,7 +396,7 @@ test('starts a fresh action deadline for the next player turn', () => {
   const result = endTurn(state, 'p1', CONFIG, () => 0, 1000);
 
   assert.equal(result.ok, true);
-  assert.equal(CONFIG.timer.actionTimeMs, 30000);
+  assert.equal(CONFIG.timer.actionTimeMs, 45000);
   assert.equal(result.state.turnDeadlineAt, 1000 + CONFIG.timer.actionTimeMs);
 });
 

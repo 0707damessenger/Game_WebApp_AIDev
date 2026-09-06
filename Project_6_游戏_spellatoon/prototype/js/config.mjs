@@ -14,7 +14,8 @@ export const CONFIG = Object.freeze({
     turnsPerPlayer: 10,
   }),
   timer: Object.freeze({
-    actionTimeMs: 30000,
+    actionTimeMs: 45000,
+    urgentTimeMs: 10000,
     tickMs: 250,
   }),
   players: Object.freeze([
@@ -27,6 +28,7 @@ export const CONFIG = Object.freeze({
   network: Object.freeze({
     port: 51359,
     heartbeatMs: 15000,
+    roomLifetimeMs: 1200000,
   }),
   motion: Object.freeze({
     effectMs: 620,

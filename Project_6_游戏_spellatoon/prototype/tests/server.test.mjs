@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import { CONFIG } from '../js/config.mjs';
 import { createSpellatoonServer } from '../server.mjs';
 
-async function startServer() {
-  const app = createSpellatoonServer({ config: CONFIG, random: () => 0 });
+async function startServer({ config = CONFIG } = {}) {
+  const app = createSpellatoonServer({ config, random: () => 0 });
   await new Promise((resolve) => app.server.listen(0, resolve));
   const address = app.server.address();
   return { app, baseUrl: `http://127.0.0.1:${address.port}` };
@@ -13,6 +13,7 @@ async function startServer() {
 
 async function stopServer(app) {
   for (const stream of app.streams || []) stream.destroy();
+  for (const timer of app.roomTimers || []) clearTimeout(timer);
   await new Promise((resolve) => app.server.close(resolve));
 }
 
@@ -56,6 +57,7 @@ test('creates a room, allows one join, rejects a third player, and starts for th
     const created = await createRoom(baseUrl);
     assert.equal(created.response.status, 201);
     assert.equal(created.body.playerId, 'p1');
+    assert.match(created.body.roomId, /^\d{4}$/);
 
     const joined = await joinRoom(baseUrl, created.body.roomId);
     assert.equal(joined.response.status, 200);
@@ -77,6 +79,64 @@ test('creates a room, allows one join, rejects a third player, and starts for th
     assert.equal(started.response.status, 200);
     assert.equal(started.body.phase, 'playing');
     assert.equal(typeof started.body.turnDeadlineAt, 'number');
+  } finally {
+    await stopServer(app);
+  }
+});
+
+test('destroys a started room after its configured lifetime', async () => {
+  const config = {
+    ...CONFIG,
+    network: { ...CONFIG.network, roomLifetimeMs: 1 },
+  };
+  const { app, baseUrl } = await startServer({ config });
+  try {
+    const created = await createRoom(baseUrl);
+    const joined = await joinRoom(baseUrl, created.body.roomId);
+    await request(baseUrl, `/api/rooms/${created.body.roomId}/start`, {
+      method: 'POST',
+      body: { playerId: 'p1', token: created.body.token },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const rejoin = await joinRoom(baseUrl, created.body.roomId, {
+      playerId: 'p2',
+      token: joined.body.token,
+    });
+    assert.equal(rejoin.response.status, 404);
+  } finally {
+    await stopServer(app);
+  }
+});
+
+test('destroys a room immediately after the final turn settles the game', async () => {
+  const config = {
+    ...CONFIG,
+    turns: { ...CONFIG.turns, turnsPerPlayer: 1 },
+  };
+  const { app, baseUrl } = await startServer({ config });
+  try {
+    const created = await createRoom(baseUrl);
+    const joined = await joinRoom(baseUrl, created.body.roomId);
+    await request(baseUrl, `/api/rooms/${created.body.roomId}/start`, {
+      method: 'POST',
+      body: { playerId: 'p1', token: created.body.token },
+    });
+    await request(baseUrl, `/api/rooms/${created.body.roomId}/action`, {
+      method: 'POST',
+      body: { playerId: 'p1', token: created.body.token, type: 'end-turn' },
+    });
+    await request(baseUrl, `/api/rooms/${created.body.roomId}/action`, {
+      method: 'POST',
+      body: { playerId: 'p2', token: joined.body.token, type: 'end-turn' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const rejoin = await joinRoom(baseUrl, created.body.roomId, {
+      playerId: 'p1',
+      token: created.body.token,
+    });
+    assert.equal(rejoin.response.status, 404);
   } finally {
     await stopServer(app);
   }

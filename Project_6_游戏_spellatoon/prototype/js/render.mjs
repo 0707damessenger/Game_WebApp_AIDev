@@ -238,7 +238,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
   elements.turnChip.textContent = state.phase === 'finished' ? '已结算' : `第 ${state.turnNumber} 回合`;
   const seconds = remainingSeconds(state, currentSelection.clockNow);
   elements.turnTimer.textContent = seconds == null ? '--' : `${seconds}s`;
-  elements.turnTimer.dataset.urgent = seconds != null && seconds <= 5 ? 'true' : 'false';
+  elements.turnTimer.dataset.urgent = seconds != null && seconds <= CONFIG.timer.urgentTimeMs ? 'true' : 'false';
   const ownHand = state.ownHand || localPlayer.hand || [];
   elements.handCount.textContent = `${ownHand.length} / ${CONFIG.cards.handLimit} 张`;
   if (elements.connectionStatus) {

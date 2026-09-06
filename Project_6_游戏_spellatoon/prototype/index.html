@@ -19,7 +19,7 @@
           <p class="eyebrow">LOCAL DUEL / PUBLIC BOARD</p>
           <h1>Spellatoon</h1>
         </div>
-        <div class="header-stats" aria-label="对局信息">
+        <div class="header-stats" id="header-stats" aria-label="对局信息">
           <div class="turn-chip" id="turn-chip" aria-live="polite">第 1 回合</div>
           <div class="timer-chip" aria-label="行动倒计时"><span id="turn-timer">30s</span></div>
           <div class="score-strip" aria-label="双方分数">
@@ -30,22 +30,15 @@
         </div>
       </header>
 
-      <section class="lobby-panel" id="lobby-panel" aria-labelledby="lobby-heading">
-        <div class="section-heading">
-          <div>
-            <p class="section-kicker">局域网房间</p>
-            <h2 id="lobby-heading">连接另一台设备</h2>
-          </div>
-          <span class="lobby-status" id="lobby-status">创建房间开始</span>
-        </div>
+      <section class="lobby-panel" id="lobby-panel" aria-label="局域网房间">
+        <span class="lobby-status" id="lobby-status"></span>
         <div class="lobby-controls">
           <button class="action-button" type="button" id="create-room">创建房间</button>
-          <label class="room-input-label" for="room-id-input">房间号</label>
-          <input class="room-input" id="room-id-input" autocomplete="off" placeholder="粘贴房间号" />
+          <input class="room-input" id="room-id-input" aria-label="四位数字房间号" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="四位房间号" />
           <button class="action-button" type="button" id="join-room">加入房间</button>
           <button class="action-button secondary" type="button" id="start-game" disabled>开始对局</button>
         </div>
-        <p class="room-info" id="room-info">创建后把房间号和本页面地址交给另一名玩家。</p>
+        <p class="room-info" id="room-info" hidden></p>
       </section>
 
       <div id="game-view">

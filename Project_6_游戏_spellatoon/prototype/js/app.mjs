@@ -23,6 +23,7 @@ const elements = {
   handOverlay: document.querySelector('#hand-overlay'),
   turnChip: document.querySelector('#turn-chip'),
   turnTimer: document.querySelector('#turn-timer'),
+  headerStats: document.querySelector('#header-stats'),
   handCount: document.querySelector('#hand-count'),
   previewMessage: document.querySelector('#preview-message'),
   connectionStatus: document.querySelector('#connection-status'),
@@ -59,6 +60,7 @@ let startToastTimer = null;
 let gameToastKey = null;
 let gameToastTimer = null;
 let eventToastKey = null;
+let urgentTimerToastKey = null;
 let inputController = null;
 let autoEndInFlight = false;
 
@@ -82,6 +84,10 @@ function renderLobby() {
   const connectedPlayers = state?.connection?.connectedPlayers || [];
   elements.lobbyPanel.hidden = demoMode || (Boolean(state) && !inLobby);
   elements.gameView.hidden = !state || (!demoMode && inLobby);
+  elements.headerStats.hidden = !demoMode && (!state || inLobby);
+  elements.createRoom.hidden = inRoom;
+  elements.roomIdInput.hidden = inRoom;
+  elements.joinRoom.hidden = inRoom;
   elements.createRoom.disabled = inRoom;
   elements.joinRoom.disabled = inRoom;
   elements.roomIdInput.disabled = inRoom;
@@ -89,12 +95,13 @@ function renderLobby() {
     session.host && inLobby && connectedPlayers.includes('p1') && connectedPlayers.includes('p2')
   );
   if (!inRoom) {
-    elements.lobbyStatus.textContent = '创建房间开始';
-    elements.roomInfo.textContent = '创建后把房间号和本页面地址交给另一名玩家。';
+    elements.lobbyStatus.textContent = '';
+    elements.roomInfo.hidden = true;
   } else {
     const connected = connectedPlayers.length;
     elements.lobbyStatus.textContent = `${connected} / ${CONFIG.players.length} 人已连接`;
-    elements.roomInfo.textContent = `房间号：${session.roomId} · ${session.host ? '你是房主，等待玩家加入' : '等待房主开始对局'}`;
+    elements.roomInfo.textContent = `房间号 ${session.roomId}`;
+    elements.roomInfo.hidden = false;
   }
 }
 
@@ -125,7 +132,7 @@ function showStartToast(view) {
   }, CONFIG.motion.turnNoticeMs);
 }
 
-function showToast(message, tone = 'neutral') {
+function showToast(message, tone = 'neutral', durationMs = CONFIG.motion.toastMs) {
   if (!message || !elements.gameToast) return;
   if (gameToastKey === message && !elements.gameToast.hidden) return;
   gameToastKey = message;
@@ -135,7 +142,7 @@ function showToast(message, tone = 'neutral') {
   if (gameToastTimer) window.clearTimeout(gameToastTimer);
   gameToastTimer = window.setTimeout(() => {
     elements.gameToast.hidden = true;
-  }, CONFIG.motion.toastMs);
+  }, durationMs);
 }
 
 function showEventToast(view) {
@@ -145,6 +152,17 @@ function showEventToast(view) {
   if (eventToastKey === key) return;
   eventToastKey = key;
   showToast(formatPerspectiveMessage(view, event.message), event.type === 'turn-timeout' ? 'warning' : 'neutral');
+}
+
+function showUrgentTimerToast(view) {
+  if (view?.phase !== 'playing' || !Number.isFinite(view.turnDeadlineAt)) return;
+  const remainingMs = view.turnDeadlineAt - selection.clockNow;
+  if (remainingMs <= 0 || remainingMs > CONFIG.timer.urgentTimeMs) return;
+  const key = `${view.turnDeadlineAt}:${view.activePlayerId}`;
+  if (urgentTimerToastKey === key) return;
+  urgentTimerToastKey = key;
+  const seconds = Math.ceil(remainingMs / 1000);
+  showToast(`仅剩 ${seconds} 秒，请尽快行动`, 'warning', remainingMs);
 }
 
 function currentTime() {
@@ -170,6 +188,7 @@ function render() {
     showStartToast(state);
     renderApp(elements, state, localPlayerId, selection);
     showEventToast(state);
+    showUrgentTimerToast(state);
     maybeAutoEndTurn();
   }
 }
@@ -266,8 +285,8 @@ async function createRoom() {
 
 async function joinRoom() {
   const roomId = elements.roomIdInput.value.trim();
-  if (!roomId) {
-    elements.lobbyStatus.textContent = '请输入房间号';
+  if (!/^\d{4}$/.test(roomId)) {
+    elements.lobbyStatus.textContent = '请输入四位数字房间号';
     return;
   }
   try {

@@ -25,13 +25,53 @@ test('selecting a card exposes move targets and the deploy location without mode
     assert.equal(await page.locator('#action-hint').count(), 0);
     assert.equal(await page.locator('.scores-panel').count(), 0);
     assert.equal(await page.locator('#turn-chip').textContent(), '第 1 回合');
-    assert.match(await page.locator('#turn-timer').textContent(), /30s/);
+    assert.match(await page.locator('#turn-timer').textContent(), /45s/);
 
     await page.locator('#hand [data-card-id]').first().click();
 
     assert.equal(await page.locator('.cell.reachable-cell').count(), 2);
     assert.equal(await page.locator('[data-row="0"][data-col="0"].deploy-target').count(), 1);
     assert.equal(await page.locator('#action-hint').count(), 0);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('keeps the pre-game lobby limited to room controls', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#lobby-panel');
+
+    assert.equal(await page.locator('#game-view').isHidden(), true);
+    assert.equal(await page.locator('#header-stats').isHidden(), true);
+    assert.equal(await page.locator('#room-id-input').getAttribute('inputmode'), 'numeric');
+    assert.ok((await page.locator('#lobby-panel').boundingBox()).height < 180);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('emphasizes the turn timer during the final configured warning window', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.evaluate((ms) => window.advanceTime(ms), CONFIG.timer.actionTimeMs - CONFIG.timer.urgentTimeMs);
+
+    assert.equal(await page.locator('#turn-timer').getAttribute('data-urgent'), 'true');
+  } finally {
+    await browser.close();
+  }
+});
+
+test('shows a persistent warning toast when the final timer warning window begins', async () => {
+  const { browser, page } = await openDemo();
+  try {
+    await page.evaluate((ms) => window.advanceTime(ms), CONFIG.timer.actionTimeMs - CONFIG.timer.urgentTimeMs);
+
+    assert.equal(await page.locator('#game-toast').isVisible(), true);
+    assert.equal(await page.locator('#game-toast').getAttribute('data-tone'), 'warning');
+    assert.match(await page.locator('#game-toast').textContent(), /(仅剩|剩余).*秒/);
   } finally {
     await browser.close();
   }
@@ -187,7 +227,7 @@ test('shows only the useful score and prompt information during play', async () 
 test('automatically ends the local turn when its action timer expires', async () => {
   const { browser, page } = await openDemo();
   try {
-    await page.evaluate(() => window.advanceTime(30001));
+    await page.evaluate((ms) => window.advanceTime(ms), CONFIG.timer.actionTimeMs + 1);
     const text = JSON.parse(await page.evaluate(() => window.render_game_to_text()));
     assert.equal(text.activePlayerId, 'p2');
     assert.equal(text.players.find((player) => player.id === 'p1').completedTurns, 1);
