@@ -1,9 +1,10 @@
 import { CONFIG } from './config.mjs';
 import { createInitialState } from './rules.mjs';
 import { renderApp, stateToText } from './render.mjs';
+import { createInputController } from './input.mjs';
 
 const localPlayerId = CONFIG.players[0].id;
-const state = createInitialState({ config: CONFIG });
+let state = createInitialState({ config: CONFIG, random: () => 0 });
 const elements = {
   board: document.querySelector('#board'),
   playerList: document.querySelector('#player-list'),
@@ -15,14 +16,37 @@ const elements = {
   statusMessage: document.querySelector('#status-message'),
   handCount: document.querySelector('#hand-count'),
   eventMessage: document.querySelector('#event-message'),
+  moveMode: document.querySelector('#move-mode'),
+  deployMode: document.querySelector('#deploy-mode'),
+  confirmAction: document.querySelector('#confirm-action'),
+  clearSelection: document.querySelector('#clear-selection'),
+  actionHint: document.querySelector('#action-hint'),
+};
+const selection = {
+  selectedCardId: null,
+  mode: null,
+  path: [],
+  reachable: [],
+  feedback: '',
+  feedbackTone: 'neutral',
 };
 let virtualTime = 0;
 
 elements.board.style.setProperty('--board-size', CONFIG.board.size);
 
 function render() {
-  renderApp(elements, state, localPlayerId);
+  renderApp(elements, state, localPlayerId, selection);
 }
+
+createInputController({
+  elements,
+  getState: () => state,
+  getSelection: () => selection,
+  setState: (nextState) => { state = nextState; },
+  render,
+  localPlayerId,
+  config: CONFIG,
+});
 
 window.render_game_to_text = () => stateToText(state, localPlayerId);
 window.advanceTime = (ms = 0) => {

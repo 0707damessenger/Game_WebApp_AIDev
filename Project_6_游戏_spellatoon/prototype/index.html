@@ -61,6 +61,17 @@
             </div>
             <div class="hand" id="hand"></div>
           </section>
+
+          <section class="action-panel" id="action-controls" aria-label="行动控制">
+            <div class="panel-label">行动</div>
+            <div class="action-controls">
+              <button class="action-button" type="button" data-mode="move" id="move-mode">移动</button>
+              <button class="action-button" type="button" data-mode="deploy" id="deploy-mode">部署</button>
+              <button class="action-button secondary" type="button" id="confirm-action">确认移动</button>
+              <button class="action-button ghost" type="button" id="clear-selection">清除选择</button>
+            </div>
+            <p class="action-hint" id="action-hint">选择一张手牌开始行动</p>
+          </section>
         </div>
 
         <aside class="event-panel" aria-live="polite">
