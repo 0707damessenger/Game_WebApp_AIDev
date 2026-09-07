@@ -6,12 +6,9 @@
 
 ```text
 assets/
-├── avatar/                         # 首页个人头像
+├── avatar/                         # 头像类
 ├── navigation/                     # 顶部页签图案
-├── projects/
-│   ├── featured/                   # 项目页顶部的精选项目
-│   ├── participating/              # 参与项目列表
-│   └── open-source/                # 开源项目列表
+├── projects/                       # 项目详细图片
 ├── links/
 ```
 
@@ -22,9 +19,9 @@ assets/
 ## 配置位置
 
 - 首页头像：`CONFIG.pages.home.avatarSrc`
-- 顶部页签图案：`CONFIG.nav` 对应项目的 `iconSrc`
+- 顶部页签：`CONFIG.nav` 对应项目的 `iconSrc`
 - 精选项目图片：`CONFIG.pages.projects.featured` 对应项目的 `imageSrc`
-- 参与项目与开源项目图片：`CONFIG.pages.projects.sections` 对应项目的 `imageSrc`
+- 项目详细图片：`CONFIG.pages.projects.sections` 对应项目的 `imageSrc`
 - 链接图片：`CONFIG.pages.links.groups` 对应链接的 `imageSrc`
 
 路径以 `prototype/index.html` 所在目录为起点，例如：`assets/avatar/profile.png`。
