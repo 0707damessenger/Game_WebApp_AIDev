@@ -1,0 +1,41 @@
+name: 发布 Spellatoon
+
+on:
+  push:
+    branches: ["master"]
+    paths:
+      - "Project_6_游戏_spellatoon/prototype/**"
+      - ".github/workflows/deploy-spellatoon.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "github-pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 获取项目文件
+        uses: actions/checkout@v4
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 上传游戏网页
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "Project_6_游戏_spellatoon/prototype"
+
+      - name: 发布网站
+        id: deployment
+        uses: actions/deploy-pages@v4
