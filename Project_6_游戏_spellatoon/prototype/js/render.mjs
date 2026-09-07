@@ -230,6 +230,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
     previewNotice: '',
     clockNow: Date.now(),
     localPlayerId,
+    soloMode: false,
     ...selection,
   };
   renderBoard(elements.board, state, currentSelection);
@@ -245,7 +246,7 @@ export function renderApp(elements, state, localPlayerId, selection = {}) {
     const connectedCount = state.connection?.connectedPlayers?.length || 0;
     elements.connectionStatus.textContent = state.connection
       ? `局域网 ${connectedCount} / ${CONFIG.players.length}`
-      : '本地演示';
+      : currentSelection.soloMode ? '单机双人' : '本地演示';
   }
   elements.previewMessage.textContent = previewMessage(currentSelection);
   const waitingForOpponent = state.phase === 'playing' && active.id !== localPlayerId;

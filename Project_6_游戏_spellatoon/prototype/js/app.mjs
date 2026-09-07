@@ -5,6 +5,8 @@ import { createInputController } from './input.mjs';
 
 const query = new URLSearchParams(window.location.search);
 const demoMode = query.has('demo');
+let soloMode = false;
+let handoffRequired = false;
 let localPlayerId = demoMode ? CONFIG.players[0].id : null;
 let state = demoMode ? createInitialState({ config: CONFIG, random: () => 0 }) : null;
 if (state) state.turnDeadlineAt = Date.now() + CONFIG.timer.actionTimeMs;
@@ -31,6 +33,7 @@ const elements = {
   actionHint: document.querySelector('#action-hint'),
   lobbyPanel: document.querySelector('#lobby-panel'),
   lobbyStatus: document.querySelector('#lobby-status'),
+  soloStart: document.querySelector('#solo-start'),
   createRoom: document.querySelector('#create-room'),
   roomIdInput: document.querySelector('#room-id-input'),
   joinRoom: document.querySelector('#join-room'),
@@ -42,6 +45,9 @@ const elements = {
   guideButton: document.querySelector('#guide-button'),
   guideDialog: document.querySelector('#guide-dialog'),
   guideClose: document.querySelector('#guide-close'),
+  handoffDialog: document.querySelector('#handoff-dialog'),
+  handoffSwatch: document.querySelector('#handoff-swatch'),
+  handoffStart: document.querySelector('#handoff-start'),
   gameToast: document.querySelector('#game-toast'),
 };
 const selection = {
@@ -91,9 +97,11 @@ function renderLobby() {
   elements.createRoom.hidden = inRoom;
   elements.roomIdInput.hidden = inRoom;
   elements.joinRoom.hidden = inRoom;
+  elements.soloStart.hidden = inRoom;
   elements.createRoom.disabled = inRoom;
   elements.joinRoom.disabled = inRoom;
   elements.roomIdInput.disabled = inRoom;
+  elements.soloStart.disabled = inRoom;
   elements.startGame.disabled = !(
     session.host && inLobby && connectedPlayers.includes('p1') && connectedPlayers.includes('p2')
   );
@@ -106,6 +114,38 @@ function renderLobby() {
     elements.roomInfo.textContent = `房间号 ${session.roomId}`;
     elements.roomInfo.hidden = false;
   }
+}
+
+function renderHandoffDialog() {
+  const activePlayer = state?.players.find((player) => player.id === state.activePlayerId);
+  const visible = soloMode && handoffRequired && state?.phase === 'playing' && activePlayer;
+  elements.handoffDialog.hidden = !visible;
+  if (visible) elements.handoffSwatch.style.background = activePlayer.color;
+  return visible;
+}
+
+function startSoloGame() {
+  soloMode = true;
+  state = createInitialState({ config: CONFIG });
+  state.turnDeadlineAt = null;
+  localPlayerId = state.activePlayerId;
+  handoffRequired = true;
+  clearSelectionState();
+  selection.feedback = '';
+  render();
+}
+
+function beginSoloTurn() {
+  if (!soloMode || !handoffRequired || state?.phase !== 'playing') return;
+  handoffRequired = false;
+  localPlayerId = state.activePlayerId;
+  state = {
+    ...state,
+    turnDeadlineAt: currentTime() + CONFIG.timer.actionTimeMs,
+  };
+  clearSelectionState();
+  selection.feedback = '';
+  render();
 }
 
 function playerPerspectiveName(playerId) {
@@ -187,9 +227,16 @@ function maybeAutoEndTurn() {
 function render() {
   renderLobby();
   if (state && localPlayerId) {
+    if (soloMode && state.phase === 'playing' && state.activePlayerId !== localPlayerId) {
+      handoffRequired = true;
+      if (state.turnDeadlineAt !== null) state = { ...state, turnDeadlineAt: null };
+    }
     selection.clockNow = currentTime();
     showStartToast(state);
+    const handoffVisible = renderHandoffDialog();
+    selection.soloMode = soloMode;
     renderApp(elements, state, localPlayerId, selection);
+    elements.handPanel.classList.toggle('handoff-hand', handoffVisible);
     showEventToast(state);
     showUrgentTimerToast(state);
     maybeAutoEndTurn();
@@ -333,6 +380,8 @@ async function submitAction(action) {
 elements.createRoom.addEventListener('click', createRoom);
 elements.joinRoom.addEventListener('click', joinRoom);
 elements.startGame.addEventListener('click', startGame);
+elements.soloStart.addEventListener('click', startSoloGame);
+elements.handoffStart.addEventListener('click', beginSoloTurn);
 elements.guideButton.addEventListener('click', () => {
   elements.guideDialog.hidden = false;
   elements.guideClose.focus();
@@ -359,7 +408,7 @@ inputController = createInputController({
   localPlayerId,
   getLocalPlayerId: () => localPlayerId,
   config: CONFIG,
-  submitAction: demoMode ? null : submitAction,
+  getSubmitAction: () => (demoMode || soloMode ? null : submitAction),
   showToast,
   now: currentTime,
 });

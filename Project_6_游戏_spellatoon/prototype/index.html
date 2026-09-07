@@ -34,6 +34,7 @@
       <section class="lobby-panel" id="lobby-panel" aria-label="局域网房间">
         <span class="lobby-status" id="lobby-status"></span>
         <div class="lobby-controls">
+          <button class="action-button solo-start" type="button" id="solo-start">单机双人</button>
           <button class="action-button" type="button" id="create-room">创建房间</button>
           <input class="room-input" id="room-id-input" aria-label="四位数字房间号" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" placeholder="四位房间号" />
           <button class="action-button" type="button" id="join-room">加入房间</button>
@@ -68,6 +69,15 @@
       </section>
       </div>
     </main>
+    <div class="handoff-dialog" id="handoff-dialog" role="dialog" aria-modal="true" aria-labelledby="handoff-title" hidden>
+      <section class="handoff-card">
+        <span class="handoff-kicker">PASS THE DEVICE</span>
+        <span class="handoff-swatch" id="handoff-swatch" aria-hidden="true"></span>
+        <h2 id="handoff-title">请将设备交给下一位玩家</h2>
+        <p>点击开始行动后，才会显示本回合的私有手牌。</p>
+        <button class="action-button handoff-start" type="button" id="handoff-start">开始行动</button>
+      </section>
+    </div>
     <div class="guide-dialog" id="guide-dialog" role="dialog" aria-modal="true" aria-labelledby="guide-title" hidden>
       <section class="guide-card">
         <div class="guide-heading">

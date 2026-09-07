@@ -53,6 +53,48 @@ test('keeps the pre-game lobby limited to room controls', async () => {
   }
 });
 
+test('starts a single-device duel with a private handoff between player turns', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.locator('#solo-start').click();
+
+    assert.equal(await page.locator('#game-view').isVisible(), true);
+    assert.equal(await page.locator('#handoff-dialog').isVisible(), true);
+    assert.equal(await page.locator('#hand .card').first().isHidden(), true);
+    await page.locator('#handoff-start').click();
+    assert.equal(await page.locator('#handoff-dialog').isHidden(), true);
+    assert.equal(await page.locator('#hand .card').first().isVisible(), true);
+    assert.equal(await page.locator('#end-turn').isDisabled(), false);
+    assert.match(await page.locator('#turn-timer').textContent(), /45s/);
+
+    await page.locator('#end-turn').click();
+    assert.equal(await page.locator('#handoff-dialog').isVisible(), true);
+    assert.equal(await page.locator('#hand .card').first().isHidden(), true);
+    await page.locator('#handoff-start').click();
+    assert.equal(await page.locator('#handoff-dialog').isHidden(), true);
+    assert.equal(await page.locator('#end-turn').isDisabled(), false);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('returns to the handoff screen when a single-device turn times out', async () => {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage();
+  try {
+    await page.goto('http://127.0.0.1:51359/', { waitUntil: 'domcontentloaded' });
+    await page.locator('#solo-start').click();
+    await page.locator('#handoff-start').click();
+    await page.evaluate((ms) => window.advanceTime(ms), CONFIG.timer.actionTimeMs + 1);
+
+    assert.equal(await page.locator('#handoff-dialog').isVisible(), true);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('opens and closes the player guide from the header help button', async () => {
   const { browser, page } = await openDemo();
   try {

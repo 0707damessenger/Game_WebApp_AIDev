@@ -55,6 +55,7 @@ export function createInputController({
   getLocalPlayerId = null,
   config,
   submitAction = null,
+  getSubmitAction = null,
   showToast = null,
   now = Date.now,
 }) {
@@ -62,6 +63,10 @@ export function createInputController({
 
   function currentLocalPlayerId() {
     return getLocalPlayerId ? getLocalPlayerId() : localPlayerId;
+  }
+
+  function currentSubmitAction() {
+    return getSubmitAction ? getSubmitAction() : submitAction;
   }
 
   function setFeedback(message, tone = 'neutral') {
@@ -105,7 +110,7 @@ export function createInputController({
 
   async function submitRemoteAction(action) {
     try {
-      const result = await submitAction(action);
+      const result = await currentSubmitAction()(action);
       if (!result?.ok) {
         setFeedback('操作未同步，请稍后重试', 'error');
         render();
@@ -277,7 +282,7 @@ export function createInputController({
       cardId: card.id,
       ...(pending.type === 'move' ? { path: structuredClone(pending.path) } : {}),
     };
-    if (submitAction) {
+    if (currentSubmitAction()) {
       return submitRemoteAction(action);
     }
     localCommit(action);
@@ -361,7 +366,7 @@ export function createInputController({
       render();
       return;
     }
-    if (submitAction) {
+    if (currentSubmitAction()) {
       void submitRemoteAction({ type: 'end-turn' });
       return;
     }
