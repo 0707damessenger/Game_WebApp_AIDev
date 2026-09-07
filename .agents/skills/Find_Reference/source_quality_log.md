@@ -12,6 +12,9 @@
 | 来源平台 | 置信度 | 验证次数 | 适用场景 | 已知优势 | 已知局限 | 最后更新 |
 |---------|-------|--------|---------|---------|---------|---------|
 | **Steam** | 🟢 已验证 | 3+ | 当代游戏评估 | 量化指标客观（评论数/好评率/年份） | 无法访问主机独占游戏；评论数 <500 时波动大需谨慎（P4 单指划击：Super Drift Blade 仅 316 评论） | 2026-05-14 (P4 单指划击: Astro Prospector 2951 评论/93%，Super Drift Blade 316 评论/95%) |
+| **Nintendo 官方玩法页 — Splatoon** ([splatoon.nintendo.com/gameplay](https://splatoon.nintendo.com/gameplay/)) | 🟡 待验证 | 1 | 颜色覆盖、领地竞争和公共反馈参考 | 厂商一手玩法说明，领地颜色反馈边界清楚 | 实时团队射击，与回合制卡牌基底不同；不可直接证明本项目平衡 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
+| **Abrakam 官方页 — Faeria** ([faeria.com](https://www.faeria.com/)) | 🟡 待验证 | 1 | 卡牌与公共棋盘地块交互参考 | 开发商一手来源，适合确认卡牌和地形共同塑造空间策略 | 系统复杂度显著高于本项目，只能局部借鉴 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
+| **Arcane Wonders 官方页 — Onitama** ([arcanewonders.com/product/onitama](https://www.arcanewonders.com/product/onitama/)) | 🟡 待验证 | 1 | 双人方格棋盘、短回合和卡牌驱动移动参考 | 发行商一手来源，核心结构描述明确 | 手牌公开且移动卡专用，与本项目私有数字牌及行动点不同 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
 | **Steambase** (steambase.io) | 🟡 待验证 | 1 | Steam 游戏评论数、好评率、在线人数的补充读取 | 聚合 Steam 数据，页面可读性高，适合快速盘点 | 第三方聚合源，关键结论仍需优先回查 Steam 官方页 | 2026-05-13 |
 | **SteamSpy API** (steamspy.com/api.php) | 🟢 已验证 | 2 | Steam 游戏市场数据（销量/玩家数/标签）| 免费无需注册；批量查询；Python 库 steamspypi | 高销量严重高估；owners 为范围值；F2P 不准；tag 端点按拥有者数排序（非相关性）| 2026-03-01 |
 | **Gamalytic API** (api.gamalytic.com) | 🟡 待验证 | 1 | Steam 深度市场估算（多算法融合）| 77% 误差±30%；含价格历史；覆盖 50K+ 游戏 | 需注册 API Key；免费层限制；F2P 不准 | 2026-03-01 |
@@ -39,7 +42,7 @@
 
 | 来源平台 | 置信度 | 验证次数 | 适用场景 | 已知优势 | 已知局限 | 最后更新 |
 |---------|-------|--------|---------|---------|---------|---------|
-| **GDC Vault** (gdcvault.com) | 🟢 已验证 | 3+ | 游戏设计方法论（最权威） | 行业演讲；有具体数据/案例 | 部分内容需订阅 | 2026-03-01 |
+| **GDC Vault** (gdcvault.com) | 🟢 已验证 | 3+ | 游戏设计方法论（最权威） | 行业演讲；有具体数据/案例；Project_7 使用 Gunhouse 演讲指导小样本试玩验证 | 部分内容需订阅 | 2026-09-07 |
 | **Game Developer** (gamedeveloper.com) | 🟢 已验证 | 2 | 从业者设计流程文章 | 专业背景作者；有实操案例 | 文章质量参差 | 2026-03-01 |
 | **Anthropic 官方文档** | 🟢 已验证 | 2 | AI 工作流/Agent 设计 | 一手官方来源；直接可信 | 更新频率高，需注意版本 | 2026-03-01 |
 | **OpenAI 官方文档** | 🟢 已验证 | 2 | AI Agent 生产级设计 | 官方实践指南；《A Practical Guide to Building Agents》实操性强 | 同上 | 2026-03-01 |
@@ -139,5 +142,5 @@
 
 ---
 
-> **最后全局更新**：2026-05-15（Project_4 构筑方向规划 — Plan_Design_Discussion Step 5.3：新增 Vampire Survivors / Brotato Steam 商店页 🟡 × 2，作为 Survivor-like 构筑机制主参考；产出 docs/plans/build-direction-design.md）
+> **最后全局更新**：2026-09-07（Project_7 Spellatoon 优化风险评估：新增 Splatoon / Faeria / Onitama 官方页来源记录，并复用 GDC Gunhouse 试玩方法论）
 > **本 log 由 Find_Reference 技能 Step 5 自动维护
