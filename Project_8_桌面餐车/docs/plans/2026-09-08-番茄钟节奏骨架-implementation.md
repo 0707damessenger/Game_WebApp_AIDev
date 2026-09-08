@@ -29,6 +29,7 @@
 | `Project_8_桌面餐车/prototype/js/render.mjs` | 将状态渲染为普通窗口或小窗 DOM。 |
 | `Project_8_桌面餐车/prototype/js/app.mjs` | 初始化、定时器、DOM 事件和测试用状态快照。 |
 | `Project_8_桌面餐车/prototype/server.mjs` | 仅用于本地查看原型的静态文件服务。 |
+| `Project_8_桌面餐车/prototype/progress.md` | 原始需求摘要、已完成验证与下一轮待办，供后续迭代交接。 |
 | `Project_8_桌面餐车/prototype/index.html` | 原型语义结构和模块入口。 |
 | `Project_8_桌面餐车/prototype/css/styles.css` | 几何占位场景、桌面小窗和禁用状态视觉。 |
 | `Project_8_桌面餐车/prototype/tests/pomodoro-state.test.mjs` | 状态机单元测试。 |
@@ -226,6 +227,7 @@ Expected: 5 个测试全部通过。
 - Create: `Project_8_桌面餐车/prototype/js/render.mjs`
 - Create: `Project_8_桌面餐车/prototype/js/app.mjs`
 - Create: `Project_8_桌面餐车/prototype/server.mjs`
+- Create: `Project_8_桌面餐车/prototype/progress.md`
 
 - [ ] **Step 1: 建立可访问的页面结构和模块入口。**
 
@@ -319,6 +321,16 @@ function update(result) {
   render(app, state, CONFIG, view);
 }
 
+function advanceTime(milliseconds) {
+  let remaining = milliseconds;
+  while (remaining >= CONFIG.timer.tickMilliseconds && (state.phase === 'work' || state.phase === 'rest')) {
+    remaining -= CONFIG.timer.tickMilliseconds;
+    state = advanceSecond(state, CONFIG).state;
+  }
+  syncTimer();
+  render(app, state, CONFIG, view);
+}
+
 function selectedActivity() {
   return app.querySelector('.activity-choice.is-selected')?.dataset.activity || state.nextPlan?.activity || 'operate';
 }
@@ -342,6 +354,7 @@ app.addEventListener('change', (event) => {
 });
 
 window.render_game_to_text = () => JSON.stringify({ ...state, view });
+window.advanceTime = advanceTime;
 update();
 ```
 
@@ -366,7 +379,27 @@ createServer((request, response) => {
 }).listen(port, '127.0.0.1', () => console.log(`Desktop Food Truck prototype: http://127.0.0.1:${port}`));
 ```
 
-- [ ] **Step 5: 添加最小视觉规则，避免按钮和场景因内容变化而跳动。**
+- [ ] **Step 5: 创建开发交接记录。**
+
+```markdown
+# 桌面餐车原型进度
+
+Original prompt: 制作一款二维像素卡通画风的 PC 桌面挂机增量游戏。玩家驾驶餐车旅行收集食材、研发烹饪并经营售卖；游戏以番茄钟工作和休息阶段组织低干扰陪伴体验。
+
+## 当前模块
+
+- 番茄钟节奏骨架：计时、阶段切换、工作安排和工作阶段管理锁定。
+
+## 本轮验证
+
+- 待完成：状态机单元测试、浏览器流程测试、宽屏与窄屏人工检查。
+
+## 后续范围
+
+- 不在本模块实现经济循环、新闻、全局输入、离线结算或系统级桌面能力。
+```
+
+- [ ] **Step 6: 添加最小视觉规则，避免按钮和场景因内容变化而跳动。**
 
 ```css
 :root { color: #26313b; background: #d8eced; font-family: system-ui, sans-serif; }
@@ -390,15 +423,15 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .compact-window { width: 280px; padding: 10px; background: #f6dca7; border: 3px solid #26313b; }.compact-window .scene { min-height: 94px; }.compact-window .truck { left: 31%; transform: scale(.65); transform-origin: bottom left; }.compact-window p { margin: 6px 0; }.compact-window strong { font-size: 24px; font-variant-numeric: tabular-nums; }#expand-window { float: right; width: 36px; }
 ```
 
-- [ ] **Step 6: 手工启动静态页面并完成一次短循环。**
+- [ ] **Step 7: 手工启动静态页面并完成一次短循环。**
 
 Run: `node "Project_8_桌面餐车/prototype/server.mjs"`
 
 Expected: 浏览器打开 `http://localhost:51780` 后，选择“旅行 → 林道”并开始工作；倒计时归零进入休息；休息归零后回到“安排下一段工作”。确认小窗可展开，且工作中管理按钮禁用。
 
-- [ ] **Step 7: 记录一次独立提交候选。**
+- [ ] **Step 8: 记录一次独立提交候选。**
 
-暂不自动提交。向用户展示该界面与计时驱动已完成的内容，询问是否要提交并推送；获得明确同意后，只暂存本任务的 5 个文件并使用提交信息：`完成番茄钟节奏界面原型`。
+暂不自动提交。向用户展示该界面与计时驱动已完成的内容，询问是否要提交并推送；获得明确同意后，只暂存本任务的 6 个文件并使用提交信息：`完成番茄钟节奏界面原型`。
 
 ### Task 3: 浏览器界面契约与全模块验证
 
@@ -468,19 +501,33 @@ test('keeps free management non-automatic when pomodoro is disabled', async (t) 
   assert.equal(state.pomodoroEnabled, false);
   assert.equal(await app.page.locator('#shop').isDisabled(), false);
 });
+
+test('moves from a visible work phase to rest and then planning with deterministic time', async (t) => {
+  const app = await openPrototype();
+  t.after(async () => { await app.browser.close(); await new Promise((done) => app.server.close(done)); });
+  await app.page.getByRole('button', { name: '经营' }).click();
+  await app.page.getByRole('button', { name: '开始工作' }).click();
+  await app.page.evaluate(() => window.advanceTime(12000));
+  let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.phase, 'rest');
+  assert.deepEqual(state.lastCompletedPlan, { activity: 'operate', regionId: 'market' });
+  await app.page.evaluate(() => window.advanceTime(6000));
+  state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.phase, 'planning');
+});
 ```
 
 - [ ] **Step 2: 运行测试，先确认界面契约中不存在选择器或流程偏差。**
 
 Run: `node --test "Project_8_桌面餐车/prototype/tests/ui-contract.test.mjs"`
 
-Expected: 3 个测试通过。若失败，只修复失败报告直接指向的状态或 DOM 契约，不扩大到经济、新闻或输入统计功能。
+Expected: 4 个测试通过。若失败，只修复失败报告直接指向的状态或 DOM 契约，不扩大到经济、新闻或输入统计功能。
 
 - [ ] **Step 3: 运行完整模块验证和静态检查。**
 
 Run: `node --test "Project_8_桌面餐车/prototype/tests/*.test.mjs"`
 
-Expected: 状态机与界面契约共 8 个测试通过。
+Expected: 状态机与界面契约共 9 个测试通过。
 
 Run: `rg -n "TODO|TBD|占位待补|未实现" "Project_8_桌面餐车/prototype"`
 
