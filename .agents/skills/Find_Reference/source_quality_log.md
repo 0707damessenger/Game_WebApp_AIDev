@@ -11,12 +11,20 @@
 
 | 来源平台 | 置信度 | 验证次数 | 适用场景 | 已知优势 | 已知局限 | 最后更新 |
 |---------|-------|--------|---------|---------|---------|---------|
-| **Steam** | 🟢 已验证 | 3+ | 当代游戏评估 | 量化指标客观（评论数/好评率/年份） | 无法访问主机独占游戏；评论数 <500 时波动大需谨慎（P4 单指划击：Super Drift Blade 仅 316 评论） | 2026-05-14 (P4 单指划击: Astro Prospector 2951 评论/93%，Super Drift Blade 316 评论/95%) |
+| **Steam** | 🟢 已验证 | 3+ | 当代游戏评估 | 量化指标客观（评论数/好评率/年份） | 无法访问主机独占游戏；评论数 <500 时波动大需谨慎（P4 单指划击：Super Drift Blade 仅 316 评论） | 2026-09-08 (Project_8 桌面餐车：观鸟笔记、TBH、Spirit City、Rusty's Retirement) |
+| **Steam 商店页 - 观鸟笔记** ([app/4111370](https://store.steampowered.com/app/4111370/)) | 🟡 待验证 | 1 | 桌面观赏、地点装饰、访客收集与可见成长 | 开发者一手玩法说明；1,571 篇评价、97% 好评，满足强参考阈值 | 2026 年新作，长期留存和内容产能尚未验证 | 2026-09-08 (Project_8 桌面餐车) |
+| **Steam 商店页 - TBH: Task Bar Hero** ([app/3678970](https://store.steampowered.com/app/3678970/)) | 🟡 待验证 | 1 | 任务栏挂机、自动成长与展开管理 | 开发者一手机制说明；8,166 篇英文评价，样本充足 | 62% 好评，在线市场、反作弊和高密度装备与轻量单机目标差异大 | 2026-09-08 (Project_8 桌面餐车) |
+| **Steam 社区评价 - TBH: Task Bar Hero** ([reviews](https://steamcommunity.com/app/3678970/reviews/)) | 🟡 待验证 | 1 | 桌面常驻程序的隐私、性能和信任风险 | 多条高赞评价集中反映强制数据收集、误封和后台扫描疑虑 | 用户评价只能证明信任问题存在，不能单独证实全部技术指控 | 2026-09-08 (Project_8 桌面餐车) |
+| **ASOBOX 官方页 - 大繁盛！まんぷくマルシェ** ([玩法说明](https://asobox.co.jp/games/marche-help.html)) | 🟡 待验证 | 1 | 采集、菜谱研发、上架、离线售卖和进度解锁 | 开发者一手规则，流程与参数关系描述完整 | 2015 年移动免费游戏，体力与付费结构不宜直接照搬 | 2026-09-08 (Project_8 桌面餐车) |
+| **Apple App Store - 大繁盛！まんぷくマルシェ** ([id974523327](https://apps.apple.com/jp/app/id974523327)) | 🟡 待验证 | 1 | 移动端口碑、发行信息与官方简介 | 平台一手元数据；4,553 份评分，均分约 4.84 | 日本单区评分，不能代表 PC 或全球受众 | 2026-09-08 (Project_8 桌面餐车) |
+| **Frank Lantz 官方页 - Universal Paperclips** ([作品页](http://www.franklantz.net/universal-paperclips/)) | 🟡 待验证 | 1 | 增量游戏主题、平台与体验定位 | 作者一手来源 | 页面只提供概述，具体阶段机制需其他来源补充 | 2026-09-08 (Project_8 桌面餐车) |
+| **Steam 商店页 - Spirit City: Lofi Sessions** ([app/2113850](https://store.steampowered.com/app/2113850/)) | 🟡 待验证 | 1 | 番茄钟、生产力工具、舒适陪伴与装扮奖励 | 开发者一手说明；2024 年发行，9,000 篇英文评价、97% 好评 | 重点是氛围工具，不能直接验证餐饮经济循环 | 2026-09-08 (Project_8 桌面餐车) |
+| **Steam 商店页 - Rusty's Retirement** ([app/2666510](https://store.steampowered.com/app/2666510/)) | 🟡 待验证 | 1 | 屏幕贴边挂机、自动化、缩放与低干扰模式 | 开发者一手说明；2024 年发行，6,574 篇英文评价、97% 好评 | 没有番茄钟分段与现实新闻系统 | 2026-09-08 (Project_8 桌面餐车) |
 | **Nintendo 官方玩法页 — Splatoon** ([splatoon.nintendo.com/gameplay](https://splatoon.nintendo.com/gameplay/)) | 🟡 待验证 | 1 | 颜色覆盖、领地竞争和公共反馈参考 | 厂商一手玩法说明，领地颜色反馈边界清楚 | 实时团队射击，与回合制卡牌基底不同；不可直接证明本项目平衡 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
 | **Abrakam 官方页 — Faeria** ([faeria.com](https://www.faeria.com/)) | 🟡 待验证 | 1 | 卡牌与公共棋盘地块交互参考 | 开发商一手来源，适合确认卡牌和地形共同塑造空间策略 | 系统复杂度显著高于本项目，只能局部借鉴 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
 | **Arcane Wonders 官方页 — Onitama** ([arcanewonders.com/product/onitama](https://www.arcanewonders.com/product/onitama/)) | 🟡 待验证 | 1 | 双人方格棋盘、短回合和卡牌驱动移动参考 | 发行商一手来源，核心结构描述明确 | 手牌公开且移动卡专用，与本项目私有数字牌及行动点不同 | 2026-09-07 (Project_7 Spellatoon 优化风险评估) |
 | **Steambase** (steambase.io) | 🟡 待验证 | 1 | Steam 游戏评论数、好评率、在线人数的补充读取 | 聚合 Steam 数据，页面可读性高，适合快速盘点 | 第三方聚合源，关键结论仍需优先回查 Steam 官方页 | 2026-05-13 |
-| **SteamSpy API** (steamspy.com/api.php) | 🟢 已验证 | 2 | Steam 游戏市场数据（销量/玩家数/标签）| 免费无需注册；批量查询；Python 库 steamspypi | 高销量严重高估；owners 为范围值；F2P 不准；tag 端点按拥有者数排序（非相关性）| 2026-03-01 |
+| **SteamSpy API** (steamspy.com/api.php) | 🟢 已验证 | 3 | Steam 游戏市场数据（销量/玩家数/标签）| 免费无需注册；批量查询；Python 库 steamspypi | 高销量严重高估；owners 为范围值；F2P 不准；新发行作品的数据可能滞后 | 2026-09-08 (Project_8 桌面餐车) |
 | **Gamalytic API** (api.gamalytic.com) | 🟡 待验证 | 1 | Steam 深度市场估算（多算法融合）| 77% 误差±30%；含价格历史；覆盖 50K+ 游戏 | 需注册 API Key；免费层限制；F2P 不准 | 2026-03-01 |
 | **RftG 规则书 PDF**（规则书提取，BoardGamesRules） | 🟢 已验证 | 2 | 引擎构建机制 / Cards as Currency / Tableau 积累 | D51 DDI Step 2.3 主参考；「卡牌双用途张力」和「Production 产出」结构直接引用 | 2026-03-01 |
 | **猫神牧场**（Docs/ReferenceGames/cat_god_ranch.md） | 🟢 已验证 | 2 | 自动演算期待感 / 流派差异化 / 固定底线+随机上浮 | D51 DDI Step 2.3 主参考；「固定基础产出+概率加成」结构参考 | 2026-03-01 |
@@ -27,7 +35,7 @@
 | **游戏媒体评测站**（GGRecon / GodIsAGeek / Basic Tutorials 等） | 🟡 待验证 | 1 | 具体玩法细节、节奏、爽点与缺点的定性补充 | 可补充商店页没有展开的机制体验描述 | 主观性强，需多篇交叉验证，不能单篇作为强结论 | 2026-05-13 |
 | **知乎** | 🟡 待验证 | 2 | 中文玩家体验分析 | 中文游戏设计讨论质量相对高 | 需逐篇验证作者资质（认证+粉丝数+赞数） | 2026-03-01 |
 | **Bilibili** | 🟡 待验证 | 1 | 中文玩家/设计师分析 | UP主认证+10万粉可信度高 | 娱乐性内容多，需筛选 | 2026-03-01 |
-| **Wikipedia (en)** | 🟢 已验证 | 1 | 经典/老牌游戏的历史信息、机制总述、商业数据 | 主流条目含可追溯 reference；横向多源验证 | 当代独立小游戏覆盖差；编辑质量参差 | 2026-05-14 (P4 单指划击: Fruit Ninja) |
+| **Wikipedia (en)** | 🟢 已验证 | 2 | 经典/老牌游戏的历史信息、机制总述、商业数据 | 主流条目含可追溯 reference；横向多源验证 | 当代独立小游戏覆盖差；编辑质量参差 | 2026-09-08 (Project_8 桌面餐车：Universal Paperclips 阶段结构与历史资料) |
 | **Halfbrick / 厂商官网** | 🟢 已验证 | 1 | 一手游戏机制与历代版本说明 | 厂商一手；可信度高 | 营销视角，需结合第三方验证手感 | 2026-05-14 (P4 单指划击: Fruit Ninja Classic) |
 | **TapTap** (taptap.cn) | 🟢 已验证 | 1 | 中文移动端游戏的官方预约与发行信息 | 中文一手；含官方公告与玩家点评 | 玩家点评聚合，需筛选有效评测 | 2026-05-14 (P4 单指划击: 咖啡星矿工 安卓预约) |
 | **indienova** (indienova.com) | 🟢 已验证 | 1 | 中文独立游戏数据库与 PressKit 一手 | 独立游戏社区编辑质量高；PressKit 为开发者一手 | 覆盖主要为中文独立圈，海外游戏覆盖有限 | 2026-05-14 (P4 单指划击: 超级滑刃战士 PressKit) |
@@ -142,5 +150,5 @@
 
 ---
 
-> **最后全局更新**：2026-09-07（Project_7 Spellatoon 优化风险评估：新增 Splatoon / Faeria / Onitama 官方页来源记录，并复用 GDC Gunhouse 试玩方法论）
+> **最后全局更新**：2026-09-08（Project_8 桌面餐车：新增桌面陪伴、餐饮经营、增量展开和生产力工具参考，并记录 TBH 后台信任风险）
 > **本 log 由 Find_Reference 技能 Step 5 自动维护
