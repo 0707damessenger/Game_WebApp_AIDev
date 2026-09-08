@@ -10,8 +10,11 @@ import { render } from './render.mjs';
 
 const app = document.querySelector('#app');
 let state = createInitialState(CONFIG);
-let view = 'window';
+let menuOpen = false;
+let menuPanel = 'arrange';
 let intervalId = null;
+let noticeTimeoutId = null;
+let visibleNoticeId = null;
 
 function syncTimer() {
   const shouldTick = state.phase === 'work' || state.phase === 'rest';
@@ -26,10 +29,24 @@ function syncTimer() {
   }
 }
 
+function syncNotice() {
+  if (!state.notice || state.notice.id === visibleNoticeId) return;
+
+  if (noticeTimeoutId !== null) window.clearTimeout(noticeTimeoutId);
+  visibleNoticeId = state.notice.id;
+  noticeTimeoutId = window.setTimeout(() => {
+    if (state.notice?.id === visibleNoticeId) {
+      state = { ...state, notice: null };
+      render(app, state, CONFIG, { menuOpen, menuPanel });
+    }
+  }, CONFIG.ui.noticeMilliseconds);
+}
+
 function update(result) {
   if (result?.state) state = result.state;
   syncTimer();
-  render(app, state, CONFIG, view);
+  syncNotice();
+  render(app, state, CONFIG, { menuOpen, menuPanel });
 }
 
 function advanceTime(milliseconds) {
@@ -39,7 +56,8 @@ function advanceTime(milliseconds) {
     state = advanceSecond(state, CONFIG).state;
   }
   syncTimer();
-  render(app, state, CONFIG, view);
+  syncNotice();
+  render(app, state, CONFIG, { menuOpen, menuPanel });
 }
 
 function selectedActivity() {
@@ -50,14 +68,14 @@ app.addEventListener('click', (event) => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
 
-  if (button.id === 'compact-window') {
-    view = 'compact';
+  if (button.id === 'menu-toggle') {
+    menuOpen = !menuOpen;
     update();
     return;
   }
 
-  if (button.id === 'expand-window') {
-    view = 'window';
+  if (button.dataset.menuPanel) {
+    menuPanel = button.dataset.menuPanel;
     update();
     return;
   }
@@ -80,10 +98,11 @@ app.addEventListener('change', (event) => {
   if (event.target.id === 'pomodoro-toggle') update(setPomodoroEnabled(state, event.target.checked, CONFIG));
 });
 
-window.render_game_to_text = () => JSON.stringify({ ...state, view });
+window.render_game_to_text = () => JSON.stringify({ ...state, menuOpen, menuPanel });
 window.advanceTime = advanceTime;
 window.addEventListener('beforeunload', () => {
   if (intervalId !== null) window.clearInterval(intervalId);
+  if (noticeTimeoutId !== null) window.clearTimeout(noticeTimeoutId);
 });
 
 update();

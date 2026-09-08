@@ -16,16 +16,17 @@ function planText(plan, config) {
   return `${getActivity(plan, config)?.label} · ${getRegion(plan, config)?.label}`;
 }
 
-function phaseText(phase) {
+function phaseText(state, config) {
+  if (!state.pomodoroEnabled && state.activePlan) return `${getActivity(state.activePlan, config)?.label}进行中`;
   return {
     planning: '安排下一段工作',
     work: '专注进行中',
     rest: '休息时间',
     free: '自由管理',
-  }[phase];
+  }[state.phase];
 }
 
-function sceneMarkup(activity) {
+function sceneMarkup(activity, isResting) {
   const isTraveling = activity === 'travel';
   return `
     <div class="scene ${isTraveling ? 'is-traveling' : 'is-operating'}" aria-hidden="true">
@@ -40,7 +41,7 @@ function sceneMarkup(activity) {
         <div class="wheel wheel-left"></div>
         <div class="wheel wheel-right"></div>
       </div>
-      <div class="scene-note">${isTraveling ? '沿路采集' : '餐车营业中'}</div>
+      <div class="scene-note">${isResting ? '餐车休息中' : isTraveling ? '沿路采集' : '餐车营业中'}</div>
     </div>`;
 }
 
@@ -64,59 +65,63 @@ function regionButtons(state, config, locked) {
   }).join('');
 }
 
-export function render(app, state, config, view) {
+function startLabel(state, config) {
+  if (state.pomodoroEnabled) return '开始专注';
+  if (state.activePlan) return `${getActivity(state.activePlan, config)?.label}进行中`;
+  return `启动${getActivity(state.nextPlan, config)?.label || '活动'}`;
+}
+
+function drawerMarkup(state, config, menuPanel) {
   const locked = state.phase === 'work';
-  const displayedPlan = state.activePlan || state.nextPlan || state.lastCompletedPlan;
+  const canStart = state.pomodoroEnabled
+    ? state.phase === 'planning' && state.nextPlan
+    : Boolean(state.nextPlan) && !state.activePlan;
 
-  if (view === 'compact') {
-    app.innerHTML = `
-      <section class="compact-window" aria-label="桌面餐车小窗">
-        <header class="compact-header">
-          <span class="compact-title">桌面餐车</span>
-          <button id="expand-window" class="icon-button" aria-label="展开普通窗口" title="展开普通窗口">↗</button>
-        </header>
-        ${sceneMarkup(displayedPlan?.activity)}
-        <div class="compact-status">
-          <p id="compact-phase">${phaseText(state.phase)}</p>
-          <strong id="compact-timer">${formatTime(state.secondsRemaining)}</strong>
-          <p id="compact-plan">${planText(displayedPlan, config)}</p>
-        </div>
-      </section>`;
-    return;
-  }
-
-  app.innerHTML = `
-    <section class="window-shell" aria-label="桌面餐车普通窗口">
-      <header class="top-bar">
-        <div class="brand"><span class="brand-mark"></span><span>桌面餐车</span></div>
-        <div class="top-actions">
+  return `
+    <aside id="menu-drawer" class="menu-drawer" aria-label="餐车菜单">
+      <nav class="menu-tabs" aria-label="菜单分类">
+        <button id="arrange-menu-button" class="menu-tab ${menuPanel === 'arrange' ? 'is-selected' : ''}" data-menu-panel="arrange" ${locked ? 'disabled' : ''}>安排</button>
+        <button id="pomodoro-menu-button" class="menu-tab ${menuPanel === 'pomodoro' ? 'is-selected' : ''}" data-menu-panel="pomodoro" ${locked ? 'disabled' : ''}>番茄钟</button>
+        <button class="menu-tab" disabled title="后续模块开放">研发</button>
+        <button class="menu-tab" disabled title="后续模块开放">商店</button>
+      </nav>
+      ${menuPanel === 'arrange' ? `
+        <section id="arrange-panel" class="menu-panel">
+          <p class="menu-heading">${state.phase === 'rest' ? '休息后开始' : '下一段'}</p>
+          <div class="choice-row" aria-label="选择工作模式">${activityButtons(state, config, locked)}</div>
+          <div class="choice-row" aria-label="选择地区">${regionButtons(state, config, locked)}</div>
+          <button id="start-work" class="start-button" ${canStart ? '' : 'disabled'}>${startLabel(state, config)}</button>
+        </section>` : `
+        <section id="pomodoro-panel" class="menu-panel">
           <label class="switch-label" for="pomodoro-toggle">
             <input id="pomodoro-toggle" type="checkbox" ${state.pomodoroEnabled ? 'checked' : ''} ${locked ? 'disabled' : ''}>
             <span class="switch-track" aria-hidden="true"></span>
             <span>番茄钟</span>
           </label>
-          <button id="compact-window" class="icon-button" aria-label="切换到桌面小窗" title="切换到桌面小窗">↙</button>
-        </div>
+          <p class="menu-hint">${state.pomodoroEnabled ? '工作与休息自动切换' : '活动由你手动开始'}</p>
+        </section>`}
+    </aside>`;
+}
+
+export function render(app, state, config, { menuOpen, menuPanel }) {
+  const displayedPlan = state.activePlan || state.nextPlan || state.lastCompletedPlan;
+  app.innerHTML = `
+    <section class="floating-window" aria-label="桌面餐车悬浮窗">
+      <header class="window-header">
+        <div class="brand"><span class="brand-mark"></span><span>桌面餐车</span></div>
+        <button id="menu-toggle" class="icon-button" aria-label="${menuOpen ? '关闭菜单' : '打开菜单'}" title="${menuOpen ? '关闭菜单' : '打开菜单'}">☰</button>
       </header>
-      ${sceneMarkup(displayedPlan?.activity)}
-      <section class="timer-panel" aria-label="当前番茄钟阶段">
+      <div class="scene-wrap">
+        ${sceneMarkup(displayedPlan?.activity, state.phase === 'rest')}
+        ${state.notice ? `<div id="phase-notice" class="phase-notice" role="status"><strong>${state.notice.title}</strong><span>${state.notice.detail}</span></div>` : ''}
+      </div>
+      <section class="status-strip" aria-label="当前状态">
         <div>
-          <p class="eyebrow" id="phase-label">${phaseText(state.phase)}</p>
+          <p id="phase-label">${phaseText(state, config)}</p>
           <p id="active-plan">${planText(displayedPlan, config)}</p>
         </div>
         <strong id="timer">${formatTime(state.secondsRemaining)}</strong>
       </section>
-      <section id="planning-panel" class="planning-panel" ${locked ? 'aria-disabled="true"' : ''}>
-        <div class="section-heading"><h1>下一段</h1><span>${state.phase === 'rest' ? '休息结束后开始' : '选择路线'}</span></div>
-        <div class="choice-row" aria-label="选择工作模式">${activityButtons(state, config, locked)}</div>
-        <div class="choice-row" aria-label="选择地区">${regionButtons(state, config, locked)}</div>
-        <button id="start-work" class="start-button" ${state.phase === 'planning' && state.pomodoroEnabled && state.nextPlan ? '' : 'disabled'}>开始工作</button>
-      </section>
-      <section id="management-panel" class="management-panel" ${locked ? 'aria-disabled="true"' : ''}>
-        <button id="shop" class="management-button" ${locked ? 'disabled' : ''}><span class="tool-icon">◇</span>商店</button>
-        <button id="research" class="management-button" ${locked ? 'disabled' : ''}><span class="tool-icon">⌁</span>研发</button>
-        <button id="cook" class="management-button" ${locked ? 'disabled' : ''}><span class="tool-icon">◒</span>备餐</button>
-      </section>
-      <p id="management-status" class="management-status">${locked ? '工作中，管理功能已锁定' : '管理功能可用'}</p>
+      ${menuOpen ? drawerMarkup(state, config, menuPanel) : ''}
     </section>`;
 }

@@ -16,7 +16,7 @@ body {
 }
 
 button {
-  min-height: 38px;
+  min-height: 34px;
   border: 2px solid #273446;
   border-radius: 4px;
   background: #fff7df;
@@ -29,73 +29,68 @@ button:hover:not(:disabled), button.is-selected { background: #98cfaf; }
 button:focus-visible, input:focus-visible + .switch-track { outline: 3px solid #e15d67; outline-offset: 2px; }
 button:disabled { cursor: not-allowed; opacity: .45; }
 
-.window-shell {
-  width: min(720px, calc(100vw - 32px));
-  display: grid;
-  gap: 14px;
-  padding: 16px;
+.floating-window {
+  width: min(360px, calc(100vw - 32px));
+  overflow: hidden;
   border: 3px solid #273446;
   background: #f4d798;
-  box-shadow: 8px 8px 0 rgb(39 52 70 / 18%);
+  box-shadow: 7px 7px 0 rgb(39 52 70 / 18%);
 }
 
-.top-bar, .top-actions, .brand, .switch-label, .timer-panel, .section-heading, .choice-row, .management-panel, .compact-header {
+.window-header, .brand, .status-strip, .choice-row, .menu-tabs, .switch-label {
   display: flex;
   align-items: center;
 }
 
-.top-bar, .compact-header { justify-content: space-between; }
-.top-actions, .brand, .switch-label, .choice-row, .management-panel { gap: 8px; }
-.brand { font-weight: 800; }
-.brand-mark { width: 12px; height: 12px; border: 2px solid #273446; background: #e15d67; }
+.window-header { min-height: 46px; justify-content: space-between; padding: 7px 8px 7px 11px; }
+.brand { gap: 7px; font-size: 14px; font-weight: 800; }
+.brand-mark { width: 11px; height: 11px; border: 2px solid #273446; background: #e15d67; }
+.icon-button { width: 34px; min-width: 34px; padding: 0; font-size: 18px; line-height: 1; }
 
-.icon-button { width: 38px; min-width: 38px; padding: 0; font-size: 20px; line-height: 1; }
+.scene-wrap { position: relative; }
+.scene { position: relative; min-height: 158px; overflow: hidden; border-top: 3px solid #273446; border-bottom: 3px solid #273446; background: #a9d7d0; }
+.sky-detail { position: absolute; width: 56px; height: 18px; border: 2px solid #79bdb9; border-radius: 50%; background: #dff0dc; }
+.cloud-one { top: 27px; left: 12%; }.cloud-two { top: 60px; right: 15%; transform: scale(.72); }
+.hills { position: absolute; right: -6%; bottom: 30%; left: -6%; height: 36%; background: #70b798; clip-path: polygon(0 100%, 0 62%, 20% 32%, 34% 58%, 52% 12%, 73% 55%, 85% 25%, 100% 62%, 100% 100%); }
+.road { position: absolute; right: 0; bottom: 0; left: 0; height: 30%; background: #7d8e99; }
+.road::after { content: ""; position: absolute; top: 50%; right: 0; left: 0; border-top: 3px dashed #fff7df; }
+.truck { position: absolute; z-index: 1; bottom: 20%; left: 30%; width: 142px; height: 76px; border: 3px solid #273446; background: #e15d67; }
+.truck::before { content: ""; position: absolute; right: -29px; bottom: 0; width: 30px; height: 49px; border: 3px solid #273446; border-left: 0; background: #f7b965; }
+.awning { position: absolute; top: -13px; left: -3px; width: 104px; height: 16px; border: 3px solid #273446; background: repeating-linear-gradient(90deg, #fff7df 0 13px, #e15d67 13px 26px); }
+.window { position: absolute; top: 18px; left: 16px; width: 51px; height: 32px; border: 3px solid #273446; background: #98d5d1; }
+.counter { position: absolute; right: 12px; bottom: 12px; width: 39px; height: 24px; border: 3px solid #273446; background: #fff7df; }
+.wheel { position: absolute; bottom: -16px; width: 27px; height: 27px; border: 3px solid #273446; border-radius: 50%; background: #273446; }
+.wheel::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: #fff7df; }
+.wheel-left { left: 16px; }.wheel-right { right: 17px; }
+.scene-note { position: absolute; z-index: 2; top: 10px; right: 10px; padding: 4px 7px; border: 2px solid #273446; background: #fff7df; font-size: 12px; }
+.is-traveling .truck { animation: truck-bob 1.8s ease-in-out infinite; }.is-traveling .road::after { animation: road-flow .8s linear infinite; }
 
-.switch-label { position: relative; cursor: pointer; font-size: 14px; }
+.phase-notice { position: absolute; z-index: 4; top: 14px; left: 50%; display: grid; gap: 2px; min-width: 138px; padding: 8px 12px; border: 2px solid #273446; background: #fff7df; box-shadow: 4px 4px 0 rgb(39 52 70 / 18%); text-align: center; transform: translateX(-50%); animation: notice-enter 160ms ease-out; }
+.phase-notice strong { color: #a93e4c; font-size: 15px; }.phase-notice span { font-size: 12px; }
+
+.status-strip { justify-content: space-between; gap: 12px; min-height: 59px; padding: 8px 11px; background: #fff7df; }
+.status-strip p { margin: 0; }.status-strip #phase-label { color: #9c3745; font-size: 13px; font-weight: 800; }.status-strip #active-plan { margin-top: 3px; font-size: 12px; }
+.status-strip strong { flex: 0 0 auto; color: #9c3745; font-size: 25px; font-variant-numeric: tabular-nums; }
+
+.menu-drawer { border-top: 3px solid #273446; background: #f4d798; }
+.menu-tabs { gap: 5px; padding: 8px 8px 0; overflow-x: auto; }
+.menu-tab { flex: 1 0 auto; min-width: 58px; min-height: 31px; padding: 2px 7px; font-size: 13px; }
+.menu-panel { display: grid; gap: 8px; padding: 9px 10px 11px; }
+.menu-heading { margin: 0; color: #9c3745; font-size: 14px; font-weight: 800; }
+.choice-row { flex-wrap: wrap; gap: 7px; }.choice-row button { min-width: 68px; padding: 3px 10px; font-size: 13px; }
+.start-button { width: 100%; min-height: 36px; border-width: 3px; background: #e15d67; color: #fff7df; font-weight: 800; }.start-button:hover:not(:disabled) { background: #c84b57; }
+
+.switch-label { gap: 8px; cursor: pointer; font-size: 14px; }
 .switch-label input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
 .switch-track { width: 34px; height: 20px; padding: 2px; border: 2px solid #273446; border-radius: 12px; background: #8e9aa5; }
 .switch-track::after { content: ""; display: block; width: 12px; height: 12px; border-radius: 50%; background: #fff7df; transition: transform 120ms ease; }
-.switch-label input:checked + .switch-track { background: #e15d67; }
-.switch-label input:checked + .switch-track::after { transform: translateX(14px); }
-.switch-label input:disabled + .switch-track { opacity: .45; cursor: not-allowed; }
-
-.scene {
-  position: relative;
-  min-height: 228px;
-  overflow: hidden;
-  border: 3px solid #273446;
-  background: #a9d7d0;
-}
-
-.sky-detail { position: absolute; width: 56px; height: 18px; border: 2px solid #79bdb9; border-radius: 50%; background: #dff0dc; }
-.cloud-one { top: 38px; left: 12%; }.cloud-two { top: 71px; right: 15%; transform: scale(.72); }
-.hills { position: absolute; right: -6%; bottom: 30%; left: -6%; height: 35%; background: #70b798; clip-path: polygon(0 100%, 0 62%, 20% 32%, 34% 58%, 52% 12%, 73% 55%, 85% 25%, 100% 62%, 100% 100%); }
-.road { position: absolute; right: 0; bottom: 0; left: 0; height: 30%; background: #7d8e99; }
-.road::after { content: ""; position: absolute; top: 50%; right: 0; left: 0; border-top: 3px dashed #fff7df; }
-
-.truck { position: absolute; z-index: 1; bottom: 20%; left: 35%; width: 154px; height: 82px; border: 3px solid #273446; background: #e15d67; }
-.truck::before { content: ""; position: absolute; right: -31px; bottom: 0; width: 32px; height: 53px; border: 3px solid #273446; border-left: 0; background: #f7b965; }
-.awning { position: absolute; top: -13px; left: -3px; width: 112px; height: 16px; border: 3px solid #273446; background: repeating-linear-gradient(90deg, #fff7df 0 13px, #e15d67 13px 26px); }
-.window { position: absolute; top: 19px; left: 17px; width: 54px; height: 34px; border: 3px solid #273446; background: #98d5d1; }
-.counter { position: absolute; right: 13px; bottom: 13px; width: 41px; height: 25px; border: 3px solid #273446; background: #fff7df; }
-.wheel { position: absolute; bottom: -16px; width: 28px; height: 28px; border: 3px solid #273446; border-radius: 50%; background: #273446; }
-.wheel::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: #fff7df; }.wheel-left { left: 17px; }.wheel-right { right: 18px; }
-.scene-note { position: absolute; z-index: 2; right: 12px; top: 12px; padding: 5px 8px; border: 2px solid #273446; background: #fff7df; font-size: 13px; }
-.is-traveling .truck { animation: truck-bob 1.8s ease-in-out infinite; }.is-traveling .road::after { animation: road-flow .8s linear infinite; }
-
-.timer-panel { justify-content: space-between; gap: 16px; padding: 12px; border: 2px solid #273446; background: #fff7df; }
-.timer-panel p { margin: 0; }.timer-panel .eyebrow { color: #9c3745; font-weight: 800; }.timer-panel #active-plan { margin-top: 4px; font-size: 14px; }
-.timer-panel strong { flex: 0 0 auto; color: #9c3745; font-size: 30px; font-variant-numeric: tabular-nums; }
-
-.planning-panel { display: grid; gap: 9px; }.section-heading { justify-content: space-between; gap: 12px; }.section-heading h1 { margin: 0; font-size: 18px; }.section-heading span { font-size: 13px; }
-.choice-row { flex-wrap: wrap; }.choice-row button { min-width: 72px; padding: 4px 13px; }.start-button { width: 100%; border-width: 3px; background: #e15d67; color: #fff7df; font-weight: 800; }.start-button:hover:not(:disabled) { background: #c84b57; }
-.management-panel { justify-content: space-between; }.management-button { flex: 1 1 0; min-height: 52px; padding: 4px; display: grid; place-items: center; gap: 2px; font-size: 14px; }.tool-icon { display: block; font-size: 17px; line-height: 1; }.management-status { min-height: 20px; margin: -4px 0 0; font-size: 13px; }
-
-.compact-window { width: min(288px, calc(100vw - 32px)); padding: 10px; border: 3px solid #273446; background: #f4d798; box-shadow: 6px 6px 0 rgb(39 52 70 / 18%); }.compact-title { font-size: 13px; font-weight: 800; }.compact-window .scene { min-height: 118px; margin-top: 8px; }.compact-window .truck { bottom: 22%; left: 31%; transform: scale(.65); transform-origin: bottom left; }.compact-window .scene-note { font-size: 11px; }.compact-status { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding-top: 8px; }.compact-status p { margin: 0; font-size: 12px; }.compact-status strong { color: #9c3745; font-size: 22px; font-variant-numeric: tabular-nums; }.compact-status #compact-plan { grid-column: 1 / -1; }
+.switch-label input:checked + .switch-track { background: #e15d67; }.switch-label input:checked + .switch-track::after { transform: translateX(14px); }
+.switch-label input:disabled + .switch-track { opacity: .45; cursor: not-allowed; }.menu-hint { margin: 0; font-size: 12px; }
 
 @keyframes truck-bob { 50% { transform: translateY(-3px); } }
 @keyframes road-flow { to { transform: translateX(-20px); } }
+@keyframes notice-enter { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-@media (max-width: 460px) {
-  body { padding: 8px; }.window-shell { width: 100%; padding: 12px; }.scene { min-height: 188px; }.truck { left: 27%; transform: scale(.82); transform-origin: bottom left; }.timer-panel strong { font-size: 26px; }.top-actions { gap: 5px; }.switch-label { gap: 5px; font-size: 12px; }.management-button { min-height: 48px; }
+@media (max-width: 390px) {
+  body { padding: 8px; }.floating-window { width: min(360px, calc(100vw - 16px)); }.scene { min-height: 148px; }.truck { left: 27%; transform: scale(.9); transform-origin: bottom left; }.menu-tabs { gap: 4px; }.menu-tab { min-width: 53px; padding: 2px 5px; }
 }

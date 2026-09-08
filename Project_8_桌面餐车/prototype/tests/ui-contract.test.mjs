@@ -50,57 +50,73 @@ function closePrototype(app) {
   };
 }
 
-test('starts a selected journey and locks management during work', async (t) => {
+test('uses the floating window menu to start a selected journey and lock planning during work', async (t) => {
   const app = await openPrototype();
   t.after(closePrototype(app));
 
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '安排' }).click();
   await app.page.getByRole('button', { name: '旅行' }).click();
   await app.page.getByRole('button', { name: '林道' }).click();
-  await app.page.getByRole('button', { name: '开始工作' }).click();
+  await app.page.getByRole('button', { name: '开始专注' }).click();
 
   const state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'work');
   assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
-  assert.equal(await app.page.locator('#shop').isDisabled(), true);
-  assert.equal(await app.page.locator('#research').isDisabled(), true);
-  assert.equal(await app.page.locator('#cook').isDisabled(), true);
+  assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
+  assert.equal(await app.page.locator('#pomodoro-menu-button').isDisabled(), true);
+  assert.equal(await app.page.locator('#menu-toggle').isEnabled(), true);
 });
 
-test('switches between the ordinary window and compact companion window', async (t) => {
+test('keeps a single floating window and opens its menu without an expand control', async (t) => {
   const app = await openPrototype();
   t.after(closePrototype(app));
 
-  await app.page.locator('#compact-window').click();
-  assert.equal(await app.page.locator('.compact-window').isVisible(), true);
-  await app.page.locator('#expand-window').click();
-  assert.equal(await app.page.locator('.window-shell').isVisible(), true);
+  assert.equal(await app.page.locator('.floating-window').count(), 1);
+  assert.equal(await app.page.locator('#expand-window').count(), 0);
+  await app.page.locator('#menu-toggle').click();
+  assert.equal(await app.page.locator('#menu-drawer').isVisible(), true);
 });
 
-test('keeps free management non-automatic when pomodoro is disabled', async (t) => {
+test('starts a selected activity manually when pomodoro is disabled', async (t) => {
   const app = await openPrototype();
   t.after(closePrototype(app));
 
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '番茄钟' }).click();
   await app.page.locator('#pomodoro-toggle').uncheck();
+  await app.page.getByRole('button', { name: '安排' }).click();
+  await app.page.getByRole('button', { name: '旅行' }).click();
+  await app.page.getByRole('button', { name: '林道' }).click();
+
+  assert.equal(await app.page.getByRole('button', { name: '启动旅行' }).isEnabled(), true);
+  await app.page.getByRole('button', { name: '启动旅行' }).click();
 
   const state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'free');
   assert.equal(state.pomodoroEnabled, false);
-  assert.equal(await app.page.locator('#shop').isDisabled(), false);
+  assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
+  assert.equal(await app.page.locator('#management-status').count(), 0);
 });
 
-test('moves from visible work to rest and then planning with deterministic time', async (t) => {
+test('shows nonblocking transition bubbles after visible work and rest phases', async (t) => {
   const app = await openPrototype();
   t.after(closePrototype(app));
 
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '安排' }).click();
   await app.page.getByRole('button', { name: '经营' }).click();
-  await app.page.getByRole('button', { name: '开始工作' }).click();
+  await app.page.getByRole('button', { name: '开始专注' }).click();
   await app.page.evaluate(() => window.advanceTime(12000));
 
   let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'rest');
   assert.deepEqual(state.lastCompletedPlan, { activity: 'operate', regionId: 'market' });
+  assert.equal(await app.page.locator('.scene-note').innerText(), '餐车休息中');
+  assert.match(await app.page.locator('#phase-notice').innerText(), /工作完成\s+进入休息/);
 
   await app.page.evaluate(() => window.advanceTime(6000));
   state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'planning');
+  assert.match(await app.page.locator('#phase-notice').innerText(), /休息结束\s+安排下一段/);
 });

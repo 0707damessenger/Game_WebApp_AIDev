@@ -4,6 +4,9 @@ export const CONFIG = Object.freeze({
     restSeconds: 6,
     tickMilliseconds: 1000,
   }),
+  ui: Object.freeze({
+    noticeMilliseconds: 2600,
+  }),
   activities: Object.freeze([
     Object.freeze({ id: 'operate', label: '经营', regionIds: Object.freeze(['market']) }),
     Object.freeze({ id: 'travel', label: '旅行', regionIds: Object.freeze(['forest', 'coast']) }),

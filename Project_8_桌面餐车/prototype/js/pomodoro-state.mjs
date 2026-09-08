@@ -15,6 +15,8 @@ export function createInitialState() {
     activePlan: null,
     lastCompletedPlan: null,
     secondsRemaining: null,
+    notice: null,
+    noticeId: 0,
   };
 }
 
@@ -41,7 +43,17 @@ export function setPomodoroEnabled(state, enabled) {
 }
 
 export function startWork(state, config) {
-  if (!state.pomodoroEnabled) return { ok: false, reason: 'pomodoro-disabled' };
+  if (!state.pomodoroEnabled) {
+    if (!isValidPlan(state.nextPlan, config)) return { ok: false, reason: 'plan-required' };
+    return {
+      ok: true,
+      state: {
+        ...state,
+        activePlan: clonePlan(state.nextPlan),
+        secondsRemaining: null,
+      },
+    };
+  }
   if (state.phase === 'work') return { ok: false, reason: 'work-in-progress' };
   if (state.phase === 'rest') return { ok: false, reason: 'rest-in-progress' };
   if (!isValidPlan(state.nextPlan, config)) return { ok: false, reason: 'plan-required' };
@@ -73,9 +85,20 @@ export function advanceSecond(state, config) {
         activePlan: null,
         lastCompletedPlan: clonePlan(state.activePlan),
         secondsRemaining: config.timer.restSeconds,
+        noticeId: state.noticeId + 1,
+        notice: { id: state.noticeId + 1, title: '工作完成', detail: '进入休息' },
       },
     };
   }
 
-  return { ok: true, state: { ...state, phase: 'planning', secondsRemaining: null } };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      phase: 'planning',
+      secondsRemaining: null,
+      noticeId: state.noticeId + 1,
+      notice: { id: state.noticeId + 1, title: '休息结束', detail: '安排下一段' },
+    },
+  };
 }

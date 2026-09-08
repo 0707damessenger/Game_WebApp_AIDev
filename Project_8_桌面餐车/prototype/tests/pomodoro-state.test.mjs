@@ -81,11 +81,41 @@ test('allows scheduling during rest but does not allow rest to be skipped', () =
   assert.deepEqual(startWork(rescheduled.state, CONFIG), { ok: false, reason: 'rest-in-progress' });
 });
 
-test('disabling pomodoro enters free management without automatic work', () => {
+test('disabling pomodoro allows a planned activity to be started manually', () => {
   const disabled = setPomodoroEnabled(createInitialState(CONFIG), false, CONFIG);
+  const planned = setNextPlan(
+    disabled.state,
+    { activity: 'travel', regionId: 'forest' },
+    CONFIG,
+  ).state;
+  const started = startWork(planned, CONFIG);
 
   assert.equal(disabled.ok, true);
   assert.equal(disabled.state.phase, 'free');
   assert.equal(disabled.state.pomodoroEnabled, false);
-  assert.equal(startWork(disabled.state, CONFIG).reason, 'pomodoro-disabled');
+  assert.equal(started.ok, true);
+  assert.equal(started.state.phase, 'free');
+  assert.equal(started.state.secondsRemaining, null);
+  assert.deepEqual(started.state.activePlan, { activity: 'travel', regionId: 'forest' });
+});
+
+test('records a brief notification whenever work or rest finishes', () => {
+  const planned = setNextPlan(
+    createInitialState(CONFIG),
+    { activity: 'operate', regionId: 'market' },
+    CONFIG,
+  ).state;
+  let state = startWork(planned, CONFIG).state;
+
+  for (let second = 0; second < CONFIG.timer.workSeconds; second += 1) {
+    state = advanceSecond(state, CONFIG).state;
+  }
+
+  assert.deepEqual(state.notice, { id: 1, title: '工作完成', detail: '进入休息' });
+
+  for (let second = 0; second < CONFIG.timer.restSeconds; second += 1) {
+    state = advanceSecond(state, CONFIG).state;
+  }
+
+  assert.deepEqual(state.notice, { id: 2, title: '休息结束', detail: '安排下一段' });
 });
