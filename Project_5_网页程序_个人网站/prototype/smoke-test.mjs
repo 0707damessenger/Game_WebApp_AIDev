@@ -16,7 +16,7 @@ assert(existsSync(htmlPath), "index.html should exist");
 
 const html = readFileSync(htmlPath, "utf8");
 const requiredNavIds = ["home", "projects", "links"];
-const navConfig = html.match(/nav: \[(.*?)\n\s+\],\n\s+themes:/s)?.[1] ?? "";
+const navConfig = html.match(/nav: \[(.*?)\r?\n\s+\],\r?\n\s+themes:/s)?.[1] ?? "";
 const navLabelMatches = navConfig.match(/label: "/g) ?? [];
 
 for (const id of requiredNavIds) {
@@ -32,7 +32,7 @@ assert(html.includes('id: "home"'), "home config should exist");
 assert(html.includes('id: "projects"'), "projects config should exist");
 assert(html.includes('id: "links"'), "links config should exist");
 assert(html.includes("function renderApp"), "prototype should render from CONFIG");
-assert(html.includes("待填写"), "template should leave content blank with placeholders");
+assert(html.includes('title: "关于"'), "about page config should exist");
 assert(html.includes('iconSrc: ""'), "navigation icon paths should be configurable");
 assert(html.includes("avatarSrc:"), "home avatar path should be configurable");
 assert(html.includes('imageSrc: ""'), "content image paths should be configurable");
@@ -66,13 +66,18 @@ assert(html.includes("hoverImageSrc:"), "contacts should support configurable ho
 assert(html.includes("contact-hover-media"), "configured hover images should render a preview surface");
 assert(html.includes("data-contact-preview"), "hover previews should be anchored to the contacts strip");
 assert(html.includes("links-content"), "links should provide a bottom-aligned content layout");
+assert(html.includes("gameHistory: ["), "about should configure game history categories");
+assert(html.includes('category: "开放世界类"'), "game history should include the open-world category");
+assert(html.includes('category: "竞技类游戏"'), "game history should include the competitive category");
+assert(html.includes("data-game-history-category"), "game history should render category groups");
+assert(html.includes("game-history-note"), "game history should support optional notes");
 assert(html.includes("isFeatured: true"), "projects should support representative work markers");
 assert(html.includes("detail: {"), "projects should configure detail content");
 assert(html.includes("images: ["), "project details should support multiple images");
 assert(html.includes("data-featured-target"), "featured projects should render quick-jump targets");
 assert(html.includes("data-project-toggle"), "vertical projects should render expandable summaries");
 assert(html.includes("data-project-carousel"), "project details should render an image carousel");
-assert(html.includes("等工作。\\n从零到一"), "project detail descriptions should support configured line breaks");
+assert(/detail:\s*\{\s*description:\s*"[^"]*\\n/.test(html), "project detail descriptions should support configured line breaks");
 
 async function assertViewChangeScrollsToTop(page, triggerSelector, expectedView) {
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
@@ -140,18 +145,41 @@ async function runBrowserChecks() {
 
     const featuredCarousel = featuredProject.locator("[data-project-carousel]");
     assert(await featuredCarousel.count() === 1, "featured project should expose its detail carousel");
-    assert(await featuredProject.locator("[data-project-visit]").count() === 0, "projects without a website should hide the visit link");
+    const detailMedia = featuredProject.locator("[data-project-media]");
+    const foregroundImage = detailMedia.locator(".project-detail-image");
+    const backdropImage = detailMedia.locator(".project-detail-image-backdrop");
+    assert(await foregroundImage.count() === 1, "project detail should render a foreground image");
+    assert(await backdropImage.count() === 1, "project detail should render a blurred backdrop image");
+    assert(await foregroundImage.evaluate((element) => getComputedStyle(element).objectFit === "contain"), "foreground image should show the full image");
+    assert(await backdropImage.evaluate((element) => getComputedStyle(element).objectFit === "cover"), "backdrop image should fill the frame");
+    assert((await backdropImage.getAttribute("aria-hidden")) === "true", "decorative backdrop should be hidden from assistive technology");
+    assert((await foregroundImage.getAttribute("src")) === (await backdropImage.getAttribute("src")), "foreground and backdrop should use the same image");
+    const featuredVisitLink = featuredProject.locator("[data-project-visit]");
+    assert(await featuredVisitLink.count() === 1, "projects with a website should show the visit link");
+    assert(await featuredVisitLink.getAttribute("href") === "https://reflash.nvsgames.cn/", "visit link should use the configured website");
+    assert(await featuredVisitLink.getAttribute("target") === "_blank", "visit link should open in a new tab");
     const nextImageButton = featuredCarousel.locator('[data-project-image="next"]');
     const imageCounter = featuredCarousel.locator("[data-image-counter]");
     const imageCaption = featuredCarousel.locator("[data-image-caption]");
+    assert(await imageCaption.evaluate((element) => {
+      const controls = element.parentElement?.querySelector("[data-image-counter]");
+      return Boolean(controls && (element.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING));
+    }), "image description should appear above carousel controls");
     const initialCounter = await imageCounter.textContent();
     const initialCaption = await imageCaption.textContent();
+    const imageCount = Number(initialCounter.match(/\/\s*(\d+)/)?.[1] || 0);
+    assert(imageCount > 1, "featured carousel should expose multiple configured images");
     await nextImageButton.click();
     const nextCounter = await imageCounter.textContent();
     const nextCaption = await imageCaption.textContent();
+    const nextForegroundSrc = await featuredProject.locator(".project-detail-image").getAttribute("src");
+    const nextBackdropSrc = await featuredProject.locator(".project-detail-image-backdrop").getAttribute("src");
     assert(initialCounter !== nextCounter, "next image should update the image counter");
     assert(initialCaption !== nextCaption, "next image should update the image description");
-    await nextImageButton.click();
+    assert(nextForegroundSrc === nextBackdropSrc, "carousel should switch foreground and backdrop together");
+    for (let index = 1; index < imageCount; index += 1) {
+      await nextImageButton.click();
+    }
     assert((await imageCounter.textContent()) === initialCounter, "next image should wrap to the first image");
     assert((await imageCaption.textContent()) === initialCaption, "wrapped image should restore its description");
 
@@ -174,18 +202,37 @@ async function runBrowserChecks() {
     });
     assert(stickyPosition.summaryTop >= stickyPosition.headerBottom - 1, "sticky project summary should stay below the tab bar");
 
-    const websiteUrl = "https://example.com/project-01";
-    const configuredPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-    await configuredPage.setContent(html.replace('websiteUrl: ""', `websiteUrl: "${websiteUrl}"`), { waitUntil: "networkidle" });
-    await configuredPage.locator('.nav-link[data-target="projects"]').click();
-    const configuredFeaturedTarget = await configuredPage.locator("[data-featured-target]").first().getAttribute("data-featured-target");
-    const configuredProject = configuredPage.locator(`.project-item[data-project-id="${configuredFeaturedTarget}"]`);
-    await configuredPage.locator("[data-featured-target]").first().click();
-    const visitLink = configuredProject.locator("[data-project-visit]");
-    assert(await visitLink.count() === 1, "projects with a website should show the visit link");
-    assert(await visitLink.getAttribute("href") === websiteUrl, "visit link should use the configured website");
-    assert(await visitLink.getAttribute("target") === "_blank", "visit link should open in a new tab");
-    await configuredPage.close();
+    const noWebsiteProject = page.locator('.project-item[data-project-id="project-203"]');
+    await noWebsiteProject.locator("[data-project-toggle]").click();
+    assert(await noWebsiteProject.locator("[data-project-visit]").count() === 0, "projects without a website should hide the visit link");
+    assert(await noWebsiteProject.locator("[data-project-media]").count() === 0, "projects without images should hide the image media module");
+    assert(await noWebsiteProject.locator("[data-image-caption]").count() === 0, "projects without images should hide the image description");
+    assert(await noWebsiteProject.locator("[data-image-counter]").count() === 0, "projects without images should hide the image counter");
+    assert(await noWebsiteProject.locator("[data-project-image]").count() === 0, "projects without images should hide carousel controls");
+
+    const catProject = page.locator('.project-item[data-project-id="project-202"]');
+    await catProject.locator("[data-project-toggle]").click();
+    const catMedia = catProject.locator("[data-project-media]");
+    const catForegroundImage = catMedia.locator(".project-detail-image");
+    await catForegroundImage.waitFor({ state: "visible" });
+    const catImageMetrics = await catMedia.evaluate((media) => {
+      const image = media.querySelector(".project-detail-image");
+      const mediaRect = media.getBoundingClientRect();
+      const imageRect = image.getBoundingClientRect();
+      return {
+        mediaWidth: Math.round(mediaRect.width),
+        mediaHeight: Math.round(mediaRect.height),
+        imageWidth: Math.round(imageRect.width),
+        imageHeight: Math.round(imageRect.height),
+        objectFit: getComputedStyle(image).objectFit,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight
+      };
+    });
+    assert(catImageMetrics.naturalWidth === catImageMetrics.naturalHeight, "cat project regression image should be square");
+    assert(catImageMetrics.imageWidth === catImageMetrics.mediaWidth, "square project image should stay within the media frame width");
+    assert(catImageMetrics.imageHeight === catImageMetrics.mediaHeight, "square project image should stay within the media frame height");
+    assert(catImageMetrics.objectFit === "contain", "square project image should use contain fitting");
 
     await page.locator('.nav-link[data-target="home"]').click();
     await page.waitForSelector('[data-view="home"].is-active');
@@ -201,8 +248,14 @@ async function runBrowserChecks() {
     assert(await page.locator('[data-link-group="contacts"]').count() === 0, "contacts should not render as an independent group");
     assert(await page.locator('[data-link-group="friends"]').count() === 0, "friends group should not render");
     const homepageGroup = page.locator('[data-link-group="my-homepages"]');
+    const gameHistoryGroup = page.locator('[data-link-group="game-history"]');
     const contactsStrip = page.locator('[data-view="links"] [data-links-contacts]');
     const linksContent = page.locator('[data-view="links"] .links-content');
+    assert(await gameHistoryGroup.count() === 1, "game history should render once");
+    assert((await gameHistoryGroup.boundingBox()).y < (await homepageGroup.boundingBox()).y, "game history should appear above my homepages");
+    assert(await gameHistoryGroup.locator('[data-game-history-category]').count() === 2, "game history should render configured categories");
+    assert(await gameHistoryGroup.getByText("塞尔达旷野之息", { exact: true }).count() === 1, "game names should render");
+    assert(await gameHistoryGroup.locator('.game-history-note').count() === 0, "empty notes should not reserve visible elements");
     assert(await page.locator('[data-view="links"] .page-head [data-links-contacts]').count() === 0, "contacts should not render in the page heading");
     assert(await contactsStrip.count() === 1, "contacts should render after the homepage cards");
     assert((await contactsStrip.boundingBox()).y > (await homepageGroup.boundingBox()).y, "contacts should appear below my homepages");
@@ -212,6 +265,14 @@ async function runBrowserChecks() {
     const contentBox = await linksContent.boundingBox();
     const bottomGap = contentBox.y + contentBox.height - (contactsBox.y + contactsBox.height);
     assert(bottomGap < 75, `contacts should stay near the bottom of the links content: ${bottomGap}`);
+    const configuredHistoryPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    await configuredHistoryPage.setContent(
+      html.replace('{ title: "天国拯救 2", note: "" }', '{ title: "天国拯救 2", note: "120 小时 · 沉浸感很强" }'),
+      { waitUntil: "networkidle" }
+    );
+    await configuredHistoryPage.locator('.nav-link[data-target="links"]').click();
+    assert(await configuredHistoryPage.getByText("120 小时 · 沉浸感很强", { exact: true }).count() === 1, "configured game notes should render");
+    await configuredHistoryPage.close();
     const linksMetrics = await page.evaluate(() => ({
       documentHeight: document.documentElement.scrollHeight,
       viewportHeight: window.innerHeight,

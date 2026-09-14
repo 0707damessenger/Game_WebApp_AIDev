@@ -116,6 +116,7 @@
               websiteUrl: "",
               detail: { description: "在屏幕上划线以攻击敌人，无需其他操作。\n操作极简，局内控制和局外构筑并存，配合视觉和声效反馈提供充足爽感。\n\n击败敌人可获取经验，升级触发随机BUFF选择。\n\n游戏提供包括炮塔流、弹反流、高速流、连击流、幸运流5个流派构筑方向，每个流派都有羁绊效果，双流派羁绊耦合还会触发强力的特殊连携。\n\n（源文件丢失，暂时仅占位）", 
               images: [
+
               ] }
             },
             {
@@ -171,6 +172,23 @@
         links: {
           title: "关于",
           subtitle: "在哪里找到我",
+          gameHistory: [
+            {
+              category: "开放世界类",
+              games: [
+                { title: "塞尔达旷野之息", note: "" },
+                { title: "天国拯救 2", note: "" },
+                { title: "巫师 3", note: "" }
+              ]
+            },
+            {
+              category: "竞技类游戏",
+              games: [
+                { title: "斯普拉遁 3", note: "" },
+                { title: "第五人格", note: "" }
+              ]
+            }
+          ],
           myHomepages: [
             { title: "GitHub", description: "0707damessenger", imageSrc: "assets/avatar/103.png", url: "https://github.com/0707damessenger" }
           ],
@@ -675,6 +693,9 @@
 
     .project-detail-media {
       position: relative;
+      display: grid;
+      place-items: center;
+      isolation: isolate;
       overflow: hidden;
       aspect-ratio: 16 / 9;
       border-radius: 8px;
@@ -683,11 +704,33 @@
       box-shadow: 0 0.45em 1.6em var(--accent-shadow);
     }
 
+    .project-detail-image-backdrop {
+      position: absolute;
+      inset: -8%;
+      width: 116%;
+      height: 116%;
+      object-fit: cover;
+      filter: blur(24px) saturate(0.72);
+      opacity: 0.68;
+      transform: scale(1.08);
+    }
+
+    .project-detail-image-wash {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.16);
+    }
+
     .project-detail-image {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
+      filter: drop-shadow(0 0.35em 0.8em rgba(30, 42, 36, 0.16));
     }
 
     .project-carousel-controls {
@@ -821,6 +864,51 @@
       font-size: 1.7em;
       font-weight: 200;
       text-align: left;
+    }
+
+    .game-history-list {
+      display: grid;
+    }
+
+    .game-history-category {
+      display: grid;
+      grid-template-columns: minmax(8em, 0.34fr) 1fr;
+      gap: 1.4em;
+      padding: 1.15em 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .game-history-category h3 {
+      margin: 0;
+      color: var(--accent);
+      font-size: 1.12em;
+      font-weight: 300;
+    }
+
+    .game-history-category ul {
+      display: grid;
+      gap: 0.72em;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .game-history-item {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4em 0.8em;
+      align-items: baseline;
+    }
+
+    .game-history-name {
+      color: #333;
+      font-weight: 300;
+    }
+
+    .game-history-note {
+      color: var(--muted);
+      font-size: 0.9em;
+      font-weight: 200;
     }
 
     .link-card-grid {
@@ -1162,6 +1250,11 @@
         height: 3.8em;
       }
 
+      .game-history-category {
+        grid-template-columns: 1fr;
+        gap: 0.75em;
+      }
+
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1293,6 +1386,18 @@
       return Array.isArray(item?.detail?.images) ? item.detail.images : [];
     }
 
+    function renderProjectDetailImage(image, projectTitle) {
+      if (!image?.src) return "";
+      const src = escapeHTML(image.src);
+      const alt = escapeHTML(image.alt || projectTitle);
+
+      return `
+        <img class="project-detail-image-backdrop" src="${src}" alt="" aria-hidden="true" loading="lazy" decoding="async" data-fallback>
+        <span class="project-detail-image-wash" aria-hidden="true"></span>
+        <img class="project-detail-image" src="${src}" alt="${alt}" loading="lazy" decoding="async" data-fallback>
+      `;
+    }
+
     function renderProjectDetail(item) {
       const images = getProjectImages(item);
       const imageIndex = images.length ? getWrappedImageIndex(state.projectImageIndexes[item.id] || 0, images.length) : 0;
@@ -1313,6 +1418,17 @@
         : images.length
           ? `<div class="project-carousel-controls"><span class="project-image-counter" data-image-counter>第 1 / 1 张</span></div>`
           : "";
+      const imageModule = images.length && image
+        ? `
+            <div class="project-detail-carousel" data-project-carousel>
+              <div class="project-detail-media" data-project-media>
+                ${renderProjectDetailImage(image, item.title)}
+              </div>
+              <p class="project-image-caption${imageCaption ? "" : " is-empty"}" data-image-caption>${escapeHTML(imageCaption)}</p>
+              ${controls}
+            </div>
+          `
+        : "";
 
       return `
         <div class="project-detail-inner">
@@ -1320,13 +1436,7 @@
             <p>${escapeHTML(item.detail?.description || "")}</p>
             ${visitLink}
           </div>
-          <div class="project-detail-carousel" data-project-carousel>
-            <div class="project-detail-media" data-project-media>
-              ${images.length && image ? renderOptionalImage(image.src, "project-detail-image", image.alt || item.title) : ""}
-            </div>
-            ${controls}
-            <p class="project-image-caption${imageCaption ? "" : " is-empty"}" data-image-caption>${escapeHTML(imageCaption)}</p>
-          </div>
+          ${imageModule}
         </div>
       `;
     }
@@ -1430,11 +1540,38 @@
       `;
     }
 
+    function renderGameHistoryItem(game) {
+      const note = game.note
+        ? `<span class="game-history-note">${escapeHTML(game.note)}</span>`
+        : "";
+      return `<li class="game-history-item"><span class="game-history-name">${escapeHTML(game.title)}</span>${note}</li>`;
+    }
+
+    function renderGameHistory(page) {
+      const categories = Array.isArray(page.gameHistory) ? page.gameHistory : [];
+      if (!categories.length) return "";
+
+      return `
+        <section class="link-group" data-link-group="game-history" aria-labelledby="game-history-title">
+          <h2 class="link-group-title" id="game-history-title">游戏经历</h2>
+          <div class="game-history-list">
+            ${categories.map((group) => `
+              <section class="game-history-category" data-game-history-category>
+                <h3>${escapeHTML(group.category)}</h3>
+                <ul>${(Array.isArray(group.games) ? group.games : []).map(renderGameHistoryItem).join("")}</ul>
+              </section>
+            `).join("")}
+          </div>
+        </section>
+      `;
+    }
+
     function renderLinksView(page) {
       const contacts = Array.isArray(page.contacts) && page.contacts.length
         ? `<div class="links-contact-strip" data-links-contacts aria-label="联系方式">${page.contacts.map(renderContactRow).join("")}${page.contacts.map(renderContactHoverPreview).join("")}</div>`
         : "";
       const groups = [
+        renderGameHistory(page),
         renderLinkGroup("my-homepages", "我的主页", page.myHomepages, "link-card-grid", renderLinkCard)
       ].join("");
 
