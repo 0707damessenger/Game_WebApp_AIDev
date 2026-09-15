@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spellatoon 优化版</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./css/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">TERRITORY PRESSURE PROTOTYPE</p>
+          <h1>Spellatoon</h1>
+        </div>
+        <div class="header-actions">
+          <button class="mode-button" id="solo-start" type="button">单机双人</button>
+          <div class="turn-indicator" id="turn-indicator" aria-live="polite"></div>
+        </div>
+      </header>
+
+      <section class="lobby-panel" aria-label="局域网房间">
+        <div class="lobby-controls">
+          <button class="mode-button" id="create-room" type="button">创建房间</button>
+          <input class="room-input" id="room-id-input" aria-label="四位房间号" inputmode="numeric" maxlength="4" placeholder="四位房间号" />
+          <button class="mode-button" id="join-room" type="button">加入房间</button>
+          <button class="mode-button start-game" id="start-game" type="button" disabled>开始对局</button>
+        </div>
+        <p class="room-status" id="room-status" aria-live="polite"></p>
+      </section>
+
+      <section class="status-strip" aria-label="对局状态">
+        <div class="status-group" id="life-summary"></div>
+        <div class="status-group" id="action-points"></div>
+        <div class="status-group" id="territory-summary"></div>
+      </section>
+
+      <section class="game-layout">
+        <section class="board-panel" aria-label="战场棋盘">
+          <div class="board" id="board"></div>
+          <p class="preview-summary" id="preview-summary" aria-live="polite"></p>
+          <p class="settlement" id="settlement" aria-live="polite"></p>
+        </section>
+
+        <aside class="control-panel" aria-label="回合操作">
+          <section class="score-panel">
+            <p class="panel-label">分数</p>
+            <div id="score-summary"></div>
+          </section>
+          <section class="hand-panel" id="hand-panel">
+            <div class="hand-heading">
+              <p class="panel-label">当前手牌</p>
+              <span id="hand-count"></span>
+            </div>
+            <div class="hand" id="hand"></div>
+          </section>
+          <p class="action-note" id="action-note" aria-live="polite"></p>
+          <button class="end-turn" id="end-turn" type="button">结束回合</button>
+        </aside>
+      </section>
+    </main>
+    <div class="handoff-dialog" id="handoff-dialog" role="dialog" aria-modal="true" aria-labelledby="handoff-title" hidden>
+      <section class="handoff-card">
+        <p class="eyebrow">PASS THE DEVICE</p>
+        <span class="handoff-swatch" id="handoff-swatch" aria-hidden="true"></span>
+        <h2 id="handoff-title">请交给下一位玩家</h2>
+        <button class="end-turn handoff-start" id="handoff-start" type="button">开始行动</button>
+      </section>
+    </div>
+    <script type="module" src="./js/app.mjs"></script>
+  </body>
+</html>

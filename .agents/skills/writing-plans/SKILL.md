@@ -15,7 +15,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
+**Save plans to:** `<project>/docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`, where `<project>` is the resolved owning `Project_X_项目名/`. A bare `docs/` path is forbidden in this multi-project workspace.
 - (User preferences for plan location override this default)
 
 ## Scope Check
@@ -114,7 +114,7 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - References to types, functions, or methods not defined in any task
 
 ## Remember
-- Exact file paths always
+- Exact file paths always, including the owning project directory for every design, plan, test, and output artifact
 - Complete code in every step — if a step changes code, show the code
 - Exact commands with expected output
 - DRY, YAGNI, TDD, frequent commits
@@ -135,7 +135,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 After saving the plan, offer execution choice:
 
-**"Plan complete and saved to `docs/superpowers/plans/<filename>.md`. Two execution options:**
+**"Plan complete and saved to `<project>/docs/superpowers/plans/<filename>.md`. Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 

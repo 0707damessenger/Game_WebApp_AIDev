@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
 async function openDemo(viewport) {
@@ -38,7 +39,7 @@ test('desktop keeps the board and command rail in one viewport', async () => {
 test('phone portrait keeps the board above a compact action rail', async () => {
   const { browser, page } = await openDemo({ width: 390, height: 844 });
   try {
-    const screenshotDirectory = path.join(process.cwd(), 'test-results');
+    const screenshotDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../test-results');
     await mkdir(screenshotDirectory, { recursive: true });
     await page.screenshot({ path: path.join(screenshotDirectory, `spellatoon-mobile-${process.pid}.png`), fullPage: false });
     const layout = await page.evaluate(() => {

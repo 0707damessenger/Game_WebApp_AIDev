@@ -1,4 +1,3 @@
-const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { expect, test } = require('@playwright/test');
@@ -9,16 +8,8 @@ const TRANSPARENT_TILE = Buffer.from(
 );
 
 function project4PrototypeUrl() {
-  const workspaceRoot = path.resolve(__dirname, '../..');
-  const projectDir = fs
-    .readdirSync(workspaceRoot, { withFileTypes: true })
-    .find((entry) => entry.isDirectory() && entry.name.startsWith('Project_4_'));
-
-  if (!projectDir) {
-    throw new Error('Project_4 directory was not found.');
-  }
-
-  return pathToFileURL(path.join(workspaceRoot, projectDir.name, 'prototype', 'index.html')).href;
+  const projectRoot = path.resolve(__dirname, '../../..');
+  return pathToFileURL(path.join(projectRoot, 'prototype', 'index.html')).href;
 }
 
 function sampleFinishedSession() {

@@ -9,8 +9,14 @@ Thumbs.db
 
 # 依赖与锁定文件
 node_modules/
-test-results/
-playwright-report/
+
+# 仅忽略项目内部的自动化产物；根目录同名目录必须保持可见并由布局检查拦截
+Project_*/output/
+Project_*/test-results/
+Project_*/playwright-report/
+Project_*/prototype/output/
+Project_*/prototype/test-results/
+Project_*/prototype/playwright-report/
 
 # 调试日志
 *.log

@@ -7,26 +7,43 @@ import {
   startWork,
 } from './pomodoro-state.mjs';
 import { render } from './render.mjs';
+import {
+  advanceTravelSecond,
+  createInitialTravelState,
+  openChest,
+} from './travel-state.mjs';
 
 const app = document.querySelector('#app');
 let state = createInitialState(CONFIG);
+let travelState = createInitialTravelState(CONFIG);
 let menuOpen = false;
 let menuPanel = 'arrange';
 let intervalId = null;
 let noticeTimeoutId = null;
 let visibleNoticeId = null;
 
+function isTicking() {
+  return state.phase === 'work' || state.phase === 'rest' || (!state.pomodoroEnabled && Boolean(state.activePlan));
+}
+
 function syncTimer() {
-  const shouldTick = state.phase === 'work' || state.phase === 'rest';
+  const shouldTick = isTicking();
 
   if (shouldTick && intervalId === null) {
-    intervalId = window.setInterval(() => update(advanceSecond(state, CONFIG)), CONFIG.timer.tickMilliseconds);
+    intervalId = window.setInterval(() => update(advanceGameSecond()), CONFIG.timer.tickMilliseconds);
   }
 
   if (!shouldTick && intervalId !== null) {
     window.clearInterval(intervalId);
     intervalId = null;
   }
+}
+
+function advanceGameSecond() {
+  if (state.activePlan?.activity === 'travel') {
+    travelState = advanceTravelSecond(travelState, state.activePlan, CONFIG).state;
+  }
+  return advanceSecond(state, CONFIG);
 }
 
 function syncNotice() {
@@ -37,7 +54,7 @@ function syncNotice() {
   noticeTimeoutId = window.setTimeout(() => {
     if (state.notice?.id === visibleNoticeId) {
       state = { ...state, notice: null };
-      render(app, state, CONFIG, { menuOpen, menuPanel });
+      render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
     }
   }, CONFIG.ui.noticeMilliseconds);
 }
@@ -46,18 +63,18 @@ function update(result) {
   if (result?.state) state = result.state;
   syncTimer();
   syncNotice();
-  render(app, state, CONFIG, { menuOpen, menuPanel });
+  render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
 }
 
 function advanceTime(milliseconds) {
   let remaining = milliseconds;
-  while (remaining >= CONFIG.timer.tickMilliseconds && (state.phase === 'work' || state.phase === 'rest')) {
+  while (remaining >= CONFIG.timer.tickMilliseconds && isTicking()) {
     remaining -= CONFIG.timer.tickMilliseconds;
-    state = advanceSecond(state, CONFIG).state;
+    state = advanceGameSecond().state;
   }
   syncTimer();
   syncNotice();
-  render(app, state, CONFIG, { menuOpen, menuPanel });
+  render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
 }
 
 function selectedActivity() {
@@ -91,6 +108,13 @@ app.addEventListener('click', (event) => {
     return;
   }
 
+  if (button.dataset.chestId) {
+    const result = openChest(travelState, Number(button.dataset.chestId), CONFIG);
+    if (result.ok) travelState = result.state;
+    update();
+    return;
+  }
+
   if (button.id === 'start-work') update(startWork(state, CONFIG));
 });
 
@@ -98,7 +122,7 @@ app.addEventListener('change', (event) => {
   if (event.target.id === 'pomodoro-toggle') update(setPomodoroEnabled(state, event.target.checked, CONFIG));
 });
 
-window.render_game_to_text = () => JSON.stringify({ ...state, menuOpen, menuPanel });
+window.render_game_to_text = () => JSON.stringify({ ...state, travel: travelState, menuOpen, menuPanel });
 window.advanceTime = advanceTime;
 window.addEventListener('beforeunload', () => {
   if (intervalId !== null) window.clearInterval(intervalId);

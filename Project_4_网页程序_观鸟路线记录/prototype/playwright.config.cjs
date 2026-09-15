@@ -1,7 +1,9 @@
 const { defineConfig } = require('@playwright/test');
+const path = require('node:path');
 
 module.exports = defineConfig({
-  testDir: './tests/e2e',
+  testDir: path.resolve(__dirname, 'tests', 'e2e'),
+  outputDir: path.resolve(__dirname, 'test-results'),
   timeout: 30000,
   expect: {
     timeout: 5000,

@@ -71,6 +71,24 @@ function startLabel(state, config) {
   return `启动${getActivity(state.nextPlan, config)?.label || '活动'}`;
 }
 
+function collectionMarkup(travelState, config) {
+  const ingredients = config.ingredients.map((ingredient) => `
+    <span class="ingredient-chip" title="${ingredient.label} ${travelState.ingredients[ingredient.id]}" aria-label="${ingredient.label} ${travelState.ingredients[ingredient.id]}">
+      <span class="ingredient-dot" style="--ingredient-color: ${ingredient.color}"></span><b>${travelState.ingredients[ingredient.id]}</b>
+    </span>`).join('');
+  const chestSlots = Array.from({ length: config.travel.chestCapacity }, (_, index) => {
+    const chest = travelState.chests[index];
+    if (!chest) return '<span class="chest-slot is-empty" aria-hidden="true"></span>';
+    return `<button class="chest-slot" data-chest-id="${chest.id}" aria-label="开启宝箱" title="开启宝箱"><span aria-hidden="true"></span></button>`;
+  }).join('');
+
+  return `
+    <section class="collection-strip" aria-label="旅行收获">
+      <div class="ingredient-list">${ingredients}</div>
+      <div id="chest-slots" class="chest-slots" aria-label="已收集宝箱 ${travelState.chests.length} / ${config.travel.chestCapacity}">${chestSlots}</div>
+    </section>`;
+}
+
 function drawerMarkup(state, config, menuPanel) {
   const locked = state.phase === 'work';
   const canStart = state.pomodoroEnabled
@@ -103,7 +121,7 @@ function drawerMarkup(state, config, menuPanel) {
     </aside>`;
 }
 
-export function render(app, state, config, { menuOpen, menuPanel }) {
+export function render(app, state, config, { menuOpen, menuPanel, travelState }) {
   const displayedPlan = state.activePlan || state.nextPlan || state.lastCompletedPlan;
   app.innerHTML = `
     <section class="floating-window" aria-label="桌面餐车悬浮窗">
@@ -115,6 +133,7 @@ export function render(app, state, config, { menuOpen, menuPanel }) {
         ${sceneMarkup(displayedPlan?.activity, state.phase === 'rest')}
         ${state.notice ? `<div id="phase-notice" class="phase-notice" role="status"><strong>${state.notice.title}</strong><span>${state.notice.detail}</span></div>` : ''}
       </div>
+      ${collectionMarkup(travelState, config)}
       <section class="status-strip" aria-label="当前状态">
         <div>
           <p id="phase-label">${phaseText(state, config)}</p>

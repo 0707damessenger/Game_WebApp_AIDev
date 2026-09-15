@@ -60,7 +60,7 @@ test('uses the floating window menu to start a selected journey and lock plannin
   await app.page.getByRole('button', { name: '林道' }).click();
   await app.page.getByRole('button', { name: '开始专注' }).click();
 
-  const state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'work');
   assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
   assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
@@ -92,11 +92,15 @@ test('starts a selected activity manually when pomodoro is disabled', async (t) 
   assert.equal(await app.page.getByRole('button', { name: '启动旅行' }).isEnabled(), true);
   await app.page.getByRole('button', { name: '启动旅行' }).click();
 
-  const state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'free');
   assert.equal(state.pomodoroEnabled, false);
   assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
   assert.equal(await app.page.locator('#management-status').count(), 0);
+
+  await app.page.evaluate(() => window.advanceTime(2000));
+  state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.travel.ingredients.mushroom, 1);
 });
 
 test('shows nonblocking transition bubbles after visible work and rest phases', async (t) => {
@@ -119,4 +123,29 @@ test('shows nonblocking transition bubbles after visible work and rest phases', 
   state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'planning');
   assert.match(await app.page.locator('#phase-notice').innerText(), /休息结束\s+安排下一段/);
+});
+
+test('collects travel supplies and keeps chest opening available while work menus stay locked', async (t) => {
+  const app = await openPrototype();
+  t.after(closePrototype(app));
+
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '安排' }).click();
+  await app.page.getByRole('button', { name: '旅行' }).click();
+  await app.page.getByRole('button', { name: '林道' }).click();
+  await app.page.getByRole('button', { name: '开始专注' }).click();
+  await app.page.evaluate(() => window.advanceTime(4000));
+
+  let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.travel.ingredients.mushroom, 1);
+  assert.equal(state.travel.ingredients.herb, 1);
+  assert.equal(state.travel.chests.length, 1);
+  assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
+  assert.equal(await app.page.locator('#pomodoro-menu-button').isDisabled(), true);
+
+  await app.page.locator('[data-chest-id]').click();
+  state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.travel.chests.length, 0);
+  assert.equal(state.travel.ingredients.mushroom, 3);
+  assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
 });

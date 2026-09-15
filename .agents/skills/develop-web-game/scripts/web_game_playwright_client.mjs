@@ -74,6 +74,26 @@ function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
 
+function findProjectRoot(startPath) {
+  let current = path.resolve(startPath);
+  while (true) {
+    if (/^Project_\d+_/.test(path.basename(current))) return current;
+    const parent = path.dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function resolveScreenshotDir(requestedDir) {
+  const resolved = path.resolve(requestedDir);
+  const projectRoot = findProjectRoot(resolved);
+  const relativePath = projectRoot ? path.relative(projectRoot, resolved) : "";
+  if (!projectRoot || !relativePath || relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    throw new Error("Screenshot output must be inside a Project_<number>_project directory. Run the client from the owning project or pass --screenshot-dir with a project-owned path.");
+  }
+  return resolved;
+}
+
 function makeVirtualTimeShim() {
   return `(() => {
     const pending = new Set();
@@ -261,6 +281,7 @@ async function doChoreography(page, canvas, steps) {
 
 async function main() {
   const args = parseArgs(process.argv);
+  args.screenshotDir = resolveScreenshotDir(args.screenshotDir);
   ensureDir(args.screenshotDir);
 
   const browser = await chromium.launch({

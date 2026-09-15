@@ -254,7 +254,7 @@ Render the board, persistent life/action point/score/turn information, four visi
 
 Run: `node --test Project_7_游戏_spellatoon优化/prototype/tests/ui-contract.test.mjs`
 
-Run: `node .agents/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:51360/?demo --actions-json "{\"steps\":[{\"buttons\":[],\"frames\":2}]}"`
+Run: `node .agents/skills/develop-web-game/scripts/web_game_playwright_client.mjs --url http://127.0.0.1:51360/?demo --screenshot-dir "Project_7_游戏_spellatoon优化/output/web-game" --actions-json "{\"steps\":[{\"buttons\":[],\"frames\":2}]}"`
 
 Expected: contract passes; screenshot visibly shows the four central cells, life and action points; text state matches the screen; no console errors.
 
@@ -369,7 +369,7 @@ Expected before implementation: missing event-field assertion.
 
 Run: `node --test Project_7_游戏_spellatoon优化/prototype/tests/*.test.mjs`
 
-Run: `node .agents/skills/develop-web-game/scripts/web_game_playwright_client.js --url http://127.0.0.1:51360/?demo --actions-json "{\"steps\":[{\"buttons\":[],\"frames\":2}]}"`
+Run: `node .agents/skills/develop-web-game/scripts/web_game_playwright_client.mjs --url http://127.0.0.1:51360/?demo --screenshot-dir "Project_7_游戏_spellatoon优化/output/web-game" --actions-json "{\"steps\":[{\"buttons\":[],\"frames\":2}]}"`
 
 Expected: all automated tests pass; screenshot, text state and console are clean.
 

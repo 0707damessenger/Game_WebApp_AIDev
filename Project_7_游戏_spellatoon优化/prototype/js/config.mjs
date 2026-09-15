@@ -25,6 +25,7 @@ export const CONFIG = Object.freeze({
   }),
   life: Object.freeze({ initial: 20 }),
   turns: Object.freeze({ turnsPerPlayer: 20 }),
+  network: Object.freeze({ port: 51360 }),
   players: Object.freeze([
     Object.freeze({ id: 'p1', label: '赤方', color: '#ef4f62' }),
     Object.freeze({ id: 'p2', label: '蓝方', color: '#2389e8' }),

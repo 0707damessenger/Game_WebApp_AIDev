@@ -12,7 +12,7 @@ Build games in small steps and validate every change. Treat each iteration as: i
 
 ```bash
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export WEB_GAME_CLIENT="$CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.js"
+export WEB_GAME_CLIENT="$CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.mjs"
 export WEB_GAME_ACTIONS="$CODEX_HOME/skills/develop-web-game/references/action_payloads.json"
 ```
 
@@ -36,9 +36,11 @@ User-scoped skills install under `$CODEX_HOME/skills` (default: `~/.codex/skills
 13. **Reset between scenarios.** Avoid cross-test state when validating distinct features.
 14. **Iterate with small deltas.** Change one variable at a time (frames, inputs, timing, positions), then repeat steps 7–13 until stable.
 
-Example command (actions required):
+Before running the client, change the working directory to the owning `Project_X_项目名/` directory or pass `--screenshot-dir` with a path inside that project. The client rejects workspace-root output paths.
+
+Example command (actions and a project-owned output directory are required):
 ```
-node "$WEB_GAME_CLIENT" --url http://localhost:5173 --actions-file "$WEB_GAME_ACTIONS" --click-selector "#start-btn" --iterations 3 --pause-ms 250
+node "$WEB_GAME_CLIENT" --url http://localhost:5173 --screenshot-dir "output/web-game" --actions-file "$WEB_GAME_ACTIONS" --click-selector "#start-btn" --iterations 3 --pause-ms 250
 ```
 
 Example actions (inline JSON):
@@ -142,7 +144,7 @@ At the end of your work, leave TODOs and suggestions for the next agent in `prog
 
 ## Scripts
 
-- `$WEB_GAME_CLIENT` (installed default: `$CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.js`) — Playwright-based action loop with virtual-time stepping, screenshot capture, and console error buffering. You must pass an action burst via `--actions-file`, `--actions-json`, or `--click`.
+- `$WEB_GAME_CLIENT` (installed default: `$CODEX_HOME/skills/develop-web-game/scripts/web_game_playwright_client.mjs`) — Playwright-based action loop with virtual-time stepping, screenshot capture, and console error buffering. You must pass an action burst via `--actions-file`, `--actions-json`, or `--click`, and keep the screenshot directory inside the owning project.
 
 ## References
 
