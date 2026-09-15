@@ -171,21 +171,28 @@
         },
         links: {
           title: "关于",
-          subtitle: "在哪里找到我",
+          subtitle: "从其他角度了解我",
           gameHistory: [
             {
-              category: "开放世界类",
+              category: "最近在玩",
               games: [
-                { title: "塞尔达旷野之息", note: "" },
-                { title: "天国拯救 2", note: "" },
-                { title: "巫师 3", note: "" }
+                { title: "洛克王国", note: "浅尝一口GF未曾实现的设想 / 337116715" },
+                { title: "真三国无双-起源", note: "在革新叙事与战斗框架的同时保留了割草的爽感" },
+                { title: "PEAK", note: "简单的设计，极致的享受，优雅" }
               ]
             },
             {
-              category: "竞技类游戏",
+              category: "最常在玩",
               games: [
-                { title: "斯普拉遁 3", note: "" },
-                { title: "第五人格", note: "" }
+                { title: "斯普拉遁 3", note: "1500h+的含金量" }
+              ]
+            },
+            {
+              category: "私人珍藏",
+              games: [
+                { title: "Bopl Battle", note: "丰富的能力设计和独特的地形改变机制，造就想象空间极大的快节奏战场" },
+                { title: "Tactical Breach Wizards", note: "环环相扣的策略，精妙的关卡，还能一次把好几个敌人踢出窗外！谁不喜欢" },
+                { title: "露塞提娅-道具屋的经营妙方", note: "年轻人的第一款搜打撤" }
               ]
             }
           ],
@@ -1553,7 +1560,7 @@
 
       return `
         <section class="link-group" data-link-group="game-history" aria-labelledby="game-history-title">
-          <h2 class="link-group-title" id="game-history-title">游戏经历</h2>
+          <h2 class="link-group-title" id="game-history-title">都玩些啥</h2>
           <div class="game-history-list">
             ${categories.map((group) => `
               <section class="game-history-category" data-game-history-category>
