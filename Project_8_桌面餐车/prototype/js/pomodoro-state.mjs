@@ -55,7 +55,6 @@ export function startWork(state, config) {
     };
   }
   if (state.phase === 'work') return { ok: false, reason: 'work-in-progress' };
-  if (state.phase === 'rest') return { ok: false, reason: 'rest-in-progress' };
   if (!isValidPlan(state.nextPlan, config)) return { ok: false, reason: 'plan-required' };
 
   return {
@@ -65,6 +64,7 @@ export function startWork(state, config) {
       phase: 'work',
       activePlan: clonePlan(state.nextPlan),
       secondsRemaining: config.timer.workSeconds,
+      notice: null,
     },
   };
 }

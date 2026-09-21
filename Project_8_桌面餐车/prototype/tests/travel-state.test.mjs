@@ -20,25 +20,34 @@ function advance(state, plan, seconds) {
   return next;
 }
 
-test('only travel collects the active region ingredients', () => {
+test('only travel eventually collects the active region ingredients', () => {
   const initial = createInitialTravelState(CONFIG);
   const inactive = advanceTravelSecond(initial, { activity: 'operate', regionId: 'market' }, CONFIG).state;
   assert.deepEqual(inactive, initial);
 
-  const forest = advance(initial, travelPlan('forest'), CONFIG.travel.harvestIntervalSeconds);
+  const collectionSeconds = CONFIG.travel.harvestIntervalSeconds
+    + CONFIG.travel.roadItemApproachSeconds
+    + CONFIG.travel.roadItemCollectSeconds;
+  const forest = advance(initial, travelPlan('forest'), collectionSeconds);
   assert.equal(forest.ingredients.mushroom, 1);
   assert.equal(forest.ingredients.seaweed, 0);
 
-  const coast = advance(initial, travelPlan('coast'), CONFIG.travel.harvestIntervalSeconds);
+  const coast = advance(initial, travelPlan('coast'), collectionSeconds);
   assert.equal(coast.ingredients.seaweed, 1);
   assert.equal(coast.ingredients.mushroom, 0);
 });
 
-test('encounters automatically fill the chest slots and full slots discard later encounters', () => {
+test('encounters fill chest slots only after their road collection finishes', () => {
   let state = createInitialTravelState(CONFIG);
   const secondsPerChest = CONFIG.travel.harvestIntervalSeconds * CONFIG.travel.chestEveryHarvests;
+  const collectionSeconds = CONFIG.travel.roadItemApproachSeconds + CONFIG.travel.roadItemCollectSeconds;
 
-  state = advance(state, travelPlan('forest'), secondsPerChest * CONFIG.travel.chestCapacity);
+  state = advance(state, travelPlan('forest'), secondsPerChest);
+  assert.equal(state.roadItems.length, 2);
+  assert.equal(state.chests.length, 0);
+  assert.equal(state.ingredients.mushroom, 1);
+
+  state = advance(state, travelPlan('forest'), secondsPerChest * (CONFIG.travel.chestCapacity - 1) + collectionSeconds);
   assert.equal(state.chests.length, CONFIG.travel.chestCapacity);
   assert.equal(state.missedChests, 0);
 
@@ -49,7 +58,8 @@ test('encounters automatically fill the chest slots and full slots discard later
 
 test('opening a collected chest frees a slot and adds its visible ingredient reward', () => {
   const secondsPerChest = CONFIG.travel.harvestIntervalSeconds * CONFIG.travel.chestEveryHarvests;
-  const collected = advance(createInitialTravelState(CONFIG), travelPlan('coast'), secondsPerChest);
+  const collectionSeconds = CONFIG.travel.roadItemApproachSeconds + CONFIG.travel.roadItemCollectSeconds;
+  const collected = advance(createInitialTravelState(CONFIG), travelPlan('coast'), secondsPerChest + collectionSeconds);
   const chest = collected.chests[0];
   const opened = openChest(collected, chest.id, CONFIG);
 
@@ -59,4 +69,18 @@ test('opening a collected chest frees a slot and adds its visible ingredient rew
 
   const afterNewEncounter = advance(opened.state, travelPlan('coast'), secondsPerChest);
   assert.equal(afterNewEncounter.chests.length, 1);
+});
+
+test('road ingredients settle only after the collecting phase finishes', () => {
+  let state = createInitialTravelState(CONFIG);
+  state = advance(state, travelPlan('forest'), CONFIG.travel.harvestIntervalSeconds);
+  assert.equal(state.roadItems[0].phase, 'approaching');
+  assert.equal(state.ingredients.mushroom, 0);
+
+  state = advance(state, travelPlan('forest'), CONFIG.travel.roadItemApproachSeconds);
+  assert.equal(state.roadItems[0].phase, 'collecting');
+  assert.equal(state.ingredients.mushroom, 0);
+
+  state = advance(state, travelPlan('forest'), CONFIG.travel.roadItemCollectSeconds);
+  assert.equal(state.ingredients.mushroom, 1);
 });

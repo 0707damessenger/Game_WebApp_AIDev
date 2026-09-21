@@ -78,7 +78,11 @@ test('allows scheduling during rest but does not allow rest to be skipped', () =
   const rescheduled = setNextPlan(state, { activity: 'operate', regionId: 'market' }, CONFIG);
 
   assert.equal(rescheduled.ok, true);
-  assert.deepEqual(startWork(rescheduled.state, CONFIG), { ok: false, reason: 'rest-in-progress' });
+  const restarted = startWork(rescheduled.state, CONFIG);
+  assert.equal(restarted.ok, true);
+  assert.equal(restarted.state.phase, 'work');
+  assert.equal(restarted.state.secondsRemaining, CONFIG.timer.workSeconds);
+  assert.deepEqual(restarted.state.activePlan, { activity: 'operate', regionId: 'market' });
 });
 
 test('disabling pomodoro allows a planned activity to be started manually', () => {

@@ -30,12 +30,43 @@ button:focus-visible, input:focus-visible + .switch-track { outline: 3px solid #
 button:disabled { cursor: not-allowed; opacity: .45; }
 
 .floating-window {
+  position: fixed;
   width: min(360px, calc(100vw - 32px));
-  overflow: hidden;
+  left: 50%;
+  top: 50%;
+  z-index: 10;
+  overflow: visible;
   border: 3px solid #273446;
   background: #f4d798;
   box-shadow: 7px 7px 0 rgb(39 52 70 / 18%);
+  transform: translate(-50%, -50%);
 }
+.floating-window.is-positioned { transform: none; }
+.floating-window.is-dragging { cursor: grabbing; user-select: none; }
+.floating-window.is-dragging button, .floating-window.is-dragging input { pointer-events: none; }
+.floating-window > * { position: relative; }
+.floating-window > .menu-drawer { position: absolute; right: -3px; bottom: calc(100% + 4px); left: -3px; z-index: 20; }
+
+.compact-switch { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; cursor: pointer; }
+.compact-switch input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
+.compact-switch .switch-track { width: 30px; height: 18px; padding: 2px; }
+.compact-switch .switch-track::after { width: 10px; height: 10px; }
+.compact-switch input:checked + .switch-track::after { transform: translateX(10px); }
+.compact-tomato { color: #e15d67; font-size: 12px; line-height: 1; }
+.compact-switch input:disabled + .switch-track, .compact-switch input:disabled ~ .compact-tomato { opacity: .45; }
+.compact-switch input:focus-visible + .switch-track { outline: 3px solid #e15d67; outline-offset: 2px; }
+.window-header { cursor: grab; }
+.icon-button, .compact-switch { cursor: pointer; }
+
+.road-items { position: absolute; z-index: 2; right: 0; bottom: 20%; left: 0; height: 40px; pointer-events: none; }
+.road-item { position: absolute; bottom: 0; left: var(--road-item-left); width: 22px; height: 22px; border: 2px solid #273446; background: #fff7df; transform: translateX(-50%); }
+.road-item-approaching { animation: road-item-approach 1s linear both; }
+.road-item-collecting { left: 44%; animation: road-item-collect 1s ease-in-out infinite alternate; }
+.road-item-ingredient { border-radius: 50%; background: #d76661; }
+.road-item-ingredient .road-ingredient-mark { position: absolute; top: 4px; right: 4px; bottom: 4px; left: 4px; border: 2px solid #273446; border-radius: 50%; background: #f7b965; }
+.road-item-chest { border-radius: 2px; background: #f7b965; }
+.road-chest-mark { position: absolute; top: 6px; right: 2px; left: 2px; border-top: 2px solid #273446; }
+.road-chest-mark::after { content: ""; position: absolute; top: -8px; left: 8px; height: 16px; border-left: 2px solid #273446; }
 
 .window-header, .brand, .status-strip, .choice-row, .menu-tabs, .switch-label {
   display: flex;
@@ -65,7 +96,8 @@ button:disabled { cursor: not-allowed; opacity: .45; }
 .scene-note { position: absolute; z-index: 2; top: 10px; right: 10px; padding: 4px 7px; border: 2px solid #273446; background: #fff7df; font-size: 12px; }
 .is-traveling .truck { animation: truck-bob 1.8s ease-in-out infinite; }.is-traveling .road::after { animation: road-flow .8s linear infinite; }
 
-.phase-notice { position: absolute; z-index: 4; top: 14px; left: 50%; display: grid; gap: 2px; min-width: 138px; padding: 8px 12px; border: 2px solid #273446; background: #fff7df; box-shadow: 4px 4px 0 rgb(39 52 70 / 18%); text-align: center; transform: translateX(-50%); animation: notice-enter 160ms ease-out; }
+.phase-notice { position: absolute; z-index: 4; top: 14px; left: 50%; display: grid; gap: 2px; min-width: 138px; padding: 8px 12px; border: 2px solid #273446; background: #fff7df; box-shadow: 4px 4px 0 rgb(39 52 70 / 18%); text-align: center; transform: translateX(-50%); }
+.phase-notice.is-new { animation: notice-enter 160ms ease-out; }
 .phase-notice strong { color: #a93e4c; font-size: 15px; }.phase-notice span { font-size: 12px; }
 
 .collection-strip { display: flex; align-items: center; justify-content: space-between; min-height: 42px; gap: 12px; padding: 5px 11px; border-bottom: 3px solid #273446; background: #dff0dc; }
@@ -102,6 +134,8 @@ button.chest-slot:hover:not(:disabled) { background: #e7a84b; }
 
 @keyframes truck-bob { 50% { transform: translateY(-3px); } }
 @keyframes road-flow { to { transform: translateX(-20px); } }
+@keyframes road-item-approach { from { transform: translateX(260px); } to { transform: translateX(0); } }
+@keyframes road-item-collect { from { transform: translate(-50%, 0) scale(1); opacity: 1; } to { transform: translate(-50%, -14px) scale(.55); opacity: .35; } }
 @keyframes notice-enter { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 @media (max-width: 390px) {

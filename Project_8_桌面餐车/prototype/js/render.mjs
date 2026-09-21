@@ -26,14 +26,19 @@ function phaseText(state, config) {
   }[state.phase];
 }
 
-function sceneMarkup(activity, isResting) {
-  const isTraveling = activity === 'travel';
+function sceneMarkup(activity, isResting, travelState) {
+  const isTraveling = activity === 'travel' && !isResting;
+  const roadItems = (travelState?.roadItems || []).map((item, index) => `
+    <div class="road-item road-item-${item.type} road-item-${item.phase}" style="--road-item-left: ${item.phase === 'collecting' ? '44%' : `${12 + index * 13}%`}" aria-label="${item.type === 'chest' ? '道路宝箱' : '道路食材'}">
+      ${item.type === 'chest' ? '<span class="road-chest-mark"></span>' : '<span class="road-ingredient-mark"></span>'}
+    </div>`).join('');
   return `
-    <div class="scene ${isTraveling ? 'is-traveling' : 'is-operating'}" aria-hidden="true">
+    <div class="scene ${isTraveling ? 'is-traveling' : 'is-operating'} ${isResting ? 'is-resting' : ''}" aria-hidden="true">
       <div class="sky-detail cloud-one"></div>
       <div class="sky-detail cloud-two"></div>
       <div class="hills"></div>
       <div class="road"></div>
+      <div class="road-items">${roadItems}</div>
       <div class="truck">
         <div class="awning"></div>
         <div class="window"></div>
@@ -92,46 +97,42 @@ function collectionMarkup(travelState, config) {
 function drawerMarkup(state, config, menuPanel) {
   const locked = state.phase === 'work';
   const canStart = state.pomodoroEnabled
-    ? state.phase === 'planning' && state.nextPlan
+    ? (state.phase === 'planning' || state.phase === 'rest') && state.nextPlan
     : Boolean(state.nextPlan) && !state.activePlan;
 
   return `
     <aside id="menu-drawer" class="menu-drawer" aria-label="餐车菜单">
       <nav class="menu-tabs" aria-label="菜单分类">
         <button id="arrange-menu-button" class="menu-tab ${menuPanel === 'arrange' ? 'is-selected' : ''}" data-menu-panel="arrange" ${locked ? 'disabled' : ''}>安排</button>
-        <button id="pomodoro-menu-button" class="menu-tab ${menuPanel === 'pomodoro' ? 'is-selected' : ''}" data-menu-panel="pomodoro" ${locked ? 'disabled' : ''}>番茄钟</button>
         <button class="menu-tab" disabled title="后续模块开放">研发</button>
         <button class="menu-tab" disabled title="后续模块开放">商店</button>
       </nav>
-      ${menuPanel === 'arrange' ? `
-        <section id="arrange-panel" class="menu-panel">
-          <p class="menu-heading">${state.phase === 'rest' ? '休息后开始' : '下一段'}</p>
-          <div class="choice-row" aria-label="选择工作模式">${activityButtons(state, config, locked)}</div>
-          <div class="choice-row" aria-label="选择地区">${regionButtons(state, config, locked)}</div>
-          <button id="start-work" class="start-button" ${canStart ? '' : 'disabled'}>${startLabel(state, config)}</button>
-        </section>` : `
-        <section id="pomodoro-panel" class="menu-panel">
-          <label class="switch-label" for="pomodoro-toggle">
-            <input id="pomodoro-toggle" type="checkbox" ${state.pomodoroEnabled ? 'checked' : ''} ${locked ? 'disabled' : ''}>
-            <span class="switch-track" aria-hidden="true"></span>
-            <span>番茄钟</span>
-          </label>
-          <p class="menu-hint">${state.pomodoroEnabled ? '工作与休息自动切换' : '活动由你手动开始'}</p>
-        </section>`}
+      <section id="arrange-panel" class="menu-panel">
+        <p class="menu-heading">${state.phase === 'rest' ? '休息中 · 可提前开始' : '下一段'}</p>
+        <div class="choice-row" aria-label="选择工作模式">${activityButtons(state, config, locked)}</div>
+        <div class="choice-row" aria-label="选择地区">${regionButtons(state, config, locked)}</div>
+        <button id="start-work" class="start-button" ${canStart ? '' : 'disabled'}>${startLabel(state, config)}</button>
+      </section>
     </aside>`;
 }
 
-export function render(app, state, config, { menuOpen, menuPanel, travelState }) {
+export function render(app, state, config, { menuOpen, menuPanel, travelState, windowPosition, noticeIsNew = false }) {
   const displayedPlan = state.activePlan || state.nextPlan || state.lastCompletedPlan;
+  const positionStyle = windowPosition ? ` style="left: ${windowPosition.x}px; top: ${windowPosition.y}px;"` : '';
   app.innerHTML = `
-    <section class="floating-window" aria-label="桌面餐车悬浮窗">
+    <section class="floating-window ${windowPosition ? 'is-positioned' : ''}" aria-label="桌面餐车悬浮窗"${positionStyle}>
       <header class="window-header">
         <div class="brand"><span class="brand-mark"></span><span>桌面餐车</span></div>
+        <label class="compact-switch" for="pomodoro-toggle" title="${state.pomodoroEnabled ? '关闭番茄钟' : '开启番茄钟'}">
+          <input id="pomodoro-toggle" type="checkbox" ${state.pomodoroEnabled ? 'checked' : ''} ${state.phase === 'work' ? 'disabled' : ''}>
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="compact-tomato" aria-hidden="true">●</span>
+        </label>
         <button id="menu-toggle" class="icon-button" aria-label="${menuOpen ? '关闭菜单' : '打开菜单'}" title="${menuOpen ? '关闭菜单' : '打开菜单'}">☰</button>
       </header>
       <div class="scene-wrap">
-        ${sceneMarkup(displayedPlan?.activity, state.phase === 'rest')}
-        ${state.notice ? `<div id="phase-notice" class="phase-notice" role="status"><strong>${state.notice.title}</strong><span>${state.notice.detail}</span></div>` : ''}
+        ${sceneMarkup(displayedPlan?.activity, state.phase === 'rest', travelState)}
+        ${state.notice ? `<div id="phase-notice" class="phase-notice${noticeIsNew ? ' is-new' : ''}" role="status"><strong>${state.notice.title}</strong><span>${state.notice.detail}</span></div>` : ''}
       </div>
       ${collectionMarkup(travelState, config)}
       <section class="status-strip" aria-label="当前状态">

@@ -63,9 +63,11 @@ test('uses the floating window menu to start a selected journey and lock plannin
   let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.phase, 'work');
   assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
+  await app.page.locator('#menu-toggle').click();
   assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
-  assert.equal(await app.page.locator('#pomodoro-menu-button').isDisabled(), true);
+  assert.equal(await app.page.locator('#pomodoro-toggle').isDisabled(), true);
   assert.equal(await app.page.locator('#menu-toggle').isEnabled(), true);
+  assert.equal(await app.page.locator('#menu-drawer').count(), 1);
 });
 
 test('keeps a single floating window and opens its menu without an expand control', async (t) => {
@@ -83,7 +85,6 @@ test('starts a selected activity manually when pomodoro is disabled', async (t) 
   t.after(closePrototype(app));
 
   await app.page.locator('#menu-toggle').click();
-  await app.page.getByRole('button', { name: '番茄钟' }).click();
   await app.page.locator('#pomodoro-toggle').uncheck();
   await app.page.getByRole('button', { name: '安排' }).click();
   await app.page.getByRole('button', { name: '旅行' }).click();
@@ -98,7 +99,7 @@ test('starts a selected activity manually when pomodoro is disabled', async (t) 
   assert.deepEqual(state.activePlan, { activity: 'travel', regionId: 'forest' });
   assert.equal(await app.page.locator('#management-status').count(), 0);
 
-  await app.page.evaluate(() => window.advanceTime(2000));
+  await app.page.evaluate(() => window.advanceTime(4000));
   state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.travel.ingredients.mushroom, 1);
 });
@@ -134,18 +135,75 @@ test('collects travel supplies and keeps chest opening available while work menu
   await app.page.getByRole('button', { name: '旅行' }).click();
   await app.page.getByRole('button', { name: '林道' }).click();
   await app.page.getByRole('button', { name: '开始专注' }).click();
-  await app.page.evaluate(() => window.advanceTime(4000));
+  await app.page.evaluate(() => window.advanceTime(6000));
 
   let state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.travel.ingredients.mushroom, 1);
   assert.equal(state.travel.ingredients.herb, 1);
   assert.equal(state.travel.chests.length, 1);
+  await app.page.locator('#menu-toggle').click();
   assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
-  assert.equal(await app.page.locator('#pomodoro-menu-button').isDisabled(), true);
+  assert.equal(await app.page.locator('#pomodoro-toggle').isDisabled(), true);
 
   await app.page.locator('[data-chest-id]').click();
   state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
   assert.equal(state.travel.chests.length, 0);
   assert.equal(state.travel.ingredients.mushroom, 3);
   assert.equal(await app.page.locator('#arrange-menu-button').isDisabled(), true);
+});
+
+test('uses a compact pomodoro switch, expands the menu upward, and drags only the truck body', async (t) => {
+  const app = await openPrototype();
+  t.after(closePrototype(app));
+
+  assert.equal(await app.page.locator('#pomodoro-toggle').count(), 1);
+  assert.equal(await app.page.locator('#pomodoro-menu-button').count(), 0);
+  await app.page.locator('#menu-toggle').click();
+
+  const windowBox = await app.page.locator('.floating-window').boundingBox();
+  const menuBox = await app.page.locator('#menu-drawer').boundingBox();
+  assert.ok(menuBox.y + menuBox.height <= windowBox.y + 1, 'menu should expand above the truck window');
+
+  const sceneBox = await app.page.locator('.scene-wrap').boundingBox();
+  await app.page.mouse.move(sceneBox.x + sceneBox.width / 2, sceneBox.y + sceneBox.height / 2);
+  await app.page.mouse.down();
+  await app.page.mouse.move(sceneBox.x + sceneBox.width / 2 + 45, sceneBox.y + sceneBox.height / 2 + 24);
+  await app.page.mouse.up();
+  const movedBox = await app.page.locator('.floating-window').boundingBox();
+  assert.ok(movedBox.x > windowBox.x + 30);
+  assert.ok(movedBox.y > windowBox.y + 10);
+
+  const drawerBox = await app.page.locator('#menu-drawer').boundingBox();
+  const beforeMenuDrag = await app.page.locator('.floating-window').boundingBox();
+  await app.page.mouse.move(drawerBox.x + drawerBox.width / 2, drawerBox.y + drawerBox.height / 2);
+  await app.page.mouse.down();
+  await app.page.mouse.move(drawerBox.x + drawerBox.width / 2 + 45, drawerBox.y + drawerBox.height / 2 + 24);
+  await app.page.mouse.up();
+  const afterMenuDrag = await app.page.locator('.floating-window').boundingBox();
+  assert.ok(Math.abs(afterMenuDrag.x - beforeMenuDrag.x) < 1);
+  assert.ok(Math.abs(afterMenuDrag.y - beforeMenuDrag.y) < 1);
+});
+
+test('allows starting the next focus early during rest and shows a toast only once', async (t) => {
+  const app = await openPrototype();
+  t.after(closePrototype(app));
+
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '旅行' }).click();
+  await app.page.getByRole('button', { name: '林道' }).click();
+  await app.page.getByRole('button', { name: '开始专注' }).click();
+  await app.page.evaluate(() => window.advanceTime(12000));
+  await app.page.locator('#menu-toggle').click();
+  await app.page.getByRole('button', { name: '经营' }).click();
+  assert.equal(await app.page.getByRole('button', { name: '开始专注' }).isEnabled(), true);
+  await app.page.getByRole('button', { name: '开始专注' }).click();
+
+  const state = JSON.parse(await app.page.evaluate(() => window.render_game_to_text()));
+  assert.equal(state.phase, 'work');
+  assert.equal(await app.page.locator('#menu-drawer').count(), 0);
+
+  await app.page.evaluate(() => window.advanceTime(12000));
+  assert.equal(await app.page.locator('#phase-notice').getAttribute('class'), 'phase-notice is-new');
+  await app.page.evaluate(() => window.advanceTime(1000));
+  assert.equal(await app.page.locator('#phase-notice').getAttribute('class'), 'phase-notice');
 });

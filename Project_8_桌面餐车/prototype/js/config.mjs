@@ -9,6 +9,8 @@ export const CONFIG = Object.freeze({
   }),
   travel: Object.freeze({
     harvestIntervalSeconds: 2,
+    roadItemApproachSeconds: 1,
+    roadItemCollectSeconds: 1,
     chestEveryHarvests: 2,
     chestCapacity: 3,
     chestRewards: Object.freeze([

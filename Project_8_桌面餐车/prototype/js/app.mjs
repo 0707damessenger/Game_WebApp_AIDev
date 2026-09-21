@@ -7,6 +7,7 @@ import {
   startWork,
 } from './pomodoro-state.mjs';
 import { render } from './render.mjs';
+import { clampPosition } from './window-position.mjs';
 import {
   advanceTravelSecond,
   createInitialTravelState,
@@ -21,6 +22,9 @@ let menuPanel = 'arrange';
 let intervalId = null;
 let noticeTimeoutId = null;
 let visibleNoticeId = null;
+let renderedNoticeId = null;
+let windowPosition = null;
+let dragState = null;
 
 function isTicking() {
   return state.phase === 'work' || state.phase === 'rest' || (!state.pomodoroEnabled && Boolean(state.activePlan));
@@ -54,16 +58,53 @@ function syncNotice() {
   noticeTimeoutId = window.setTimeout(() => {
     if (state.notice?.id === visibleNoticeId) {
       state = { ...state, notice: null };
-      render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
+      renderApp();
     }
   }, CONFIG.ui.noticeMilliseconds);
+}
+
+function renderApp() {
+  render(app, state, CONFIG, {
+    menuOpen,
+    menuPanel,
+    travelState,
+    windowPosition,
+    noticeIsNew: Boolean(state.notice && state.notice.id !== renderedNoticeId),
+  });
+  if (state.notice) renderedNoticeId = state.notice.id;
+
+  if (!windowPosition) {
+    const element = app.querySelector('.floating-window');
+    const rect = element.getBoundingClientRect();
+    windowPosition = clampPosition(
+      { x: rect.left, y: rect.top },
+      { width: rect.width, height: rect.height },
+      { width: window.innerWidth, height: window.innerHeight },
+    );
+    renderApp();
+    return;
+  }
+
+  const menu = app.querySelector('#menu-drawer');
+  if (menu) {
+    const element = app.querySelector('.floating-window');
+    const menuRect = menu.getBoundingClientRect();
+    if (menuRect.top < 0) {
+      windowPosition = clampPosition(
+        { x: windowPosition.x, y: windowPosition.y - menuRect.top + 4 },
+        { width: element.offsetWidth, height: element.offsetHeight },
+        { width: window.innerWidth, height: window.innerHeight },
+      );
+      renderApp();
+    }
+  }
 }
 
 function update(result) {
   if (result?.state) state = result.state;
   syncTimer();
   syncNotice();
-  render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
+  renderApp();
 }
 
 function advanceTime(milliseconds) {
@@ -74,7 +115,7 @@ function advanceTime(milliseconds) {
   }
   syncTimer();
   syncNotice();
-  render(app, state, CONFIG, { menuOpen, menuPanel, travelState });
+  renderApp();
 }
 
 function selectedActivity() {
@@ -87,12 +128,6 @@ app.addEventListener('click', (event) => {
 
   if (button.id === 'menu-toggle') {
     menuOpen = !menuOpen;
-    update();
-    return;
-  }
-
-  if (button.dataset.menuPanel) {
-    menuPanel = button.dataset.menuPanel;
     update();
     return;
   }
@@ -115,7 +150,11 @@ app.addEventListener('click', (event) => {
     return;
   }
 
-  if (button.id === 'start-work') update(startWork(state, CONFIG));
+  if (button.id === 'start-work') {
+    const result = startWork(state, CONFIG);
+    if (result.ok) menuOpen = false;
+    update(result);
+  }
 });
 
 app.addEventListener('change', (event) => {
@@ -124,9 +163,43 @@ app.addEventListener('change', (event) => {
 
 window.render_game_to_text = () => JSON.stringify({ ...state, travel: travelState, menuOpen, menuPanel });
 window.advanceTime = advanceTime;
+app.addEventListener('pointerdown', (event) => {
+  if (event.button !== 0 || event.target.closest('#menu-drawer') || event.target.closest('button, input, label')) return;
+  const windowElement = app.querySelector('.floating-window');
+  const rect = windowElement.getBoundingClientRect();
+  dragState = { pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top, element: windowElement };
+  windowElement.setPointerCapture(event.pointerId);
+  windowElement.classList.add('is-dragging');
+});
+app.addEventListener('pointermove', (event) => {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  const next = clampPosition(
+    { x: event.clientX - dragState.offsetX, y: event.clientY - dragState.offsetY },
+    { width: dragState.element.offsetWidth, height: dragState.element.offsetHeight },
+    { width: window.innerWidth, height: window.innerHeight },
+  );
+  windowPosition = next;
+  dragState.element.style.left = `${next.x}px`;
+  dragState.element.style.top = `${next.y}px`;
+});
+function finishDrag(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  dragState.element.classList.remove('is-dragging');
+  if (dragState.element.hasPointerCapture(event.pointerId)) dragState.element.releasePointerCapture(event.pointerId);
+  dragState = null;
+}
+app.addEventListener('pointerup', finishDrag);
+app.addEventListener('pointercancel', finishDrag);
+window.addEventListener('resize', () => {
+  if (!windowPosition) return;
+  const element = app.querySelector('.floating-window');
+  if (!element) return;
+  windowPosition = clampPosition(windowPosition, { width: element.offsetWidth, height: element.offsetHeight }, { width: window.innerWidth, height: window.innerHeight });
+  renderApp();
+});
 window.addEventListener('beforeunload', () => {
   if (intervalId !== null) window.clearInterval(intervalId);
   if (noticeTimeoutId !== null) window.clearTimeout(noticeTimeoutId);
 });
 
-update();
+renderApp();
