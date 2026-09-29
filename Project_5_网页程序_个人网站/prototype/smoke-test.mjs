@@ -15,7 +15,7 @@ function assert(condition, message) {
 assert(existsSync(htmlPath), "index.html should exist");
 
 const html = readFileSync(htmlPath, "utf8");
-const requiredNavIds = ["home", "projects", "links"];
+const requiredNavIds = ["home", "projects", "notes", "links"];
 const navConfig = html.match(/nav: \[(.*?)\r?\n\s+\],\r?\n\s+themes:/s)?.[1] ?? "";
 const navLabelMatches = navConfig.match(/label: "/g) ?? [];
 
@@ -23,14 +23,25 @@ for (const id of requiredNavIds) {
   assert(html.includes(`id: "${id}"`), `missing nav item: ${id}`);
 }
 
-assert(navLabelMatches.length === 3, "navigation should contain exactly three items");
+assert(navLabelMatches.length === 4, "navigation should contain exactly four items");
 assert(!html.includes("写真"), "photos tab should not be present");
 assert(html.includes("window.CONFIG"), "CONFIG should be the single global configuration source");
 assert(html.includes("site-nav"), "navigation mount should exist");
 assert(html.includes("<main id=\"app\">"), "app mount should exist");
 assert(html.includes('id: "home"'), "home config should exist");
 assert(html.includes('id: "projects"'), "projects config should exist");
+assert(html.includes('id: "notes"'), "notes config should exist");
 assert(html.includes('id: "links"'), "links config should exist");
+assert(html.includes('title: "笔记"'), "notes page config should exist");
+assert(html.includes('title: "策划方法论笔记"'), "notes should include the configured note title");
+assert(html.includes('url: "https://my.feishu.cn/wiki/JrxiwpR0YiPcBnkuZrOcyI1tnDO"'), "the configured note should include its target URL");
+assert(html.includes("function renderNotesView"), "notes view should render from CONFIG");
+assert(html.includes("data-note-link"), "notes should render external note links");
+assert(html.includes("notes-empty"), "notes should render a clear empty state");
+assert(html.includes('target=\"_blank\"'), "note links should open in a new tab");
+assert(html.includes('rel=\"noopener noreferrer\"'), "note links should protect the opener");
+assert(!html.includes("activeNoteFilter"), "notes should not keep category filter state");
+assert(!html.includes("filter-button"), "notes should not render category filter controls");
 assert(html.includes("function renderApp"), "prototype should render from CONFIG");
 assert(html.includes('title: "关于"'), "about page config should exist");
 assert(html.includes('iconSrc: ""'), "navigation icon paths should be configurable");
@@ -67,8 +78,8 @@ assert(html.includes("contact-hover-media"), "configured hover images should ren
 assert(html.includes("data-contact-preview"), "hover previews should be anchored to the contacts strip");
 assert(html.includes("links-content"), "links should provide a bottom-aligned content layout");
 assert(html.includes("gameHistory: ["), "about should configure game history categories");
-assert(html.includes('category: "开放世界类"'), "game history should include the open-world category");
-assert(html.includes('category: "竞技类游戏"'), "game history should include the competitive category");
+assert(html.includes('category: "最近在玩"'), "game history should include the recent category");
+assert(html.includes('category: "最常在玩"'), "game history should include the frequent category");
 assert(html.includes("data-game-history-category"), "game history should render category groups");
 assert(html.includes("game-history-note"), "game history should support optional notes");
 assert(html.includes("isFeatured: true"), "projects should support representative work markers");
@@ -113,6 +124,25 @@ async function runBrowserChecks() {
     await page.waitForFunction(() => window.scrollY > 0);
     await page.reload({ waitUntil: "networkidle" });
     await page.waitForFunction(() => window.scrollY === 0 && !document.querySelector(".site-header")?.classList.contains("is-scrolled"));
+
+    await page.locator('.nav-link[data-target="notes"]').click();
+    await page.waitForSelector('[data-view="notes"].is-active');
+    assert(await page.locator('[data-view="notes"] .notes-empty').count() === 0, "configured notes should hide the empty state");
+    assert(await page.locator('[data-view="notes"] [data-note-link]').count() === 1, "the example note should render one link");
+    assert(await page.locator('[data-view="notes"] .filter-button').count() === 0, "notes should not render category filters");
+    const noteItem = page.locator('[data-view="notes"] .note-item').filter({ has: page.locator('[data-note-link]') });
+    const noteLink = noteItem.locator('[data-note-link]');
+    assert(await noteLink.count() === 1, "configured note title should render as a link");
+    assert(await noteLink.getAttribute("href") === "https://my.feishu.cn/wiki/JrxiwpR0YiPcBnkuZrOcyI1tnDO", "note link should use the configured URL");
+    assert(await noteLink.getAttribute("target") === "_blank", "note link should open in a new tab");
+    assert(await noteLink.getAttribute("rel") === "noopener noreferrer", "note link should protect the opener");
+    assert(await noteItem.locator(".note-note").innerText() === "#工作", "note should render its configured remark");
+    assert(await noteItem.locator(".note-note").locator("xpath=ancestor::a").count() === 0, "note remark should not be part of the link");
+    assert(await noteItem.locator("a").count() === 1, "only the note title should be clickable");
+    assert(await noteLink.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize) === 37), "note titles should use the reduced 37px desktop size");
+    assert(await noteLink.evaluate((element) => getComputedStyle(element).color === "rgb(143, 65, 100)"), "note titles should use the readable rose color");
+    assert(await noteItem.locator(".note-note").evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize) >= 16), "note remarks should use a readable body size");
+    assert(await noteItem.locator(".note-note").evaluate((element) => getComputedStyle(element).color === "rgb(102, 81, 91)"), "note remarks should use a higher-contrast muted color");
 
     await page.locator('.nav-link[data-target="projects"]').click();
     await page.waitForSelector('[data-view="projects"].is-active');
@@ -253,9 +283,9 @@ async function runBrowserChecks() {
     const linksContent = page.locator('[data-view="links"] .links-content');
     assert(await gameHistoryGroup.count() === 1, "game history should render once");
     assert((await gameHistoryGroup.boundingBox()).y < (await homepageGroup.boundingBox()).y, "game history should appear above my homepages");
-    assert(await gameHistoryGroup.locator('[data-game-history-category]').count() === 2, "game history should render configured categories");
-    assert(await gameHistoryGroup.getByText("塞尔达旷野之息", { exact: true }).count() === 1, "game names should render");
-    assert(await gameHistoryGroup.locator('.game-history-note').count() === 0, "empty notes should not reserve visible elements");
+    assert(await gameHistoryGroup.locator('[data-game-history-category]').count() === 3, "game history should render configured categories");
+    assert(await gameHistoryGroup.getByText("洛克王国", { exact: true }).count() === 1, "game names should render");
+    assert(await gameHistoryGroup.locator('.game-history-note').count() === 7, "configured game notes should render without empty placeholders");
     assert(await page.locator('[data-view="links"] .page-head [data-links-contacts]').count() === 0, "contacts should not render in the page heading");
     assert(await contactsStrip.count() === 1, "contacts should render after the homepage cards");
     assert((await contactsStrip.boundingBox()).y > (await homepageGroup.boundingBox()).y, "contacts should appear below my homepages");
@@ -267,7 +297,7 @@ async function runBrowserChecks() {
     assert(bottomGap < 75, `contacts should stay near the bottom of the links content: ${bottomGap}`);
     const configuredHistoryPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await configuredHistoryPage.setContent(
-      html.replace('{ title: "天国拯救 2", note: "" }', '{ title: "天国拯救 2", note: "120 小时 · 沉浸感很强" }'),
+      html.replace('{ title: "洛克王国", note: "浅尝一口GF未曾实现的设想 / 337116715" }', '{ title: "洛克王国", note: "120 小时 · 沉浸感很强" }'),
       { waitUntil: "networkidle" }
     );
     await configuredHistoryPage.locator('.nav-link[data-target="links"]').click();

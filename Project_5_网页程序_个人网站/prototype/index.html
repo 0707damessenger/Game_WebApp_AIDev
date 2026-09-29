@@ -11,6 +11,7 @@
       nav: [
         { id: "home", label: "首页", tone: "home", iconSrc: "" },
         { id: "projects", label: "项目", tone: "projects", iconSrc: "" },
+        { id: "notes", label: "笔记", tone: "notes", iconSrc: "" },
         { id: "links", label: "关于", tone: "links", iconSrc: "" }
       ],
       themes: {
@@ -23,6 +24,11 @@
           accent: "#4aa08f",
           wash: "#edf8f4",
           shadow: "rgba(74, 160, 143, 0.12)"
+        },
+        notes: {
+          accent: "#a75579",
+          wash: "#fff3f7",
+          shadow: "rgba(167, 85, 121, 0.14)"
         },
         links: {
           accent: "#d7a24c",
@@ -167,6 +173,18 @@
             { id: "participating", title: "工作项目" },
             { id: "personal", title: "业余项目" },
             { id: "other", title: "其他好玩的" }
+          ]
+        },
+        notes: {
+          title: "笔记",
+          subtitle: "写点什么",
+          items: [
+            {
+              id: "1",
+              title: "策划方法论笔记",
+              note: "#工作",
+              url: "https://my.feishu.cn/wiki/JrxiwpR0YiPcBnkuZrOcyI1tnDO"
+            }
           ]
         },
         links: {
@@ -503,6 +521,64 @@
       color: var(--muted);
       font-size: 1.1em;
       font-weight: 200;
+    }
+
+    .notes-list {
+      display: grid;
+      gap: 0.8em;
+      padding: 1em 0 8em;
+    }
+
+    .note-item {
+      margin: 0;
+      padding: 0.9em 1.2em 1em;
+      border-bottom: 1px solid color-mix(in srgb, var(--accent), transparent 78%);
+    }
+
+    .note-link {
+      display: inline-block;
+      color: #8f4164;
+      font-size: clamp(28px, 3.6vw, 37px);
+      font-weight: 300;
+      line-height: 1.18;
+      text-wrap: pretty;
+      transition: color 180ms ease, transform 180ms ease;
+    }
+
+    .note-link:hover,
+    .note-link:focus-visible {
+      color: #71334f;
+      transform: translateX(0.12em);
+    }
+
+    .note-title {
+      margin: 0;
+      font: inherit;
+    }
+
+    .note-item.is-disabled .note-title {
+      color: #8f4164;
+      font-size: clamp(28px, 3.6vw, 37px);
+      font-weight: 300;
+      line-height: 1.18;
+      text-wrap: pretty;
+    }
+
+    .note-note {
+      margin: 0.65em 0 0;
+      color: #66515b;
+      font-size: clamp(16px, 1.5vw, 18px);
+      font-weight: 300;
+      line-height: 1.75;
+      text-wrap: pretty;
+      white-space: pre-line;
+    }
+
+    .notes-empty {
+      padding: 3em 0 8em;
+      color: var(--muted);
+      font-weight: 200;
+      text-align: center;
     }
 
     .project-grid {
@@ -1494,6 +1570,43 @@
       `;
     }
 
+    function renderNoteItem(item) {
+      const title = escapeHTML(item.title || "");
+      const note = item.note
+        ? `<p class="note-note">${escapeHTML(item.note)}</p>`
+        : "";
+
+      if (!item.url) {
+        return `<article class="note-item is-disabled"><h2 class="note-title">${title}</h2>${note}</article>`;
+      }
+
+      return `
+        <article class="note-item">
+          <a class="note-link" data-note-link href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer">
+            <h2 class="note-title">${title}</h2>
+          </a>
+          ${note}
+        </article>
+      `;
+    }
+
+    function renderNotesView(page) {
+      const items = Array.isArray(page.items) ? page.items : [];
+      const content = items.length
+        ? `<div class="notes-list layout">${items.map(renderNoteItem).join("")}</div>`
+        : `<p class="notes-empty layout">暂时还没有笔记。</p>`;
+
+      return `
+        <section class="view" data-view="notes" aria-labelledby="notes-title" hidden>
+          <div class="page-head layout">
+            <h1 id="notes-title">${escapeHTML(page.title)}</h1>
+            <p>${escapeHTML(page.subtitle)}</p>
+          </div>
+          ${content}
+        </section>
+      `;
+    }
+
     function renderLinkCard(item) {
       const content = `
         <span class="link-avatar">
@@ -1846,6 +1959,7 @@
       app.innerHTML = [
         renderHomeView(config.pages.home),
         renderProjectsView(config.pages.projects),
+        renderNotesView(config.pages.notes),
         renderLinksView(config.pages.links)
       ].join("");
       bindImageFallbacks();
