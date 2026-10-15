@@ -85,6 +85,8 @@ assert(html.includes("game-history-note"), "game history should support optional
 assert(html.includes("isFeatured: true"), "projects should support representative work markers");
 assert(html.includes("detail: {"), "projects should configure detail content");
 assert(html.includes("images: ["), "project details should support multiple images");
+assert(html.includes("function getProjectMedia"), "project details should normalize mixed media configurations");
+assert(html.includes('media.type === "video"'), "project details should support configured videos");
 assert(html.includes("data-featured-target"), "featured projects should render quick-jump targets");
 assert(html.includes("data-project-toggle"), "vertical projects should render expandable summaries");
 assert(html.includes("data-project-carousel"), "project details should render an image carousel");
@@ -128,9 +130,9 @@ async function runBrowserChecks() {
     await page.locator('.nav-link[data-target="notes"]').click();
     await page.waitForSelector('[data-view="notes"].is-active');
     assert(await page.locator('[data-view="notes"] .notes-empty').count() === 0, "configured notes should hide the empty state");
-    assert(await page.locator('[data-view="notes"] [data-note-link]').count() === 1, "the example note should render one link");
+    assert(await page.locator('[data-view="notes"] [data-note-link]').count() === 3, "configured notes should render three links");
     assert(await page.locator('[data-view="notes"] .filter-button').count() === 0, "notes should not render category filters");
-    const noteItem = page.locator('[data-view="notes"] .note-item').filter({ has: page.locator('[data-note-link]') });
+    const noteItem = page.locator('[data-view="notes"] .note-item').filter({ hasText: "策划方法论笔记" });
     const noteLink = noteItem.locator('[data-note-link]');
     assert(await noteLink.count() === 1, "configured note title should render as a link");
     assert(await noteLink.getAttribute("href") === "https://my.feishu.cn/wiki/JrxiwpR0YiPcBnkuZrOcyI1tnDO", "note link should use the configured URL");
@@ -213,6 +215,49 @@ async function runBrowserChecks() {
     assert((await imageCounter.textContent()) === initialCounter, "next image should wrap to the first image");
     assert((await imageCaption.textContent()) === initialCaption, "wrapped image should restore its description");
 
+    const mediaPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const mediaPosterDataUrl = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+    const mixedMediaHtml = html.replace(
+      "images: [",
+      `media: [
+                  { type: "video", src: "data:video/mp4;base64,AAAA", poster: "${mediaPosterDataUrl}", description: "视频演示" },
+                  { type: "image", src: "${mediaPosterDataUrl}", alt: "混合媒体图片", description: "图片演示" }
+                ],
+                images: [`
+    );
+    await mediaPage.setContent(mixedMediaHtml, { waitUntil: "networkidle" });
+    await mediaPage.locator('.nav-link[data-target="projects"]').click();
+    const mixedMediaProject = mediaPage.locator('.project-item[data-project-id="project-101"]');
+    await mixedMediaProject.locator("[data-project-toggle]").click();
+    const projectVideo = mixedMediaProject.locator("[data-project-media] video");
+    assert(await projectVideo.count() === 1, "configured video media should render as a video element");
+    assert(await projectVideo.getAttribute("controls") !== null, "project videos should show native controls");
+    assert(await projectVideo.getAttribute("playsinline") !== null, "project videos should play inline on mobile");
+    assert(await projectVideo.getAttribute("preload") === "metadata", "project videos should preload metadata only");
+    assert(await projectVideo.getAttribute("poster") === mediaPosterDataUrl, "project videos should support an optional poster");
+    assert((await mixedMediaProject.locator("[data-image-counter]").textContent()).includes("1 / 2"), "mixed media should share one counter");
+    await mixedMediaProject.locator('[data-project-image="next"]').click();
+    assert(await mixedMediaProject.locator("[data-project-media] video").count() === 0, "switching media should remove the previous video");
+    assert(await mixedMediaProject.locator("[data-project-media] .project-detail-image").count() === 1, "mixed media should switch from video to image");
+    assert((await mixedMediaProject.locator("[data-image-caption]").textContent()) === "图片演示", "mixed media should switch descriptions");
+    assert((await mixedMediaProject.locator("[data-image-counter]").textContent()).includes("2 / 2"), "mixed media should update the shared counter");
+    await mediaPage.close();
+
+    const noMediaPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const noMediaHtml = html.replace(
+      /(id: "project-203"[\s\S]*?detail: \{[\s\S]*?)images: \[[\s\S]*?\]\s*\}/,
+      "$1images: [] }"
+    );
+    await noMediaPage.setContent(noMediaHtml, { waitUntil: "networkidle" });
+    await noMediaPage.locator('.nav-link[data-target="projects"]').click();
+    const noMediaProject = noMediaPage.locator('.project-item[data-project-id="project-203"]');
+    await noMediaProject.locator("[data-project-toggle]").click();
+    assert(await noMediaProject.locator("[data-project-media]").count() === 0, "projects without media should hide the media module");
+    assert(await noMediaProject.locator("[data-image-caption]").count() === 0, "projects without media should hide the media description");
+    assert(await noMediaProject.locator("[data-image-counter]").count() === 0, "projects without media should hide the media counter");
+    assert(await noMediaProject.locator("[data-project-image]").count() === 0, "projects without media should hide carousel controls");
+    await noMediaPage.close();
+
     const secondProject = page.locator(".project-item[data-project-id]").nth(1);
     await secondProject.locator("[data-project-toggle]").click();
     assert(await featuredProject.evaluate((element) => !element.classList.contains("is-expanded")), "opening a project should close the previous project");
@@ -235,10 +280,6 @@ async function runBrowserChecks() {
     const noWebsiteProject = page.locator('.project-item[data-project-id="project-203"]');
     await noWebsiteProject.locator("[data-project-toggle]").click();
     assert(await noWebsiteProject.locator("[data-project-visit]").count() === 0, "projects without a website should hide the visit link");
-    assert(await noWebsiteProject.locator("[data-project-media]").count() === 0, "projects without images should hide the image media module");
-    assert(await noWebsiteProject.locator("[data-image-caption]").count() === 0, "projects without images should hide the image description");
-    assert(await noWebsiteProject.locator("[data-image-counter]").count() === 0, "projects without images should hide the image counter");
-    assert(await noWebsiteProject.locator("[data-project-image]").count() === 0, "projects without images should hide carousel controls");
 
     const catProject = page.locator('.project-item[data-project-id="project-202"]');
     await catProject.locator("[data-project-toggle]").click();

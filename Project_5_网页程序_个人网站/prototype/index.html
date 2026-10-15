@@ -120,13 +120,44 @@
               description: "移动端增量肉鸽游戏 / unity / 2026",
               imageSrc: "",
               websiteUrl: "",
-              detail: { description: "在屏幕上划线以攻击敌人，无需其他操作。\n操作极简，局内控制和局外构筑并存，配合视觉和声效反馈提供充足爽感。\n\n击败敌人可获取经验，升级触发随机BUFF选择。\n\n游戏提供包括炮塔流、弹反流、高速流、连击流、幸运流5个流派构筑方向，每个流派都有羁绊效果，双流派羁绊耦合还会触发强力的特殊连携。\n\n（源文件丢失，暂时仅占位）", 
-              images: [
-                  { src: "assets/projects/161.png", alt: "", description: "炮塔流+暴击流 效果演示" },
-                  { src: "assets/projects/162.png", alt: "", description: "BOSS设计1：发射三色小球，全部切换为同色回收时暴露弱点，否则触发大招攻击" },
-                  { src: "assets/projects/163.png", alt: "", description: "BOSS设计2：长体型，弱点仅在头部，无法穿过的身体起到切割空间的作用" },
-                  { src: "assets/projects/164.png", alt: "", description: "演示1：升级BUFF三选一" },
-                  { src: "assets/projects/165.png", alt: "", description: "演示2：升级BUFF三选一" }
+              detail: { description: "在屏幕上划线以攻击敌人，无需其他操作。\n操作极简，局内控制和局外构筑并存，配合视觉和声效反馈提供充足爽感。\n\n击败敌人可获取经验，升级触发随机BUFF选择。\n\n游戏提供包括炮塔流、弹反流、高速流、连击流、幸运流5个流派构筑方向，每个流派都有羁绊效果，双流派羁绊耦合还会触发强力的特殊连携。", 
+                media: [
+                  {
+                    type: "video",
+                    src: "assets/projects/160.mp4",
+                    poster: "assets/projects/165.png",
+                    description: "视频演示"
+                  },
+                  {
+                    type: "image",
+                    src: "assets/projects/161.png",
+                    alt: "",
+                    description: "炮塔流+暴击流 效果演示"
+                  },
+                  {
+                    type: "image",
+                    src: "assets/projects/162.png",
+                    alt: "",
+                    description: "BOSS设计1：发射三色小球，全部切换为同色回收时暴露弱点，否则触发大招攻击"
+                  },
+                  {
+                    type: "image",
+                    src: "assets/projects/163.png",
+                    alt: "",
+                    description: "BOSS设计2：长体型，弱点仅在头部，无法穿过的身体起到切割空间的作用"
+                  },
+                  {
+                    type: "image",
+                    src: "assets/projects/164.png",
+                    alt: "",
+                    description: "演示1：升级BUFF三选一"
+                  },
+                  {
+                    type: "image",
+                    src: "assets/projects/165.png",
+                    alt: "",
+                    description: "演示2：升级BUFF三选一"
+                  }
               ] }
             },
             {
@@ -832,6 +863,18 @@
       filter: drop-shadow(0 0.35em 0.8em rgba(30, 42, 36, 0.16));
     }
 
+    .project-detail-video {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: rgba(20, 28, 28, 0.08);
+      filter: drop-shadow(0 0.35em 0.8em rgba(30, 42, 36, 0.16));
+    }
+
     .project-carousel-controls {
       display: flex;
       align-items: center;
@@ -1481,14 +1524,30 @@
       `;
     }
 
-    function getProjectImages(item) {
-      return Array.isArray(item?.detail?.images) ? item.detail.images : [];
+    function getProjectMedia(item) {
+      if (Array.isArray(item?.detail?.media)) {
+        return item.detail.media
+          .filter((media) => media?.src)
+          .map((media) => ({ ...media, type: media.type === "video" ? "video" : "image" }));
+      }
+
+      return Array.isArray(item?.detail?.images)
+        ? item.detail.images
+          .filter((image) => image?.src)
+          .map((image) => ({ ...image, type: "image" }))
+        : [];
     }
 
-    function renderProjectDetailImage(image, projectTitle) {
-      if (!image?.src) return "";
-      const src = escapeHTML(image.src);
-      const alt = escapeHTML(image.alt || projectTitle);
+    function renderProjectDetailMedia(media, projectTitle) {
+      if (!media?.src) return "";
+      const src = escapeHTML(media.src);
+
+      if (media.type === "video") {
+        const poster = media.poster ? ` poster="${escapeHTML(media.poster)}"` : "";
+        return `<video class="project-detail-video" src="${src}"${poster} controls playsinline preload="metadata"></video>`;
+      }
+
+      const alt = escapeHTML(media.alt || projectTitle);
 
       return `
         <img class="project-detail-image-backdrop" src="${src}" alt="" aria-hidden="true" loading="lazy" decoding="async" data-fallback>
@@ -1498,32 +1557,32 @@
     }
 
     function renderProjectDetail(item) {
-      const images = getProjectImages(item);
-      const imageIndex = images.length ? getWrappedImageIndex(state.projectImageIndexes[item.id] || 0, images.length) : 0;
-      const image = images[imageIndex];
-      const hasMultipleImages = images.length > 1;
-      const imageCaption = image?.description || "";
+      const mediaItems = getProjectMedia(item);
+      const mediaIndex = mediaItems.length ? getWrappedImageIndex(state.projectImageIndexes[item.id] || 0, mediaItems.length) : 0;
+      const media = mediaItems[mediaIndex];
+      const hasMultipleMedia = mediaItems.length > 1;
+      const mediaCaption = media?.description || "";
       const visitLink = item.websiteUrl
         ? `<a class="project-visit-link" data-project-visit href="${escapeHTML(item.websiteUrl)}" target="_blank" rel="noopener noreferrer">前往查看</a>`
         : "";
-      const controls = hasMultipleImages
+      const controls = hasMultipleMedia
         ? `
             <div class="project-carousel-controls">
-              <button class="project-carousel-button" type="button" data-project-image="prev" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="上一张图片" title="上一张图片">←</button>
-              <span class="project-image-counter" data-image-counter>第 ${imageIndex + 1} / ${images.length} 张</span>
-              <button class="project-carousel-button" type="button" data-project-image="next" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="下一张图片" title="下一张图片">→</button>
+              <button class="project-carousel-button" type="button" data-project-image="prev" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="上一个媒体" title="上一个媒体">←</button>
+              <span class="project-image-counter" data-image-counter>第 ${mediaIndex + 1} / ${mediaItems.length} 项</span>
+              <button class="project-carousel-button" type="button" data-project-image="next" data-carousel-project-id="${escapeHTML(item.id)}" aria-label="下一个媒体" title="下一个媒体">→</button>
             </div>
           `
-        : images.length
-          ? `<div class="project-carousel-controls"><span class="project-image-counter" data-image-counter>第 1 / 1 张</span></div>`
+        : mediaItems.length
+          ? `<div class="project-carousel-controls"><span class="project-image-counter" data-image-counter>第 1 / 1 项</span></div>`
           : "";
-      const imageModule = images.length && image
+      const mediaModule = mediaItems.length && media
         ? `
             <div class="project-detail-carousel" data-project-carousel>
               <div class="project-detail-media" data-project-media>
-                ${renderProjectDetailImage(image, item.title)}
+                ${renderProjectDetailMedia(media, item.title)}
               </div>
-              <p class="project-image-caption${imageCaption ? "" : " is-empty"}" data-image-caption>${escapeHTML(imageCaption)}</p>
+              <p class="project-image-caption${mediaCaption ? "" : " is-empty"}" data-image-caption>${escapeHTML(mediaCaption)}</p>
               ${controls}
             </div>
           `
@@ -1535,7 +1594,7 @@
             <p>${escapeHTML(item.detail?.description || "")}</p>
             ${visitLink}
           </div>
-          ${imageModule}
+          ${mediaModule}
         </div>
       `;
     }
@@ -1778,15 +1837,19 @@
 
     function setProjectImage(projectId, direction) {
       const project = getProjectById(projectId);
-      const images = getProjectImages(project);
+      const mediaItems = getProjectMedia(project);
       const projectElement = getProjectElement(projectId);
-      if (!project || !images.length || !projectElement) return;
+      if (!project || !mediaItems.length || !projectElement) return;
 
-      const currentIndex = getWrappedImageIndex(state.projectImageIndexes[projectId] || 0, images.length);
-      state.projectImageIndexes[projectId] = getWrappedImageIndex(currentIndex + direction, images.length);
       const detail = projectElement.querySelector("[data-project-detail]");
       if (!detail) return;
 
+      detail.querySelectorAll("video").forEach((video) => {
+        video.pause();
+        video.currentTime = 0;
+      });
+      const currentIndex = getWrappedImageIndex(state.projectImageIndexes[projectId] || 0, mediaItems.length);
+      state.projectImageIndexes[projectId] = getWrappedImageIndex(currentIndex + direction, mediaItems.length);
       detail.innerHTML = renderProjectDetail(project);
       bindImageFallbacks(detail);
     }
